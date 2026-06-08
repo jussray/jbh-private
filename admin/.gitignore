@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.vite/
+.vercel/
+
+# Local env files — never commit
+.env
+.env.*
+!.env.example
+
+# Legacy SQLite files (no longer used but ignored just in case)
+data.db
+data.db-shm
+data.db-wal
+data.db-journal
+
+*.log
+.DS_Store
