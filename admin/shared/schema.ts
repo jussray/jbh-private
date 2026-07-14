@@ -17,49 +17,50 @@ export const orders = pgTable("orders", {
   customerName: text("customer_name").notNull(),
   email: text("email").notNull(),
   phone: text("phone").notNull(),
-  addressJson: jsonb("address_json").notNull(), // {street, city, state, zip}
-  itemsJson: jsonb("items_json").notNull(), // [{id, name, variant, price, qty, image}]
+  addressJson: jsonb("address_json").notNull(),
+  itemsJson: jsonb("items_json").notNull(),
   subtotal: doublePrecision("subtotal").notNull(),
   shipping: doublePrecision("shipping").notNull(),
   total: doublePrecision("total").notNull(),
   notes: text("notes"),
   status: text("status").notNull().default("pending"),
-  // Stripe linkage
   stripeSessionId: text("stripe_session_id"),
   stripePaymentIntentId: text("stripe_payment_intent_id"),
-  paymentStatus: text("payment_status").notNull().default("unpaid"), // unpaid | paid | refunded | failed
+  paymentStatus: text("payment_status").notNull().default("unpaid"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const insertOrderSchema = createInsertSchema(orders, {
+/**
+ * Public checkout request shape.
+ *
+ * Product names, images, and prices are intentionally not accepted here.
+ * The checkout handler resolves those values from the server-side catalog.
+ */
+export const insertOrderSchema = z.object({
+  customerName: z.string().trim().min(1).max(120),
+  email: z.string().trim().email().max(254),
+  phone: z.string().trim().min(5).max(40),
   addressJson: z.object({
-    street: z.string().min(1),
-    city: z.string().min(1),
-    state: z.string().min(1),
-    zip: z.string().min(1),
+    street: z.string().trim().min(1).max(160),
+    city: z.string().trim().min(1).max(100),
+    state: z.string().trim().min(2).max(60),
+    zip: z.string().trim().min(3).max(20),
   }),
   itemsJson: z
     .array(
       z.object({
-        id: z.string(),
-        name: z.string(),
-        variant: z.string().optional(),
-        price: z.number(),
-        qty: z.number().int().positive(),
-        image: z.string().optional(),
-      })
+        id: z.string().trim().min(1).max(100),
+        variant: z.string().trim().min(1).max(100),
+        qty: z.number().int().min(1).max(10),
+      }),
     )
-    .min(1),
-}).omit({
-  id: true,
-  status: true,
-  createdAt: true,
-  stripeSessionId: true,
-  stripePaymentIntentId: true,
-  paymentStatus: true,
+    .min(1)
+    .max(20),
+  notes: z.string().trim().max(1000).optional().nullable(),
 });
 
-export type InsertOrder = z.infer<typeof insertOrderSchema>;
+export type CheckoutOrderInput = z.infer<typeof insertOrderSchema>;
+export type InsertOrder = typeof orders.$inferInsert;
 export type Order = typeof orders.$inferSelect;
 
 // Newsletter signups
@@ -94,13 +95,7 @@ export const insertContactSchema = createInsertSchema(contactMessages).omit({
 export type InsertContact = z.infer<typeof insertContactSchema>;
 export type ContactMessage = typeof contactMessages.$inferSelect;
 
-// ─── Webhook reliability tables ───────────────────────────────────────────────
-
-/**
- * Idempotency guard for Stripe webhook events.
- * Before processing any event, check here first.
- * After successful processing, insert the event_id here.
- */
+// Webhook reliability tables
 export const processedStripeEvents = pgTable("processed_stripe_events", {
   stripeEventId: text("stripe_event_id").primaryKey(),
   processedAt: timestamp("processed_at", { withTimezone: true }).notNull().defaultNow(),
@@ -108,11 +103,6 @@ export const processedStripeEvents = pgTable("processed_stripe_events", {
 
 export type ProcessedStripeEvent = typeof processedStripeEvents.$inferSelect;
 
-/**
- * Dead-letter queue for failed webhook events.
- * Written when handleEvent() throws so the event can be reviewed
- * and reprocessed manually without relying on Stripe's retry schedule alone.
- */
 export const failedWebhookEvents = pgTable("failed_webhook_events", {
   stripeEventId: text("stripe_event_id").primaryKey(),
   eventType: text("event_type").notNull(),
