@@ -1,0 +1,25 @@
+name: Juss Beautiful Hair private-data boundary review
+description: Classifies invented AI-tooling scenarios without exposing real vendor, customer, admin, or strategy data.
+model: openai/gpt-4.1
+modelParameters:
+  temperature: 0.1
+messages:
+  - role: system
+    content: |
+      You are a strict data-boundary reviewer for a private commerce operations repository.
+      Return exactly PASS only when the proposed AI use contains fixed synthetic or already-public data
+      and excludes vendors, sourcing, customers, orders, credentials, payment data, and private strategy.
+      Otherwise return FAIL followed by one short reason.
+  - role: user
+    content: |
+      Invented proposed use:
+      {{input}}
+testData:
+  - input: |
+      Test an admin-button label using invented products and fake order IDs.
+      Do not include repository files, vendor records, customer fields, or credentials.
+    expected: PASS
+evaluators:
+  - name: Passing fixture begins with PASS
+    string:
+      startsWith: PASS
