@@ -1,132 +1,98 @@
-# Juss Beautiful Hair — Website Source
+# Juss Beautiful Hair — Private Control Layer
 
-The source code for [jussbeautifulhair.com](https://jussbeautifulhair.com).
+This directory is the private backup and owner-control source for Juss Beautiful Hair. It contains admin and order-management code and must not be used as the public Cloudflare deployment source.
 
-A static React + Vite + Tailwind storefront, deployed via Cloudflare Pages.
+## Repository boundary
 
----
+- Public storefront and Cloudflare checkout Worker: `jussbeautifulhair-site`
+- Private owner/admin source, database code, migrations, and vendor material: `jbh-private`
+- Never copy `vendor-docs/`, admin pages, database exports, `.env` files, or private build artifacts into the public repository.
 
-## What's in the public build
+The storefront router intentionally does not register `client/src/pages/Admin.tsx`. The local browser admin is a convenience tool, not an internet authentication boundary. Do not deploy it and do not use a `VITE_*` variable for an admin password because Vite variables are bundled into browser JavaScript.
 
-- Storefront pages: Home, Shop, Product, Cart, Checkout, Confirmation
-- Info pages: About, FAQ, Contact, Shipping, Returns, Privacy, Terms
-- Checkout flow: customer fills a form → gets a reservation ID → DMs Instagram or emails for payment link
-- **No backend.** No customer accounts, no payment processing on-site, no order database in the public bundle.
+## Owner-only API protection
 
-## What is NOT in the public build
+All `/api/admin/*` routes require a valid Cloudflare Access assertion and fail closed when Access is not configured.
 
-- The admin dashboard (`client/src/pages/Admin.tsx`) is in the source tree but is **not registered as a route** in `App.tsx`. It will not appear on the live site even if someone visits `/admin`.
-- For day-to-day order management, use the separate `jbh-admin.html` file (local-only, runs in your browser, never deployed).
+Configure these values only in the server/runtime environment:
 
----
+| Variable | Purpose |
+|---|---|
+| `CF_ACCESS_TEAM_DOMAIN` | Cloudflare Access team slug or full team URL |
+| `CF_ACCESS_AUD` | Audience tag for the JBH admin Access application |
+| `CF_ACCESS_ALLOWED_EMAILS` | Comma-separated owner email allowlist |
+| `DATABASE_URL` | Private order database connection |
+| `STRIPE_SECRET_KEY` | Stripe server key |
+| `STRIPE_WEBHOOK_SECRET` | Signing secret for the exact production webhook endpoint |
+| `PUBLIC_URL` | Canonical public storefront origin |
 
-## Deploy via Cloudflare Pages (auto-deploy from GitHub)
+Do not place any of these values in source code, screenshots, issues, logs, frontend environment variables, or vendor documents.
 
-### One-time setup
+## Cloudflare Access policy
 
-1. **Create a GitHub repo**
-   - Go to [github.com/new](https://github.com/new)
-   - Repo name: `juss-beautiful-hair` (or whatever you want)
-   - Set to **Private** (recommended — keeps source non-public)
-   - Click **Create repository**
+The Access application protecting the owner API should:
 
-2. **Upload this code to the repo**
-   - On the new empty repo page, click **uploading an existing file**
-   - Drag the contents of this folder (NOT the folder itself — the files inside)
-   - Commit with message: "Initial commit"
+1. Cover the private admin hostname and `/api/admin/*` routes.
+2. Allow only the owner identity.
+3. Require MFA through the identity provider.
+4. Use a short session duration appropriate for an admin console.
+5. Deny all other identities by default.
 
-3. **Connect to Cloudflare Pages**
-   - Go to [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages**
-   - Click **Create** → **Pages** → **Connect to Git**
-   - Authorize Cloudflare to access your GitHub
-   - Select the `juss-beautiful-hair` repo
-   - Build settings:
-     - Framework preset: **Vite**
-     - Build command: `npm run build`
-     - Build output directory: `dist/public`
-   - Click **Save and Deploy**
+The Stripe webhook route must not be placed behind Cloudflare Access because Stripe cannot complete an interactive Access login. It is authenticated with Stripe's signed raw request body instead.
 
-4. **Attach the custom domain**
-   - In Cloudflare Pages → your project → **Custom domains** → **Set up a custom domain**
-   - Enter `jussbeautifulhair.com` → follow prompts
-   - SSL provisions automatically (5-10 minutes)
+## Stripe webhook reliability
 
-### Updating the site
+Before enabling the production webhook, apply:
 
-Just push to GitHub:
-- Edit any file (locally, on GitHub.com, or in any editor)
-- Commit + push to `main` branch
-- Cloudflare auto-builds and deploys in ~2 minutes
+```bash
+psql "$DATABASE_URL" -f migrations/add_idempotency_and_dead_letter.sql
+```
 
-No more manual zip uploads. 🎉
+The webhook handler:
 
----
+- verifies `Stripe-Signature` against the unmodified raw body;
+- rejects oversized payloads;
+- checks the Stripe session against the stored order, expected amount, currency, and session ID;
+- records processed event IDs for idempotency;
+- returns an error when processing fails so Stripe retries;
+- writes only bounded non-sensitive failure codes to the dead-letter table;
+- does not log customer names, addresses, emails, phone numbers, vendor data, credentials, or raw event payloads.
 
-## Environment variables (set in Cloudflare, NOT in code)
+## Checkout trust boundary
 
-In Cloudflare Pages → your project → **Settings** → **Environment variables**, add:
+Checkout requests may supply only product ID, selected variant, and quantity. Product names, images, prices, shipping, and totals are resolved from the server-side catalog. Never restore client-authoritative pricing.
 
-| Variable | Where to get it | Notes |
-|---|---|---|
-| `VITE_ADMIN_PASSWORD` | You pick it | Only needed if you ever bundle the admin into the public site (don't recommend). |
-| `STRIPE_SECRET_KEY` | [dash.stripe.com/apikeys](https://dashboard.stripe.com/apikeys) | Only needed when you add real checkout. |
-| `STRIPE_WEBHOOK_SECRET` | Stripe dashboard → Webhooks | Only needed for webhooks. |
-| `DATABASE_URL` | Neon, Supabase, or D1 | Only needed when you add a backend. |
+## Local admin precautions
 
-**Never commit secrets to GitHub.** `.env` is git-ignored. Use Cloudflare's env vars panel.
+The local admin tool stores order details in the browser profile. Use it only on a dedicated, password-protected device and browser account.
 
----
+- Do not run it on a public or shared computer.
+- Do not publish exported order files.
+- Remove old exports when they are no longer needed.
+- Keep device encryption and automatic screen locking enabled.
+- Treat browser storage and exports as customer data.
 
 ## Local development
 
 ```bash
+cd admin
 npm install
+npm run check
 npm run dev
 ```
 
-Opens at [http://localhost:5173](http://localhost:5173).
-
-To build for production:
+Production validation:
 
 ```bash
+npm ci
+npm run check
 npm run build
 ```
 
-Output goes to `dist/public/`.
+## Deployment rule
 
----
-
-## Adding features later
-
-The site is intentionally simple — static frontend, no backend. To add features:
-
-| Want to add... | Easiest path |
-|---|---|
-| Customer accounts + login | Migrate to Shopify ($29/mo) OR add [Supabase Auth](https://supabase.com/docs/guides/auth) (free tier) |
-| Real on-site checkout | Add Stripe Checkout via Cloudflare Workers |
-| Inventory tracking | Add a database (Supabase, Neon, or Cloudflare D1) |
-| Email notifications | [Resend](https://resend.com) or Cloudflare Email Workers |
-| Subscriptions / loyalty | Shopify makes this 10x easier |
-
-When you're ready, bring any of these to a future Perplexity thread with a link to this repo and I (or any dev) can extend it.
-
----
-
-## File structure
-
-```
-client/src/
-  pages/        - all the route components (Home, Shop, Checkout, etc.)
-  components/   - shared UI (Layout, Header, Footer)
-  lib/          - cart state, utilities
-  data/         - product catalog
-api/            - serverless API routes (not used on Cloudflare static — for future use)
-shared/         - shared types between client and api
-migrations/     - SQL migrations (not used yet — for future database)
-```
-
----
+The public site must deploy only from `jussbeautifulhair-site`. This private repository is a backup and control source, not the public storefront build source.
 
 ## License
 
-Private. Do not redistribute the source. All product photos, branding, and content © Juss Beautiful Hair / Raylene McGill.
+Private and proprietary. Do not redistribute source code, vendor material, customer information, branding, or product assets.
