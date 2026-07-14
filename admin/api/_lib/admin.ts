@@ -1,127 +1,206 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+
 /**
- * admin/api/_lib/admin.ts
+ * Cloudflare Access validation for the owner-only JBH admin API.
  *
- * Cloudflare Access JWT validation — replaces the x-admin-password header.
+ * Required server-side environment variables:
+ * - CF_ACCESS_TEAM_DOMAIN: team slug or full https://<team>.cloudflareaccess.com URL
+ * - CF_ACCESS_AUD: Access application audience tag
+ * - CF_ACCESS_ALLOWED_EMAILS: comma-separated owner email allowlist
  *
- * Usage (in any admin route):
- *   import { validateCfAccessJwt } from './_lib/admin';
- *   const ok = await validateCfAccessJwt(request, env.CF_ACCESS_AUD);
- *   if (!ok) return new Response('Unauthorized', { status: 401 });
- *
- * CF_ACCESS_AUD is set as a Worker secret via: wrangler secret put CF_ACCESS_AUD
- * The value is the Application Audience (AUD) tag shown in the Access app settings.
+ * This module fails closed. It never accepts a browser-bundled password and it
+ * never logs JWTs, email addresses, or claims.
  */
 
-const CF_ACCESS_CERTS_URL =
-  'https://[your-team].cloudflareaccess.com/cdn-cgi/access/certs';
-// Replace [your-team] with your Cloudflare Access team name before deploying.
-// Example: https://jbh.cloudflareaccess.com/cdn-cgi/access/certs
+type JwtHeader = {
+  alg?: string;
+  kid?: string;
+};
 
-/** Cache public keys for the lifetime of the Worker instance. */
-let cachedKeys: CryptoKey[] | null = null;
-let cacheExpiry = 0;
+type AccessClaims = {
+  aud?: string | string[];
+  email?: string;
+  exp?: number;
+  iat?: number;
+  iss?: string;
+  nbf?: number;
+  sub?: string;
+};
 
-async function getPublicKeys(): Promise<CryptoKey[]> {
+type CloudflareJwk = JsonWebKey & {
+  kid?: string;
+};
+
+const KEY_CACHE_TTL_MS = 10 * 60 * 1000;
+let cachedIssuer = "";
+let cachedKeys = new Map<string, CryptoKey>();
+let cacheExpiresAt = 0;
+
+function decodeBase64UrlJson<T>(segment: string): T {
+  const normalized = segment.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(
+    normalized.length + ((4 - (normalized.length % 4)) % 4),
+    "=",
+  );
+  return JSON.parse(Buffer.from(padded, "base64").toString("utf8")) as T;
+}
+
+function decodeBase64UrlBytes(segment: string): Uint8Array {
+  const normalized = segment.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(
+    normalized.length + ((4 - (normalized.length % 4)) % 4),
+    "=",
+  );
+  return new Uint8Array(Buffer.from(padded, "base64"));
+}
+
+function getIssuer(): string | null {
+  const raw = process.env.CF_ACCESS_TEAM_DOMAIN?.trim();
+  if (!raw) return null;
+
+  const candidate = raw.includes("://")
+    ? raw
+    : `https://${raw}.cloudflareaccess.com`;
+
+  try {
+    const url = new URL(candidate);
+    const host = url.hostname.toLowerCase();
+    if (
+      url.protocol !== "https:" ||
+      !host.endsWith(".cloudflareaccess.com") ||
+      url.pathname !== "/"
+    ) {
+      return null;
+    }
+    return `${url.protocol}//${host}`;
+  } catch {
+    return null;
+  }
+}
+
+function getAllowedEmails(): Set<string> {
+  return new Set(
+    (process.env.CF_ACCESS_ALLOWED_EMAILS ?? "")
+      .split(",")
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+async function getPublicKey(issuer: string, kid: string): Promise<CryptoKey | null> {
   const now = Date.now();
-  if (cachedKeys && now < cacheExpiry) return cachedKeys;
+  if (issuer !== cachedIssuer || now >= cacheExpiresAt) {
+    cachedIssuer = issuer;
+    cachedKeys = new Map<string, CryptoKey>();
 
-  const res = await fetch(CF_ACCESS_CERTS_URL);
-  if (!res.ok) throw new Error(`Failed to fetch CF certs: ${res.status}`);
+    const response = await fetch(`${issuer}/cdn-cgi/access/certs`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) {
+      throw new Error("Cloudflare Access signing keys unavailable");
+    }
 
-  const { keys } = await res.json() as { keys: JsonWebKey[] };
-
-  cachedKeys = await Promise.all(
-    keys.map((jwk) =>
-      crypto.subtle.importKey(
-        'jwk',
+    const body = (await response.json()) as { keys?: CloudflareJwk[] };
+    for (const jwk of body.keys ?? []) {
+      if (!jwk.kid || jwk.kty !== "RSA") continue;
+      const key = await crypto.subtle.importKey(
+        "jwk",
         jwk,
-        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+        { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
         false,
-        ['verify']
-      )
-    )
-  );
-  cacheExpiry = now + 10 * 60 * 1000; // re-fetch every 10 minutes
-  return cachedKeys;
+        ["verify"],
+      );
+      cachedKeys.set(jwk.kid, key);
+    }
+
+    cacheExpiresAt = now + KEY_CACHE_TTL_MS;
+  }
+
+  return cachedKeys.get(kid) ?? null;
 }
 
-function base64UrlDecode(str: string): Uint8Array {
-  const padded = str.replace(/-/g, '+').replace(/_/g, '/').padEnd(
-    str.length + (4 - (str.length % 4)) % 4,
-    '='
-  );
-  const binary = atob(padded);
-  return Uint8Array.from(binary, (c) => c.charCodeAt(0));
+function getJwt(req: VercelRequest): string | null {
+  const value = req.headers["cf-access-jwt-assertion"];
+  if (Array.isArray(value)) return value[0] ?? null;
+  return typeof value === "string" ? value : null;
 }
 
-/**
- * Validates the Cloudflare Access JWT present in the request.
- *
- * Checks:
- *  1. JWT is present in Cf-Access-Jwt-Assertion header
- *  2. Signature is valid against Cloudflare's public keys
- *  3. `aud` claim matches the expected audience tag
- *  4. Token is not expired (`exp` in the future)
- *
- * Returns true only if all four checks pass.
- */
-export async function validateCfAccessJwt(
-  request: Request,
-  expectedAud: string
-): Promise<boolean> {
-  const jwt = request.headers.get('Cf-Access-Jwt-Assertion');
-  if (!jwt) return false;
+async function validateAccessJwt(req: VercelRequest): Promise<boolean> {
+  const issuer = getIssuer();
+  const expectedAud = process.env.CF_ACCESS_AUD?.trim();
+  const allowedEmails = getAllowedEmails();
+  const jwt = getJwt(req);
 
-  const parts = jwt.split('.');
+  if (!issuer || !expectedAud || allowedEmails.size === 0 || !jwt) {
+    return false;
+  }
+
+  const parts = jwt.split(".");
   if (parts.length !== 3) return false;
 
-  let payload: { aud?: string | string[]; exp?: number };
+  let header: JwtHeader;
+  let claims: AccessClaims;
   try {
-    payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(parts[1])));
+    header = decodeBase64UrlJson<JwtHeader>(parts[0]);
+    claims = decodeBase64UrlJson<AccessClaims>(parts[1]);
   } catch {
     return false;
   }
 
-  // Check expiry
-  if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return false;
+  if (header.alg !== "RS256" || !header.kid) return false;
 
-  // Check audience
-  const aud = payload.aud;
-  const audList = Array.isArray(aud) ? aud : [aud];
-  if (!audList.includes(expectedAud)) return false;
+  const now = Math.floor(Date.now() / 1000);
+  if (!claims.exp || claims.exp <= now) return false;
+  if (claims.nbf && claims.nbf > now) return false;
+  if (!claims.sub || claims.iss?.replace(/\/+$/, "") !== issuer) return false;
 
-  // Verify signature against all known public keys
-  const signingInput = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
-  const signature = base64UrlDecode(parts[2]);
+  const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+  if (!audiences.includes(expectedAud)) return false;
+
+  const email = claims.email?.trim().toLowerCase();
+  if (!email || !allowedEmails.has(email)) return false;
 
   try {
-    const keys = await getPublicKeys();
-    for (const key of keys) {
-      const valid = await crypto.subtle.verify(
-        'RSASSA-PKCS1-v1_5',
-        key,
-        signature,
-        signingInput
-      );
-      if (valid) return true;
-    }
+    const key = await getPublicKey(issuer, header.kid);
+    if (!key) return false;
+
+    const signedContent = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
+    const signature = decodeBase64UrlBytes(parts[2]);
+    return await crypto.subtle.verify(
+      "RSASSA-PKCS1-v1_5",
+      key,
+      signature,
+      signedContent,
+    );
   } catch {
     return false;
   }
-
-  return false;
 }
 
 /**
- * Legacy shim — kept so existing route files that call checkAdmin()
- * don't break during the transition. Remove once all routes are
- * updated to call validateCfAccessJwt() directly.
- *
- * @deprecated Use validateCfAccessJwt() instead.
+ * Authenticate an owner-only admin request and write a safe failure response.
  */
 export async function checkAdmin(
-  request: Request,
-  expectedAud: string
+  req: VercelRequest,
+  res: VercelResponse,
 ): Promise<boolean> {
-  return validateCfAccessJwt(request, expectedAud);
+  res.setHeader("Cache-Control", "private, no-store, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+
+  const configured =
+    Boolean(getIssuer()) &&
+    Boolean(process.env.CF_ACCESS_AUD?.trim()) &&
+    getAllowedEmails().size > 0;
+
+  if (!configured) {
+    res.status(503).json({ error: "Admin access is not configured" });
+    return false;
+  }
+
+  if (!(await validateAccessJwt(req))) {
+    res.status(401).json({ error: "Unauthorized" });
+    return false;
+  }
+
+  return true;
 }
