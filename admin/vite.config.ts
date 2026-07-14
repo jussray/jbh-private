@@ -14,14 +14,20 @@ export default defineConfig({
   root: path.resolve(import.meta.dirname, "client"),
   base: "/",
   build: {
-    // Vercel serves the static client from this directory.
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    // Local backup output only. This directory must never be uploaded or deployed.
+    outDir: path.resolve(import.meta.dirname, "dist/private-local-only"),
     emptyOutDir: true,
   },
   server: {
+    host: "127.0.0.1",
+    strictPort: true,
     fs: {
       strict: true,
       deny: ["**/.*"],
     },
+  },
+  preview: {
+    host: "127.0.0.1",
+    strictPort: true,
   },
 });
