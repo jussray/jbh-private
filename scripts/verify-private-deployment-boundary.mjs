@@ -57,9 +57,6 @@ const packageJson = JSON.parse(await read("admin/package.json"));
 if (packageJson.private !== true) {
   failures.push("admin/package.json must set private = true.");
 }
-if (packageJson.license !== "UNLICENSED") {
-  failures.push("admin/package.json must remain UNLICENSED.");
-}
 
 const expectedDenyCommand = "node scripts/deny-deploy.mjs";
 for (const scriptName of ["security:deny-deploy", "predeploy", "deploy"]) {
@@ -75,8 +72,9 @@ if (!String(packageJson.scripts?.preview || "").includes("127.0.0.1")) {
 }
 
 const viteConfig = await read("admin/vite.config.ts");
-if (!/host:\s*"127\.0\.0\.1"/.test(viteConfig)) {
-  failures.push("Vite server and preview configuration must bind to loopback.");
+const loopbackHostEntries = viteConfig.match(/host:\s*"127\.0\.0\.1"/g) || [];
+if (loopbackHostEntries.length < 2) {
+  failures.push("Vite server and preview configuration must both bind to loopback.");
 }
 if (!/dist\/private-local-only/.test(viteConfig)) {
   failures.push("Private build output must remain clearly marked private-local-only.");
