@@ -6,6 +6,7 @@ import {
   jsonb,
   timestamp,
   integer,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -92,3 +93,40 @@ export const insertContactSchema = createInsertSchema(contactMessages).omit({
 
 export type InsertContact = z.infer<typeof insertContactSchema>;
 export type ContactMessage = typeof contactMessages.$inferSelect;
+
+// ─── Webhook reliability tables ───────────────────────────────────────────────
+
+/**
+ * Idempotency guard for Stripe webhook events.
+ * Before processing any event, check here first.
+ * After successful processing, insert the event_id here.
+ */
+export const processedStripeEvents = pgTable("processed_stripe_events", {
+  stripeEventId: text("stripe_event_id").primaryKey(),
+  processedAt: timestamp("processed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type ProcessedStripeEvent = typeof processedStripeEvents.$inferSelect;
+
+/**
+ * Dead-letter queue for failed webhook events.
+ * Written when handleEvent() throws so the event can be reviewed
+ * and reprocessed manually without relying on Stripe's retry schedule alone.
+ */
+export const failedWebhookEvents = pgTable("failed_webhook_events", {
+  stripeEventId: text("stripe_event_id").primaryKey(),
+  eventType: text("event_type").notNull(),
+  failedAt: timestamp("failed_at", { withTimezone: true }).notNull().defaultNow(),
+  retryCount: integer("retry_count").notNull().default(1),
+  lastError: text("last_error"),
+  resolved: boolean("resolved").notNull().default(false),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+});
+
+export type FailedWebhookEvent = typeof failedWebhookEvents.$inferSelect;
+
+export interface UpsertFailedWebhookEventInput {
+  stripeEventId: string;
+  eventType: string;
+  lastError?: string;
+}
