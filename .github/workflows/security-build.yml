@@ -16,11 +16,8 @@ env:
 
 jobs:
   verify:
-    name: Typecheck and build private control layer
+    name: Verify local-only private control layer
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: admin
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,6 +25,13 @@ jobs:
           node-version: "24"
           cache: npm
           cache-dependency-path: admin/package-lock.json
+      - name: Verify no deployment path exists
+        run: node scripts/verify-private-deployment-boundary.mjs
       - run: npm ci
+        working-directory: admin
       - run: npm run check
+        working-directory: admin
       - run: npm run build
+        working-directory: admin
+      - name: Re-verify after build
+        run: node scripts/verify-private-deployment-boundary.mjs
