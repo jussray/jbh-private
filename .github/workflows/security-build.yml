@@ -17,14 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: admin/package-lock.json
       - name: Run fail-closed validation
         id: validate
-        continue-on-error: true
         shell: bash
         run: |
           set +e
@@ -42,6 +36,7 @@ jobs:
             if [ "$code" -ne 0 ]; then failed=1; fi
           }
 
+          run_check "runner versions" bash -lc 'node --version && npm --version'
           run_check "private deployment boundary before build" node scripts/verify-private-deployment-boundary.mjs
           run_check "clean dependency install" npm --prefix admin ci
           run_check "owner admin boundary" npm --prefix admin run security:owner-admin
@@ -50,9 +45,8 @@ jobs:
           run_check "private deployment boundary after build" node scripts/verify-private-deployment-boundary.mjs
 
           echo "failed=$failed" >> "$GITHUB_OUTPUT"
-          exit "$failed"
+          exit 0
       - name: Upload sanitized validation diagnostics
-        if: steps.validate.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: jbh-private-validation-${{ github.run_attempt }}
@@ -60,5 +54,5 @@ jobs:
           if-no-files-found: error
           retention-days: 1
       - name: Fail when validation failed
-        if: steps.validate.outcome == 'failure'
+        if: steps.validate.outputs.failed == '1'
         run: exit 1
