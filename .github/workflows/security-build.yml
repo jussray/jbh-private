@@ -16,7 +16,7 @@ env:
 
 jobs:
   verify:
-    name: Verify local-only private control layer
+    name: Verify local-only owner control layer
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +28,9 @@ jobs:
       - name: Verify no deployment path exists
         run: node scripts/verify-private-deployment-boundary.mjs
       - run: npm ci
+        working-directory: admin
+      - name: Verify owner/admin data boundary
+        run: npm run security:owner-admin
         working-directory: admin
       - run: npm run check
         working-directory: admin
