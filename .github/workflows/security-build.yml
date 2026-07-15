@@ -10,66 +10,29 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   verify:
     name: Verify local-only owner control layer
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Run fail-closed validation
-        id: validate
-        shell: bash
-        run: |
-          set +e
-          log="$RUNNER_TEMP/jbh-private-validation.log"
-          : > "$log"
-          failed=0
-
-          run_check() {
-            label="$1"
-            shift
-            printf '\n=== %s ===\n' "$label" | tee -a "$log"
-            "$@" 2>&1 | tee -a "$log"
-            code=${PIPESTATUS[0]}
-            printf 'exit_code=%s\n' "$code" | tee -a "$log"
-            if [ "$code" -ne 0 ]; then failed=1; fi
-          }
-
-          run_check "runner versions" bash -lc 'node --version && npm --version'
-          run_check "private deployment boundary before build" node scripts/verify-private-deployment-boundary.mjs
-          run_check "clean dependency install" npm --prefix admin ci
-          run_check "owner admin boundary" npm --prefix admin run security:owner-admin
-          run_check "TypeScript" npm --prefix admin run check
-          run_check "private local-only build" npm --prefix admin run build
-          run_check "private deployment boundary after build" node scripts/verify-private-deployment-boundary.mjs
-
-          echo "failed=$failed" >> "$GITHUB_OUTPUT"
-          exit 0
-      - name: Publish sanitized failure evidence
-        if: steps.validate.outputs.failed == '1' && github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPOSITORY: ${{ github.repository }}
-        shell: bash
-        run: |
-          log="$RUNNER_TEMP/jbh-private-validation.log"
-          {
-            echo '<!-- jbh-private-ci-diagnostics -->'
-            echo '### JBH private validation failed'
-            echo
-            echo 'Sanitized build diagnostics from the owner-only control layer:'
-            echo
-            echo '```text'
-            tail -c 30000 "$log"
-            echo
-            echo '```'
-          } > "$RUNNER_TEMP/jbh-private-comment.md"
-          gh api "repos/$REPOSITORY/issues/$PR_NUMBER/comments" \
-            --method POST \
-            --raw-field "body=$(cat "$RUNNER_TEMP/jbh-private-comment.md")"
-      - name: Fail when validation failed
-        if: steps.validate.outputs.failed == '1'
-        run: exit 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+      - name: Verify no deployment path exists
+        run: node scripts/verify-private-deployment-boundary.mjs
+      - run: npm ci
+        working-directory: admin
+      - name: Verify owner/admin data boundary
+        run: npm run security:owner-admin
+        working-directory: admin
+      - run: npm run check
+        working-directory: admin
+      - run: npm run build
+        working-directory: admin
+      - name: Re-verify after build
+        run: node scripts/verify-private-deployment-boundary.mjs
