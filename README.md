@@ -10,21 +10,23 @@ This repository is a private backup and owner-only local control layer.
 - It has no Cloudflare, Vercel, Pages, Workers, Netlify, or other deployment manifest.
 - `npm run deploy` intentionally fails.
 - Vite development and preview bind only to `127.0.0.1`.
-- The private build output is named `dist/private-local-only` to prevent confusion with the public storefront artifact.
-- GitHub Actions fails if a deployment manifest, temporary-preview command, or cloud deployment action is added.
+- The private build contains only the dedicated `admin.html` owner entry and writes to `dist/private-local-only`.
+- GitHub Actions fails if a deployment manifest, temporary-preview command, cloud deployment action, client-bundled admin password, or overbroad vendor handoff is introduced.
 - The only deployable JBH repository is the separate public storefront repository.
 
 ## Structure
 
 | Folder | Contents |
 |---|---|
-| `admin/` | Owner-only admin source, vendor management, and order management. The public-only version lives in the separate public repository. |
+| `admin/` | Owner-only local order controls, vendor management, deterministic product routing, and private operational source. |
 | `vendor-docs/` | Private vendor sourcing documents, product intake material, factory research, and outreach scripts. |
 | `brand/` | Private launch planning, execution material, audits, strategy, and brand assets. |
 
-## Backup purpose
+## Owner workflow
 
-This repo is your recovery copy if a laptop, local sandbox, or external tool fails. Backup status does not make it safe to deploy.
+The admin is built for the owner to decide which approved vendor should fulfill every item. Product routing rules map private product/variant patterns to a vendor, vendor SKU, unit cost, priority, and verification date. An order shows one vendor, a split order, or an explicit vendor-needed warning.
+
+Vendor handoff text is generated separately for each vendor. It excludes customer totals, payment links, internal notes, margins, and other vendors. Phone and email are included only when that vendor is marked as requiring them.
 
 ## Public storefront
 
@@ -34,18 +36,18 @@ Never copy the following into the public repository or a public build:
 
 - `admin/`
 - `vendor-docs/`
-- private order exports
+- private owner-vault exports
 - environment files
 - owner-access configuration
-- sourcing, pricing, or vendor records
+- sourcing, pricing, routing, or vendor records
 
 ## Run the owner admin locally
 
 ```bash
 cd admin
 npm install
-npm run dev
-# Visit http://127.0.0.1:5173/admin
+npm run dev:owner
+# Vite opens http://127.0.0.1:5173/admin.html
 ```
 
 Do not use `--host 0.0.0.0`, a tunnel, a temporary Worker, a preview URL, or a cloud deployment service with this repository.
