@@ -17,8 +17,12 @@ function forbidMatch(text, pattern, message) {
   if (pattern.test(text)) failures.push(message);
 }
 
-const [adminPage, vault, adminHtml, adminMain, viteConfig, packageJsonText] = await Promise.all([
+const [adminPageRoot, orderDetail, orderEditor, vendorManager, sharedAdmin, vault, adminHtml, adminMain, viteConfig, packageJsonText] = await Promise.all([
   read("client/src/pages/Admin.tsx"),
+  read("client/src/pages/owner-admin/OrderDetail.tsx"),
+  read("client/src/pages/owner-admin/OrderEditor.tsx"),
+  read("client/src/pages/owner-admin/VendorManager.tsx"),
+  read("client/src/pages/owner-admin/shared.tsx"),
   read("client/src/lib/private-admin-vault.ts"),
   read("client/admin.html"),
   read("client/src/admin-main.tsx"),
@@ -26,6 +30,7 @@ const [adminPage, vault, adminHtml, adminMain, viteConfig, packageJsonText] = aw
   read("package.json"),
 ]);
 const packageJson = JSON.parse(packageJsonText);
+const adminPage = [adminPageRoot, orderDetail, orderEditor, vendorManager, sharedAdmin].join("\n");
 
 forbidMatch(adminPage, /VITE_ADMIN_PASSWORD|ADMIN_PASSWORD/, "Owner admin must not use a client-bundled password.");
 forbidMatch(adminPage, /Cloudflare Pages\s*→|public on GitHub/i, "Owner admin must not describe itself as a public/cloud page.");
