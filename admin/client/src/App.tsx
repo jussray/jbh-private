@@ -19,8 +19,8 @@ import Shipping from "@/pages/Shipping";
 import Returns from "@/pages/Returns";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
-// Admin dashboard intentionally NOT bundled into the public site.
-// It lives in a separate local-only build — see admin-local/ in the project root.
+// The owner dashboard is intentionally excluded from this storefront router.
+// It has a dedicated loopback-only entry at client/admin.html.
 
 function AppRouter() {
   return (
