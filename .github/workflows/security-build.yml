@@ -11,9 +11,6 @@ on:
 permissions:
   contents: read
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   verify:
     name: Verify local-only owner control layer
@@ -22,19 +19,46 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "22"
           cache: npm
           cache-dependency-path: admin/package-lock.json
-      - name: Verify no deployment path exists
-        run: node scripts/verify-private-deployment-boundary.mjs
-      - run: npm ci
-        working-directory: admin
-      - name: Verify owner/admin data boundary
-        run: npm run security:owner-admin
-        working-directory: admin
-      - run: npm run check
-        working-directory: admin
-      - run: npm run build
-        working-directory: admin
-      - name: Re-verify after build
-        run: node scripts/verify-private-deployment-boundary.mjs
+      - name: Run fail-closed validation
+        id: validate
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          log="$RUNNER_TEMP/jbh-private-validation.log"
+          : > "$log"
+          failed=0
+
+          run_check() {
+            label="$1"
+            shift
+            printf '\n=== %s ===\n' "$label" | tee -a "$log"
+            "$@" 2>&1 | tee -a "$log"
+            code=${PIPESTATUS[0]}
+            printf 'exit_code=%s\n' "$code" | tee -a "$log"
+            if [ "$code" -ne 0 ]; then failed=1; fi
+          }
+
+          run_check "private deployment boundary before build" node scripts/verify-private-deployment-boundary.mjs
+          run_check "clean dependency install" npm --prefix admin ci
+          run_check "owner admin boundary" npm --prefix admin run security:owner-admin
+          run_check "TypeScript" npm --prefix admin run check
+          run_check "private local-only build" npm --prefix admin run build
+          run_check "private deployment boundary after build" node scripts/verify-private-deployment-boundary.mjs
+
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
+          exit "$failed"
+      - name: Upload sanitized validation diagnostics
+        if: steps.validate.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jbh-private-validation-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/jbh-private-validation.log
+          if-no-files-found: error
+          retention-days: 1
+      - name: Fail when validation failed
+        if: steps.validate.outcome == 'failure'
+        run: exit 1
