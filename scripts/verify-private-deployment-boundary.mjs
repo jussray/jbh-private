@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const failures = [];
+const allowedWorkerManifest = "admin/payment-worker/wrangler.toml";
 
 async function exists(relativePath) {
   try {
@@ -36,6 +37,9 @@ async function collectFiles(relativePath = ".") {
 }
 
 const allFiles = await collectFiles();
+const normalizedFiles = allFiles.map((file) =>
+  file.replaceAll("\\", "/").replace(/^\.\//, ""),
+);
 const forbiddenManifestNames = new Set([
   "wrangler.toml",
   "wrangler.json",
@@ -47,9 +51,19 @@ const forbiddenManifestNames = new Set([
   "render.yaml",
 ]);
 
-for (const relativePath of allFiles) {
-  if (forbiddenManifestNames.has(path.basename(relativePath))) {
-    failures.push(`Deployment manifest is forbidden in the private repository: ${relativePath}`);
+for (const relativePath of normalizedFiles) {
+  if (!forbiddenManifestNames.has(path.basename(relativePath))) continue;
+  if (relativePath === allowedWorkerManifest) continue;
+  failures.push(`Deployment manifest is forbidden outside the isolated payment Worker: ${relativePath}`);
+}
+
+if (!normalizedFiles.includes(allowedWorkerManifest)) {
+  failures.push(`Required isolated payment Worker manifest missing: ${allowedWorkerManifest}`);
+}
+
+for (const relativePath of normalizedFiles) {
+  if (relativePath.startsWith("admin/api/")) {
+    failures.push(`Legacy Vercel API file is forbidden: ${relativePath}`);
   }
 }
 
@@ -61,7 +75,14 @@ if (packageJson.private !== true) {
 const expectedDenyCommand = "node scripts/deny-deploy.mjs";
 for (const scriptName of ["security:deny-deploy", "predeploy", "deploy"]) {
   if (packageJson.scripts?.[scriptName] !== expectedDenyCommand) {
-    failures.push(`admin package script ${scriptName} must fail closed through ${expectedDenyCommand}.`);
+    failures.push(
+      `admin package script ${scriptName} must fail closed through ${expectedDenyCommand}.`,
+    );
+  }
+}
+for (const scriptName of ["security:payment-worker", "check:payment-worker"]) {
+  if (!packageJson.scripts?.[scriptName]) {
+    failures.push(`admin package script ${scriptName} is required.`);
   }
 }
 if (!String(packageJson.scripts?.dev || "").includes("127.0.0.1")) {
@@ -77,11 +98,22 @@ if (loopbackHostEntries.length < 2) {
   failures.push("Vite server and preview configuration must both bind to loopback.");
 }
 if (!/dist\/private-local-only/.test(viteConfig)) {
-  failures.push("Private build output must remain clearly marked private-local-only.");
+  failures.push("Private admin build output must remain clearly marked private-local-only.");
 }
 
-const workflowFiles = allFiles.filter((file) =>
-  file.replaceAll("\\", "/").startsWith(".github/workflows/"),
+const workerConfig = await read(allowedWorkerManifest);
+if (!/^workers_dev\s*=\s*false\s*$/m.test(workerConfig)) {
+  failures.push("Isolated payment Worker must disable workers.dev.");
+}
+if (!/^preview_urls\s*=\s*false\s*$/m.test(workerConfig)) {
+  failures.push("Isolated payment Worker must disable Preview URLs.");
+}
+if (/^\s*\[assets\]\s*$/m.test(workerConfig)) {
+  failures.push("Isolated payment Worker must not publish static assets.");
+}
+
+const workflowFiles = normalizedFiles.filter((file) =>
+  file.startsWith(".github/workflows/"),
 );
 const forbiddenWorkflowPatterns = [
   /cloudflare\/wrangler-action/i,
@@ -97,7 +129,9 @@ for (const relativePath of workflowFiles) {
   const text = await read(relativePath);
   for (const pattern of forbiddenWorkflowPatterns) {
     if (pattern.test(text)) {
-      failures.push(`Private workflow contains a deployment action (${pattern}): ${relativePath}`);
+      failures.push(
+        `Private workflow contains an unauthorized deployment action (${pattern}): ${relativePath}`,
+      );
     }
   }
 }
@@ -108,4 +142,6 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("JBH private deployment boundary verified: loopback only, no deploy manifests, deploy command denied.");
+console.log(
+  "JBH private boundary verified: owner UI remains loopback-only, legacy Vercel APIs are absent, automated deploys are denied, and only the isolated API-only payment Worker manifest is allowed.",
+);
