@@ -23,24 +23,51 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: admin/package-lock.json
+
       - name: Verify repository deployment split
-        run: node scripts/verify-private-deployment-boundary.mjs
-      - run: npm ci
-        working-directory: admin
+        run: |
+          mkdir -p ci-diagnostics
+          node scripts/verify-private-deployment-boundary.mjs 2>&1 | tee ci-diagnostics/01-repository-boundary.log
+
+      - name: Install locked dependencies
+        run: |
+          cd admin
+          npm ci 2>&1 | tee ../ci-diagnostics/02-npm-ci.log
+
       - name: Verify owner/admin data boundary
-        run: npm run security:owner-admin
-        working-directory: admin
+        run: |
+          cd admin
+          npm run security:owner-admin 2>&1 | tee ../ci-diagnostics/03-owner-boundary.log
+
       - name: Verify isolated payment Worker boundary
-        run: npm run security:payment-worker
-        working-directory: admin
+        run: |
+          cd admin
+          npm run security:payment-worker 2>&1 | tee ../ci-diagnostics/04-payment-boundary.log
+
       - name: Typecheck owner admin
-        run: npm run check
-        working-directory: admin
+        run: |
+          cd admin
+          npm run check 2>&1 | tee ../ci-diagnostics/05-owner-typecheck.log
+
       - name: Typecheck payment Worker
-        run: npm run check:payment-worker
-        working-directory: admin
+        run: |
+          cd admin
+          npm run check:payment-worker 2>&1 | tee ../ci-diagnostics/06-payment-typecheck.log
+
       - name: Build local-only owner admin
-        run: npm run build
-        working-directory: admin
+        run: |
+          cd admin
+          npm run build 2>&1 | tee ../ci-diagnostics/07-owner-build.log
+
       - name: Re-verify after build
-        run: node scripts/verify-private-deployment-boundary.mjs
+        run: |
+          node scripts/verify-private-deployment-boundary.mjs 2>&1 | tee ci-diagnostics/08-post-build-boundary.log
+
+      - name: Upload bounded CI diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: private-security-diagnostics
+          path: ci-diagnostics/*.log
+          if-no-files-found: warn
+          retention-days: 3
