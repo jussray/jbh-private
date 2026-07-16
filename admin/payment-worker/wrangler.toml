@@ -1,0 +1,12 @@
+name = "jbh-private-payment-control"
+main = "src/index.ts"
+compatibility_date = "2026-07-16"
+compatibility_flags = ["nodejs_compat"]
+
+# This Worker must be reachable only through an approved custom hostname.
+# Dashboard changes are overwritten on deploy, so keep both controls explicit.
+workers_dev = false
+preview_urls = false
+
+# Do not add an [assets] section. This Worker is API-only and must never bundle
+# the local owner UI, vendor documents, brand strategy, or private vault files.
