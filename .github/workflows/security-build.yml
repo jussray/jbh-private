@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   verify:
-    name: Verify local-only owner control layer
+    name: Verify owner and payment boundaries
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -23,16 +23,24 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: admin/package-lock.json
-      - name: Verify no deployment path exists
+      - name: Verify repository deployment split
         run: node scripts/verify-private-deployment-boundary.mjs
       - run: npm ci
         working-directory: admin
       - name: Verify owner/admin data boundary
         run: npm run security:owner-admin
         working-directory: admin
-      - run: npm run check
+      - name: Verify isolated payment Worker boundary
+        run: npm run security:payment-worker
         working-directory: admin
-      - run: npm run build
+      - name: Typecheck owner admin
+        run: npm run check
+        working-directory: admin
+      - name: Typecheck payment Worker
+        run: npm run check:payment-worker
+        working-directory: admin
+      - name: Build local-only owner admin
+        run: npm run build
         working-directory: admin
       - name: Re-verify after build
         run: node scripts/verify-private-deployment-boundary.mjs
