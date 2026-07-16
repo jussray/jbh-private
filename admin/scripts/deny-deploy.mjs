@@ -1,9 +1,9 @@
 console.error(
   [
-    "Deployment blocked.",
-    "This repository contains the owner-only JBH admin, vendor operations, order data contracts, and private business documents.",
-    "Run it only on loopback with `npm run dev` from the admin directory.",
-    "Deploy the public storefront from the separate public repository instead.",
+    "Generic deployment blocked.",
+    "The JBH owner UI, local vault, vendor operations, and private documents must remain loopback-only.",
+    "Run the owner control only with `npm run dev:owner` from the admin directory.",
+    "The isolated API-only payment Worker has a separate reviewed deployment gate in payment-worker/README.md; this command never deploys it.",
   ].join("\n"),
 );
 
