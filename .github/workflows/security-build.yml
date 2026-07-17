@@ -28,6 +28,11 @@ jobs:
           node-version: "24"
           cache: npm
           cache-dependency-path: admin/package-lock.json
-      - run: npm ci
-      - run: npm run check
-      - run: npm run build
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Verify repository MCP boundaries
+        run: npm run verify:mcp
+      - name: Typecheck private admin
+        run: npm run check
+      - name: Build private admin
+        run: npm run build
