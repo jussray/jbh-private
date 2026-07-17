@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Truck, Heart, MessageCircle, ArrowRight, Check } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { ProductCard } from "@/components/ProductCard";
+import { BrandMoatSection } from "@/components/BrandMoatSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -98,6 +99,8 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      <BrandMoatSection />
 
       {/* FEATURED */}
       <section className="mx-auto max-w-7xl px-6 py-16 sm:py-20">
