@@ -65,4 +65,6 @@ Do not use `--host 0.0.0.0`, a tunnel, a temporary Worker, a Preview URL, or a c
 
 Read `admin/payment-worker/README.md` before any migration or deployment. The Worker must stay API-only, use an approved custom hostname, keep previews disabled, validate Stripe signatures against the unmodified raw body, use durable replay receipts, reconcile exact amount/currency/session values, and validate Cloudflare Access JWTs for owner exports.
 
+The payment Worker is the only deployable exception in this repository. Generic deployment remains blocked so the local owner UI and private documents cannot be published by mistake.
+
 No repository change authorizes production credentials, database migration, custom-domain attachment, Stripe endpoint activation, public storefront cutover, refunds, vendor contact, or autonomous purchasing.
