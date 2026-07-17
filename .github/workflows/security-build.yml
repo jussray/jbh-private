@@ -36,9 +36,9 @@ jobs:
         run: npm run check
       - name: Build private admin
         run: npm run build
-      - name: Install Playwright verifier
-        run: npm install --no-save --legacy-peer-deps playwright@1.55.0
+      - name: Install pinned Playwright verifier
+        run: npm install --no-save --package-lock=false --ignore-scripts playwright@1.61.1
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: npm exec -- playwright install --with-deps chromium
       - name: Verify blended brand moat in browser
         run: npm run verify:playwright
