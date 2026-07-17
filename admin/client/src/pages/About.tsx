@@ -22,6 +22,11 @@ export default function About() {
           <strong className="text-foreground">unstoppable</strong>.
         </p>
         <p>
+          Beauty carries memory. A new install can mark the celebration, the
+          comeback, the soft season, or the chapter where you finally chose
+          yourself. We treat the woman and her story as seriously as the hair.
+        </p>
+        <p>
           We're a Pittsburgh-rooted, woman-owned boutique built for the woman who
           knows what she wants — premium hair, flawless installs, and beauty
           essentials that actually work. No fluff. No cheap stock. No settling.
@@ -32,13 +37,19 @@ export default function About() {
           the US so you get factory pricing without sacrificing quality.
         </p>
         <p>
+          Our moat is the full standard: story, quality, care, and proof. That
+          means sample-first sourcing, realistic care guidance, real customer
+          support, and evidence that helps us decide what deserves a restock and
+          what should be retired.
+        </p>
+        <p>
           Whether you're a stylist building your dream chair, a bride preparing
           for the biggest day of your life, or a woman just ready to feel like{" "}
           <em>her</em> — we've got you.
         </p>
         <p className="font-display text-2xl text-primary pt-2">
           <strong>Lawless And Flawless</strong> isn't just a tagline. It's a
-          promise.
+          promise that your look has meaning and our quality has a standard.
         </p>
         <p className="text-muted-foreground italic">— Raylene, Founder</p>
 
