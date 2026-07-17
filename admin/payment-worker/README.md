@@ -66,6 +66,8 @@ npm exec --yes wrangler@<PINNED_REVIEWED_VERSION> -- \
   --config payment-worker/wrangler.toml deploy
 ```
 
+Do not append `--temporary`, `--preview-alias`, or a `workers.dev` route. The reviewed custom hostname is the only allowed public ingress.
+
 After the code upload, set each required secret through the Cloudflare secret interface, attach the reviewed custom hostname, configure Access for `/api/admin/*`, and create a Stripe test-mode endpoint at:
 
 ```text
