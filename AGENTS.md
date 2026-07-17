@@ -9,3 +9,9 @@ Preserve existing work. Do not delete, deploy, publish, merge, expose data, chan
 Repository role: The private backup and owner/admin repository containing vendor sourcing, admin code, brand strategy, and other non-public business material.
 
 Apply the skill's non-negotiable boundaries, verification rules, and truthful output format.
+
+## Figma build and implementation
+
+For every Figma, private-admin design, design-system, design-to-code, Code Connect, or visual QA task, also read `.agents/skills/figma-build-implement/SKILL.md` and `.figma/repository-profile.json`.
+
+Use a private Figma file and synthetic/redacted data. Never connect this private library to public storefront files or treat a mockup as local-runtime, payment-Worker, migration, secret, domain, or deployment authority.
