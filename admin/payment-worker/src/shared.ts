@@ -137,10 +137,26 @@ export function configuredStoreOrigin(env: Env): string | null {
   }
 }
 
+export function configuredWorkerHost(env: Env): string | null {
+  const value = env.WORKER_HOST?.trim().toLowerCase();
+  if (!value || value.includes("://") || value.includes("/") || value.includes(":")) {
+    return null;
+  }
+  if (
+    value === "localhost" ||
+    value === "127.0.0.1" ||
+    value.endsWith(".workers.dev") ||
+    value.endsWith(".pages.dev")
+  ) {
+    return null;
+  }
+  return value;
+}
+
 export function isApprovedHost(request: Request, env: Env): boolean {
   const hostname = new URL(request.url).hostname.toLowerCase();
   if (hostname === "localhost" || hostname === "127.0.0.1") return true;
-  const expected = env.WORKER_HOST?.trim().toLowerCase();
+  const expected = configuredWorkerHost(env);
   return Boolean(expected) && hostname === expected;
 }
 
