@@ -100,6 +100,9 @@ if (loopbackHostEntries.length < 2) {
 if (!/dist\/private-local-only/.test(viteConfig)) {
   failures.push("Private admin build output must remain clearly marked private-local-only.");
 }
+if (!/input:\s*path\.resolve\(import\.meta\.dirname,\s*"client",\s*"admin\.html"\)/.test(viteConfig)) {
+  failures.push("Private admin build must contain only the dedicated owner entry.");
+}
 
 const workerConfig = await read(allowedWorkerManifest);
 if (!/^workers_dev\s*=\s*false\s*$/m.test(workerConfig)) {
@@ -110,6 +113,9 @@ if (!/^preview_urls\s*=\s*false\s*$/m.test(workerConfig)) {
 }
 if (/^\s*\[assets\]\s*$/m.test(workerConfig)) {
   failures.push("Isolated payment Worker must not publish static assets.");
+}
+if (/^\s*(route|routes)\s*=/m.test(workerConfig)) {
+  failures.push("Payment Worker production routes must be attached only after explicit review.");
 }
 
 const workflowFiles = normalizedFiles.filter((file) =>
