@@ -16,7 +16,7 @@ env:
 
 jobs:
   verify:
-    name: Typecheck and build private control layer
+    name: Typecheck, build, and Playwright private control layer
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,3 +36,9 @@ jobs:
         run: npm run check
       - name: Build private admin
         run: npm run build
+      - name: Install Playwright verifier
+        run: npm install --no-save --legacy-peer-deps playwright@1.55.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify blended brand moat in browser
+        run: npm run verify:playwright
