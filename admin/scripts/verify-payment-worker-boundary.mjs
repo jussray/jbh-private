@@ -72,11 +72,6 @@ if (await exists(configPath)) {
   );
   forbidMatch(
     config,
-    /workers\.dev/i,
-    "Payment Worker config must not name a workers.dev route.",
-  );
-  forbidMatch(
-    config,
     /^\s*(route|routes)\s*=/m,
     "Production routes must be attached explicitly after review, not committed here.",
   );
@@ -105,6 +100,8 @@ if (source) {
     [/Promotion codes remain disabled/, "Discounts must remain disabled until ledger reconciliation supports them."],
     [/Stripe\.LatestApiVersion\s*=\s*"2025-02-24\.acacia"/, "Stripe SDK types and API version must stay aligned."],
     [/unknown key ID/i, "Access signing keys must refresh when Cloudflare rotates the key ID."],
+    [/isApprovedHost\(/, "Payment Worker must reject unknown hostnames before routing."],
+    [/WORKER_HOST/, "Payment Worker must require an explicit approved custom hostname."],
   ]) {
     requireMatch(source, pattern, message);
   }
@@ -143,5 +140,5 @@ if (failures.length) {
 }
 
 console.log(
-  "JBH payment Worker boundary verified: API-only, production previews disabled, Stripe replay and amount controls present, Access-protected export present, and no owner/vendor assets included.",
+  "JBH payment Worker boundary verified: API-only, approved-host-only, production previews disabled, Stripe replay and amount controls present, Access-protected export present, and no owner/vendor assets included.",
 );
