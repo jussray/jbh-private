@@ -10,3 +10,5 @@ preview_urls = false
 
 # Do not add an [assets] section. This Worker is API-only and must never bundle
 # the local owner UI, vendor documents, brand strategy, or private vault files.
+# Do not commit route/routes entries. Attach the approved custom hostname only
+# after review, and never use temporary deployments or preview aliases.
