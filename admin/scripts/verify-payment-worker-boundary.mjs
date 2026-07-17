@@ -45,46 +45,18 @@ for (const required of [configPath, entryPath, migrationPath]) {
 
 if (await exists(configPath)) {
   const config = await readFile(configPath, "utf8");
-  requireMatch(
-    config,
-    /^workers_dev\s*=\s*false\s*$/m,
-    "Payment Worker must disable workers.dev.",
-  );
-  requireMatch(
-    config,
-    /^preview_urls\s*=\s*false\s*$/m,
-    "Payment Worker must disable Preview URLs.",
-  );
-  requireMatch(
-    config,
-    /^main\s*=\s*"src\/index\.ts"\s*$/m,
-    "Payment Worker entry must remain isolated.",
-  );
-  forbidMatch(
-    config,
-    /^\s*\[assets\]\s*$/m,
-    "Payment Worker must not publish static assets.",
-  );
-  forbidMatch(
-    config,
-    /^\s*\[vars\]\s*$/m,
-    "Sensitive runtime configuration must not be committed as Wrangler vars.",
-  );
-  forbidMatch(
-    config,
-    /^\s*(route|routes)\s*=/m,
-    "Production routes must be attached explicitly after review, not committed here.",
-  );
+  requireMatch(config, /^workers_dev\s*=\s*false\s*$/m, "Payment Worker must disable workers.dev.");
+  requireMatch(config, /^preview_urls\s*=\s*false\s*$/m, "Payment Worker must disable Preview URLs.");
+  requireMatch(config, /^main\s*=\s*"src\/index\.ts"\s*$/m, "Payment Worker entry must remain isolated.");
+  forbidMatch(config, /^\s*\[assets\]\s*$/m, "Payment Worker must not publish static assets.");
+  forbidMatch(config, /^\s*\[vars\]\s*$/m, "Sensitive runtime configuration must not be committed as Wrangler vars.");
+  forbidMatch(config, /^\s*(route|routes)\s*=/m, "Production routes must be attached explicitly after review, not committed here.");
 }
 
 let source = "";
 if (await exists(sourceRoot)) {
-  const sourceFiles = (await collectFiles(sourceRoot)).filter((file) =>
-    /\.(?:ts|tsx)$/i.test(file),
-  );
-  source = (
-    await Promise.all(sourceFiles.map((file) => readFile(file, "utf8")))
-  ).join("\n");
+  const sourceFiles = (await collectFiles(sourceRoot)).filter((file) => /\.(?:ts|tsx)$/i.test(file));
+  source = (await Promise.all(sourceFiles.map((file) => readFile(file, "utf8")))).join("\n");
 }
 
 if (source) {
@@ -100,8 +72,9 @@ if (source) {
     [/Promotion codes remain disabled/, "Discounts must remain disabled until ledger reconciliation supports them."],
     [/Stripe\.LatestApiVersion\s*=\s*"2025-02-24\.acacia"/, "Stripe SDK types and API version must stay aligned."],
     [/unknown key ID/i, "Access signing keys must refresh when Cloudflare rotates the key ID."],
-    [/isApprovedHost\(/, "Payment Worker must reject unknown hostnames before routing."],
-    [/WORKER_HOST/, "Payment Worker must require an explicit approved custom hostname."],
+    [/configuredWorkerHost\(/, "Payment Worker must validate the configured custom hostname."],
+    [/endsWith\("\.workers\.dev"\)/, "Payment Worker must reject workers.dev host configuration."],
+    [/endsWith\("\.pages\.dev"\)/, "Payment Worker must reject pages.dev host configuration."],
   ]) {
     requireMatch(source, pattern, message);
   }
