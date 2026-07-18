@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "repository": "jussray/jbh-private",
+  "defaultPolicy": "deny-undeclared",
+  "scanRoots": ["admin/api", "admin/client/src"],
+  "allowedCookieWriters": [],
+  "cookies": [],
+  "nonCookieState": [
+    {
+      "name": "local-order-records",
+      "mechanism": "dedicated browser profile localStorage",
+      "purpose": "Keep the current owner-only convenience dashboard local until a reviewed private database migration is approved.",
+      "sensitive": true
+    }
+  ],
+  "externalCookieProviders": [
+    {
+      "provider": "Cloudflare Access",
+      "cookie": "CF_Authorization",
+      "classification": "strictly_necessary",
+      "purpose": "Maintain the owner's authenticated Access session for the private admin hostname.",
+      "firstPartyWriter": false,
+      "originValidation": "The origin validates Cf-Access-Jwt-Assertion against issuer, audience, signature, expiry, and the owner email allowlist.",
+      "logoutPath": "/cdn-cgi/access/logout"
+    }
+  ],
+  "prohibited": [
+    "first-party admin authentication cookies",
+    "reading or forwarding CF_Authorization at the origin",
+    "browser-bundled admin passwords in production routes",
+    "customer, order, vendor, sourcing, margin, payment, or credential data in cookies",
+    "routing the local-only Admin.tsx page into the production App router"
+  ]
+}
