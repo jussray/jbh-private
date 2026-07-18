@@ -28,6 +28,9 @@ jobs:
           node-version: "24"
           cache: npm
           cache-dependency-path: admin/package-lock.json
+      - name: Verify AI sales and devil skills
+        working-directory: ${{ github.workspace }}
+        run: node scripts/verify-ai-skills.mjs
       - name: Install locked dependencies
         run: npm ci
       - name: Verify repository MCP boundaries
