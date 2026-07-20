@@ -26,4 +26,10 @@ Repository role: the private owner/admin source containing vendor sourcing, prod
 
 Never expose vendor identities, quotes, costs, sourcing records, customer/order data, owner credentials, or private strategy. Keep Juss Beautiful Hair and Untold Stories catalogs, suppliers, customers, checkout, and fulfillment records separate.
 
-Apply all three skills’ verification rules, truthful output format, disqualifiers, explicit unknowns, and separate approval gates.
+Apply all three skills' verification rules, truthful output format, disqualifiers, explicit unknowns, and separate approval gates.
+
+## Figma build and implementation
+
+For every Figma, private-admin design, design-system, design-to-code, Code Connect, or visual QA task, also read `.agents/skills/figma-build-implement/SKILL.md` and `.figma/repository-profile.json`.
+
+Use a private Figma file and synthetic/redacted data. Never connect this private library to public storefront files or treat a mockup as local-runtime, payment-Worker, migration, secret, domain, or deployment authority.
