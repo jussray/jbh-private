@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0.0",
+  "repository": "jussray/jbh-private",
+  "role": "private local owner/admin and isolated payment authority",
+  "figmaMode": "private_local_admin",
+  "runtime": ["loopback-only owner admin", "local vault", "isolated API-only Cloudflare payment Worker"],
+  "designTargets": ["owner dashboard", "catalog administration", "vendor and sourcing workflow", "routing", "margin and quality evidence", "paid-order import", "audit and replay state", "security and error states"],
+  "implementationTargets": ["current local admin code", "current vault and routing contracts", "current paid-order importer", "API-only payment Worker boundary"],
+  "requiredSkills": ["figma-use", "figma-generate-library"],
+  "conditionalSkills": ["figma-generate-design", "figma-code-connect", "product-design-design-qa"],
+  "prohibitedData": ["real customer or order records", "vendor identities", "vendor prices", "sourcing documents", "margins", "credentials", "webhook payloads", "Stripe secrets", "Cloudflare Access tokens", "proprietary business records"],
+  "codeConnectPolicy": "eligible_private_library_and_verified_local_components_only",
+  "verification": ["MCP and deployment boundary checks", "owner-admin security tests", "payment-Worker security tests", "TypeScript", "private build", "Playwright with synthetic data"],
+  "truthBoundary": "Figma cannot authorize purchasing, vendor contact, refunds, prices, secrets, migrations, domains, Stripe activation, Worker deployment, or public release."
+}
