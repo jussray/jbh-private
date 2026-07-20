@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "repository": "jussray/jbh-private",
+  "runtimeClass": "local_only_admin",
+  "firstPartyCookies": [],
+  "platformManagedCookies": [],
+  "browserStorage": [],
+  "forbidden": [
+    "an admin, owner, vendor, order, payment, or role cookie created by the static Vite client",
+    "document.cookie, Cookie Store API, or custom Set-Cookie handling",
+    "analytics, advertising, fingerprinting, replay, or cross-site tracking cookies",
+    "customer, order, vendor identity, vendor pricing, sourcing, margin, credential, webhook, or Stripe data in cookies",
+    "deploying the local owner UI and treating a client-created cookie as remote authentication"
+  ],
+  "notes": [
+    "The current owner/admin UI is local-only and has no verified authenticated backend.",
+    "The isolated payment Worker is API-only and must not serve the owner UI or own an admin browser session.",
+    "A future loopback backend may add a short-lived session only after server-side identity, CSRF, revocation, audit, and no-store behavior are implemented."
+  ]
+}
