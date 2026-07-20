@@ -1,18 +1,17 @@
 name: Private Security Build
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: private-security-build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
