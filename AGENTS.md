@@ -45,6 +45,27 @@ Continue working the requested task until it is done or until a real blocker is 
 
 Every handoff must state what was changed, what was verified, what remains blocked, and the next gate.
 
+## Codex provider baseline
+
+When a repo-running Codex agent needs model-provider configuration, keep it machine-local and use OpenAI/Codex as the default coding engine:
+
+```toml
+model = "gpt-5.3-codex"
+model_provider = "openai"
+model_reasoning_effort = "high"
+model_reasoning_summary = "auto"
+model_supports_reasoning_summaries = true
+model_auto_compact_token_limit = 900000
+```
+
+Store the API key outside the repository, for example in `~/.codex/.env`:
+
+```dotenv
+OPENAI_API_KEY=replace_with_local_secret
+```
+
+Never commit `.codex/.env`, `OPENAI_API_KEY`, `MODEL_API_KEY`, service-role keys, provider tokens, or any other secret. Model choice does not override this file, local provider roles, verification gates, Founder Control Room truth, or explicit founder approval gates.
+
 ## Playwright verification
 
 For UI, route, browser, release, onboarding, checkout, auth-flow, or runtime behavior changes, verify with Playwright on the exact changed head before calling the task complete. If Playwright is not applicable, say why. If Playwright cannot run because of infrastructure, missing secrets, missing browser dependencies, or a GitHub runner outage, record that as a verification blocker rather than converting it into code blame.
@@ -60,7 +81,7 @@ If those conditions are not met, keep working or leave the PR open with the exac
 ## Provider roles
 
 - Claude: long-context repo reasoning, focused implementation, refactor planning, and documentation. Read `AGENTS.md` and any local `CLAUDE.md` before acting.
-- Codex: code edits, tests, Playwright, CI triage, and repository operations. Keep patches focused and evidence-backed.
+- Codex: code edits, tests, Playwright, CI triage, and repository operations. Keep patches focused and evidence-backed. Use the Codex provider baseline above when local model-provider configuration is needed.
 - ChatGPT: reasoning, review, debugging, threat modeling, data analysis, and founder-readable decisions. Separate fact, inference, and action.
 - Perplexity: current public research and source discovery. It is not private repository, account, Supabase, Cloudflare, or production truth unless those systems are explicitly connected and inspected.
 
