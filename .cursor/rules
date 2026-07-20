@@ -1,0 +1,30 @@
+# Cursor Rules — jbh-private
+
+## 5W1H Operating Contract
+
+Before every nontrivial edit, establish and state:
+
+- **Who** — requester, decision owner, affected data subjects, execution authority
+- **What** — exact outcome, deliverable, non-goals, preserved work
+- **Where** — `jussray/jbh-private`, exact branch, environment, runtime, and data boundary
+- **When** — lifecycle state, ordering constraint, rollback window
+- **Why** — verified user problem and evidence
+- **How** — smallest safe implementation, verification plan, rollback
+
+## Repository Identity
+
+Private owner/admin repository — vendor sourcing, admin code, brand strategy, non-public material. Runtime: loopback-only owner/admin + local vault + isolated API-only Cloudflare payment Worker.
+
+## Rules
+
+- Never make this repository public or copy vendor/sourcing/pricing data into any public context.
+- Admin panel is local only — never exposed through public storefront.
+- Payment Worker is API-only — no owner UI assets bundled into it.
+- All changes go through a branch + PR, never direct to `main`.
+- Read `.agents/skills/jbh-private-operator/SKILL.md` before nontrivial work.
+- Run `npm run check` and `npm run build` in `admin` before PR.
+- Do not weaken tests, lint, type checks, or auth gates.
+
+## Approval Gates
+
+Require explicit founder approval before: merging, deploying, changing pricing, rotating secrets, destructive database changes, or external communications.
