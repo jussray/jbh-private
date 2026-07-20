@@ -9,7 +9,9 @@
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "verify:cookies": "node ../scripts/verify-cookie-contract.mjs",
-    "verify:mcp": "node ../scripts/verify-mcp-config.mjs"
+    "verify:mcp": "node ../scripts/verify-mcp-config.mjs",
+    "verify:ai-skills": "node ../scripts/verify-ai-skill-contract.mjs",
+    "verify:playwright": "node scripts/playwright-verify.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
