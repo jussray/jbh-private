@@ -2,6 +2,7 @@
 
 Read these before changing private operations, vendors, products, data, code, commercial plans, workflows, or documentation:
 
+- [`AGENTS_FOUNDER_INTELLIGENCE.md`](./AGENTS_FOUNDER_INTELLIGENCE.md) first for the Founder Intelligence Constitution, remembrance loop, truthful commerce, privacy, approvals, evidence, rollback, and non-deletion duties
 - [`skills/juss-beautiful-hair-private/SKILL.md`](./skills/juss-beautiful-hair-private/SKILL.md)
 - [`skills/sales/SKILL.md`](./skills/sales/SKILL.md)
 - [`skills/devil/SKILL.md`](./skills/devil/SKILL.md)
