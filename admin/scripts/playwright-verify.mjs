@@ -69,7 +69,7 @@ try {
   assert(homeText.includes('16 products across bundles, wigs, closures & essentials.'), 'Hair catalog count or categories changed.');
   assert(!homeText.includes('Crown Logo Cap'), 'Untold Stories products leaked into the hair catalog.');
 
-  await page.goto(`${baseURL}/about`, {waitUntil: 'networkidle'});
+  await page.goto(`${baseURL}/#/about`, {waitUntil: 'networkidle'});
   const aboutText = await page.locator('body').innerText();
   assert(aboutText.includes('Beauty carries memory.'), 'Expanded hair brand philosophy is missing from About.');
   assert(aboutText.includes('story, quality, care, and proof'), 'Shared moat language is missing from About.');
