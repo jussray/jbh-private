@@ -18,9 +18,25 @@ test("migration preflight is read-only and reports aggregate risk only", () => {
   assert.doesNotMatch(preflight, /SELECT\s+stripe_session_id/i);
 });
 
-test("migration preflight fails closed when duplicate session references exist", () => {
-  assert.match(preflight, /report\.duplicateSessionGroups > 0/);
-  assert.match(preflight, /report\.excessDuplicateRows > 0/);
-  assert.match(preflight, /process\.exit\(1\)/);
+test("migration preflight publishes bounded non-sensitive result classes", () => {
+  for (const result of [
+    "missing-database-url",
+    "orders-table-missing",
+    "duplicate-session-references",
+    "passed-index-present",
+    "passed-index-missing",
+    "query-failed",
+  ]) {
+    assert.match(preflight, new RegExp(`publishResult\\(\\s*\"${result}\"`));
+  }
+  assert.match(preflight, /appendFileSync\(process\.env\.GITHUB_OUTPUT/);
+  assert.doesNotMatch(preflight, /publishResult\([^)]*databaseUrl/);
+});
+
+test("migration preflight fails closed with distinct exit codes", () => {
+  assert.match(preflight, /process\.exit\(2\)/);
+  assert.match(preflight, /process\.exit\(3\)/);
+  assert.match(preflight, /process\.exit\(4\)/);
+  assert.match(preflight, /process\.exit\(5\)/);
   assert.match(preflight, /operator reconciliation/);
 });
