@@ -26,6 +26,7 @@ jobs:
     name: Read-only Neon duplicate and index preflight
     runs-on: ubuntu-22.04
     timeout-minutes: 10
+    environment: production-payments
     defaults:
       run:
         working-directory: admin
