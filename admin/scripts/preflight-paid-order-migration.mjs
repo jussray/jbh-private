@@ -1,7 +1,15 @@
+import { appendFileSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
+
+function publishResult(result) {
+  if (process.env.GITHUB_OUTPUT) {
+    appendFileSync(process.env.GITHUB_OUTPUT, `result=${result}\n`, "utf8");
+  }
+}
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
+  publishResult("missing-database-url");
   console.error("Paid-order migration preflight failed: DATABASE_URL is not set.");
   process.exit(2);
 }
@@ -14,7 +22,9 @@ try {
   `;
 
   if (!tableState?.present) {
-    throw new Error("orders_table_missing");
+    publishResult("orders-table-missing");
+    console.error("Paid-order migration preflight failed: orders table is missing.");
+    process.exit(3);
   }
 
   const [duplicateState] = await sql`
@@ -50,19 +60,26 @@ try {
   console.log(JSON.stringify(report, null, 2));
 
   if (report.duplicateSessionGroups > 0 || report.excessDuplicateRows > 0) {
+    publishResult("duplicate-session-references");
     console.error(
       "Paid-order migration preflight blocked: duplicate Stripe session references require operator reconciliation.",
     );
-    process.exit(1);
+    process.exit(4);
   }
 
+  publishResult(
+    report.uniqueSessionIndexPresent
+      ? "passed-index-present"
+      : "passed-index-missing",
+  );
   console.log(
     report.uniqueSessionIndexPresent
       ? "Paid-order migration preflight passed: unique session index is already present."
       : "Paid-order migration preflight passed: no duplicate session references; migration may proceed through an approved operator gate.",
   );
 } catch (error) {
-  const code = error instanceof Error ? error.message.slice(0, 120) : "unknown_error";
+  publishResult("query-failed");
+  const code = error instanceof Error ? error.name.slice(0, 80) : "UnknownError";
   console.error(`Paid-order migration preflight failed: ${code}`);
-  process.exit(1);
+  process.exit(5);
 }
