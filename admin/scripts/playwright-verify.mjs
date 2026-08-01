@@ -100,7 +100,7 @@ try {
     assert(!homeText.includes(unsupported), `Unsupported homepage certainty remains: ${unsupported}`);
   }
 
-  await page.goto(`${baseURL}/about`, {waitUntil: 'domcontentloaded'});
+  await page.goto(`${baseURL}/#/about`, {waitUntil: 'domcontentloaded'});
   const aboutText = normalize(await page.locator('body').innerText());
   assert(aboutText.includes('Beauty can carry memory.'), 'Current hair brand philosophy is missing from About.');
   assert(aboutText.includes('Story, Quality, Care, and Proof'), 'Shared truth language is missing from About.');
