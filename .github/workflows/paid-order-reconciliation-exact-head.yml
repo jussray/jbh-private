@@ -13,6 +13,7 @@ on:
       - "admin/package.json"
       - ".github/workflows/paid-order-reconciliation-exact-head.yml"
       - ".github/workflows/paid-order-production-preflight.yml"
+      - ".github/workflows/apply-paid-order-migration.yml"
   workflow_dispatch:
 
 permissions:
