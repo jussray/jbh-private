@@ -48,12 +48,24 @@ test("migration preflight fails closed with distinct exit codes", () => {
 
 test("production migration is manual, environment-gated, and main-only", () => {
   assert.match(migrationWorkflow, /workflow_dispatch:/);
-  assert.match(migrationWorkflow, /APPLY_UNIQUE_STRIPE_SESSION_INDEX/);
+  assert.match(migrationWorkflow, /approval_phrase:/);
+  assert.match(migrationWorkflow, /NOT A SECRET\. Type only: APPLY_UNIQUE_STRIPE_SESSION_INDEX/);
   assert.match(migrationWorkflow, /environment: production-payments/);
   assert.match(migrationWorkflow, /DATABASE_URL: \$\{\{ secrets\.DATABASE_URL \}\}/);
+  assert.match(migrationWorkflow, /APPROVAL_PHRASE: \$\{\{ inputs\.approval_phrase \}\}/);
+  assert.match(migrationWorkflow, /test -n "\$DATABASE_URL"/);
   assert.match(migrationWorkflow, /refs\/heads\/main/);
   assert.match(migrationWorkflow, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
   assert.doesNotMatch(migrationWorkflow, /^\s*push:/m);
+});
+
+test("production migration classifies secret and approval failures separately", () => {
+  assert.match(migrationWorkflow, /missing-database-url-and-approval-failed/);
+  assert.match(migrationWorkflow, /missing-database-url/);
+  assert.match(migrationWorkflow, /approval-failed/);
+  assert.match(migrationWorkflow, /DATABASE_SECRET_OUTCOME/);
+  assert.match(migrationWorkflow, /VALIDATE_OUTCOME/);
+  assert.doesNotMatch(migrationWorkflow, /CONFIRMATION:/);
 });
 
 test("production migration fails closed before and after additive SQL", () => {
