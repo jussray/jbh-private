@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 concurrency:
   group: paid-order-production-preflight
@@ -25,7 +26,6 @@ jobs:
     name: Read-only Neon duplicate and index preflight
     runs-on: ubuntu-22.04
     timeout-minutes: 10
-    environment: production-payments
     defaults:
       run:
         working-directory: admin
@@ -56,4 +56,29 @@ jobs:
         run: npm ci
 
       - name: Run read-only migration preflight
+        id: preflight
+        continue-on-error: true
         run: npm run preflight:paid-order-migration
+
+      - name: Publish production preflight status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          PREFLIGHT_OUTCOME: ${{ steps.preflight.outcome }}
+        with:
+          script: |
+            const passed = process.env.PREFLIGHT_OUTCOME === "success";
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.EXPECTED_HEAD_SHA,
+              state: passed ? "success" : "failure",
+              context: "paid-order-production-preflight",
+              description: passed
+                ? "Read-only Neon preflight passed"
+                : "Read-only Neon preflight blocked or could not run",
+            });
+
+      - name: Fail when production preflight did not pass
+        if: steps.preflight.outcome != 'success'
+        run: exit 1
