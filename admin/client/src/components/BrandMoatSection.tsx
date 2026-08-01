@@ -17,16 +17,16 @@ export function BrandMoatSection() {
     >
       <div className="mx-auto max-w-7xl px-6 py-16 sm:py-20">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs uppercase tracking-[0.3em] text-gold mb-3">
+          <p className="mb-3 text-xs uppercase tracking-[0.3em] text-gold">
             {BRAND_MOAT.eyebrow}
           </p>
           <h2
             id="brand-moat-heading"
-            className="font-display text-3xl sm:text-4xl text-foreground"
+            className="font-display text-3xl text-foreground sm:text-4xl"
           >
             {BRAND_MOAT.heading}
           </h2>
-          <p className="mt-4 text-muted-foreground leading-relaxed">
+          <p className="mt-4 leading-relaxed text-muted-foreground">
             {BRAND_MOAT.body}
           </p>
         </div>

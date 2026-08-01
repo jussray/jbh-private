@@ -7,39 +7,39 @@ export type BrandMoatPillar = {
 
 export const BRAND_MOAT = {
   eyebrow: "The Crown Standard",
-  heading: "Every crown carries a chapter.",
+  heading: "Story. Quality. Care. Proof.",
   body:
-    "Juss Beautiful Hair pairs story-first beauty with a practical quality standard: products should help you express who you are, perform the way you need, and come with real support after checkout.",
+    "Juss Beautiful Hair is building a public standard around four questions: Does the look carry meaning? Are the product facts clear? Can customers understand care and support? Can each public claim be traced to approved evidence?",
   promise:
-    "Lawless And Flawless means the look has meaning, the quality has a standard, and the customer is never treated like an order number.",
+    "Lawless And Flawless should mean the story is honored, the facts are clear, care continues after checkout, and trust is earned one verified detail at a time.",
   pillars: [
     {
       id: "story",
       label: "Story",
-      title: "Beauty marks the moment",
+      title: "Beauty can mark a chapter",
       body:
-        "A new install can hold a celebration, a reset, a first day, or a chapter nobody else fully sees. We sell hair without flattening the person wearing it.",
+        "A new look can carry celebration, reset, confidence, or everyday expression. The brand makes room for that meaning without defining the person wearing it.",
     },
     {
       id: "quality",
       label: "Quality",
-      title: "Sample-first, care-aware sourcing",
+      title: "Facts before adjectives",
       body:
-        "Our standard is softness, construction, consistency, realistic longevity, and clear care guidance—not the cheapest listing or the loudest vendor claim.",
+        "Materials, construction, texture, length, care, stock, and fulfillment claims belong in current product records and should be stated only when approved and supported.",
     },
     {
       id: "care",
       label: "Care",
-      title: "Real help before and after purchase",
+      title: "Support is part of the product",
       body:
-        "Customers should be able to ask what fits their install, understand upkeep, and reach a real person when something does not feel right.",
+        "Customers should be able to understand fit, upkeep, policies, and how to reach support before and after checkout.",
     },
     {
       id: "proof",
       label: "Proof",
-      title: "Trust is earned in the details",
+      title: "Trust needs receipts",
       body:
-        "Vendor evidence, product specifications, fulfillment expectations, and customer feedback should guide promotion, restocks, and retirement decisions.",
+        "Public claims, catalog state, checkout, payment, fulfillment, and customer outcomes remain separate evidence layers. Missing proof stays missing until verified.",
     },
   ] satisfies BrandMoatPillar[],
 };

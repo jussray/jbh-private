@@ -1,16 +1,19 @@
 import {spawn} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import process from 'node:process';
 import {chromium} from 'playwright';
 
 const host = '127.0.0.1';
 const port = Number(process.env.PLAYWRIGHT_PORT || 4173);
 const baseURL = `http://${host}:${port}`;
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const vitePath = fileURLToPath(
+  new URL('../node_modules/vite/bin/vite.js', import.meta.url),
+);
 let serverOutput = '';
 
 const server = spawn(
-  npmCommand,
-  ['run', 'dev', '--', '--host', host, '--port', String(port)],
+  process.execPath,
+  [vitePath, '--host', host, '--port', String(port)],
   {
     env: {...process.env},
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -42,8 +45,26 @@ async function waitForServer(timeoutMs = 60_000) {
   throw new Error(`Timed out waiting for ${baseURL}.\n${serverOutput}`);
 }
 
+async function stopServer(timeoutMs = 5_000) {
+  if (server.exitCode !== null) return;
+  const exited = new Promise((resolve) => server.once('exit', resolve));
+  server.kill('SIGTERM');
+  await Promise.race([
+    exited,
+    new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+  ]);
+  if (server.exitCode === null) {
+    server.kill('SIGKILL');
+    await exited;
+  }
+}
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function normalize(text) {
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 let browser;
@@ -52,10 +73,12 @@ try {
   browser = await chromium.launch({headless: true});
   const page = await browser.newPage({viewport: {width: 1440, height: 1000}});
 
-  await page.goto(baseURL, {waitUntil: 'networkidle'});
+  await page.goto(baseURL, {waitUntil: 'domcontentloaded'});
   const moat = page.getByTestId('brand-moat');
-  assert(await moat.isVisible(), 'Brand moat section is not visible on the hair homepage.');
-  assert((await moat.innerText()).includes('Every crown carries a chapter.'), 'Hair story heading is missing.');
+  await moat.waitFor({state: 'visible'});
+  const moatText = normalize(await moat.innerText());
+  assert(moatText.includes('Story. Quality. Care. Proof.'), 'Current hair truth heading is missing.');
+  assert(moatText.includes('Missing proof stays missing until verified.'), 'Proof boundary is missing.');
 
   for (const pillar of ['story', 'quality', 'care', 'proof']) {
     assert(
@@ -64,23 +87,34 @@ try {
     );
   }
 
-  const homeText = await page.locator('body').innerText();
+  const homeText = normalize(await page.locator('body').innerText());
   assert(homeText.includes('Royal Raw Indian Temple Bundle'), 'Existing signature hair product disappeared.');
   assert(homeText.includes('16 products across bundles, wigs, closures & essentials.'), 'Hair catalog count or categories changed.');
   assert(!homeText.includes('Crown Logo Cap'), 'Untold Stories products leaked into the hair catalog.');
+  for (const unsupported of [
+    'Quality Guaranteed',
+    'Most orders ship in 2–3 business days',
+    'never tangles',
+    'lasts 2+ years',
+  ]) {
+    assert(!homeText.includes(unsupported), `Unsupported homepage certainty remains: ${unsupported}`);
+  }
 
-  await page.goto(`${baseURL}/about`, {waitUntil: 'networkidle'});
-  const aboutText = await page.locator('body').innerText();
-  assert(aboutText.includes('Beauty carries memory.'), 'Expanded hair brand philosophy is missing from About.');
-  assert(aboutText.includes('story, quality, care, and proof'), 'Shared moat language is missing from About.');
+  await page.goto(`${baseURL}/#/about`, {waitUntil: 'domcontentloaded'});
+  const aboutText = normalize(await page.locator('body').innerText());
+  assert(aboutText.includes('Beauty can carry memory.'), 'Current hair brand philosophy is missing from About.');
+  assert(aboutText.includes('Story, Quality, Care, and Proof'), 'Shared truth language is missing from About.');
+  for (const unsupported of ['trusted factories', 'factory pricing']) {
+    assert(!aboutText.includes(unsupported), `Unsupported About certainty remains: ${unsupported}`);
+  }
 
   await page.setViewportSize({width: 390, height: 844});
-  await page.goto(baseURL, {waitUntil: 'networkidle'});
-  assert(await page.getByTestId('button-shop-hero-mobile').isVisible(), 'Mobile hair CTA is not visible.');
+  await page.goto(baseURL, {waitUntil: 'domcontentloaded'});
+  await page.getByTestId('button-shop-hero-mobile').waitFor({state: 'visible'});
   assert(await page.getByTestId('brand-moat').isVisible(), 'Brand moat is not visible on mobile.');
 
-  console.log('Playwright verification passed: hair moat, catalog separation, desktop, and mobile.');
+  console.log('Playwright verification passed: approved truth mirror, catalog separation, desktop, and mobile.');
 } finally {
   await browser?.close();
-  if (server.exitCode === null) server.kill('SIGTERM');
+  await stopServer();
 }

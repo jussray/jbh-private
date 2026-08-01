@@ -9,8 +9,19 @@ const requireValue = (condition, message) => { if (!condition) errors.push(messa
 
 requireValue(manifest.schemaVersion === 1, 'schemaVersion must be 1');
 requireValue(manifest.defaultPolicy === 'deny-undeclared', 'defaultPolicy must be deny-undeclared');
-requireValue(Array.isArray(manifest.cookies) && manifest.cookies.length === 0, 'JBH Private must not issue first-party cookies');
-requireValue(Array.isArray(manifest.allowedCookieWriters) && manifest.allowedCookieWriters.length === 0, 'JBH Private must not declare first-party cookie writers');
+requireValue(Array.isArray(manifest.cookies) && manifest.cookies.length === 0, 'JBH Private must not issue active first-party cookies');
+requireValue(Array.isArray(manifest.allowedCookieWriters) && manifest.allowedCookieWriters.length === 0, 'JBH Private must not declare active first-party cookie writers');
+
+const quarantinedEntries = manifest.quarantinedInactiveCookieWriters ?? [];
+requireValue(Array.isArray(quarantinedEntries), 'quarantinedInactiveCookieWriters must be an array');
+const quarantined = new Map();
+for (const entry of Array.isArray(quarantinedEntries) ? quarantinedEntries : []) {
+  requireValue(typeof entry?.path === 'string' && entry.path.length > 0, 'quarantined writer path is required');
+  requireValue(typeof entry?.cookie === 'string' && entry.cookie.length > 0, 'quarantined writer cookie name is required');
+  requireValue(typeof entry?.reason === 'string' && entry.reason.length > 0, 'quarantined writer reason is required');
+  if (typeof entry?.path === 'string') quarantined.set(entry.path, entry);
+}
+
 const access = (manifest.externalCookieProviders ?? []).find((provider) => provider.provider === 'Cloudflare Access');
 requireValue(access?.cookie === 'CF_Authorization', 'Cloudflare Access CF_Authorization must be declared as provider-owned');
 requireValue(access?.logoutPath === '/cdn-cgi/access/logout', 'Cloudflare Access logout path must be declared');
@@ -28,14 +39,64 @@ async function walk(path) {
   return extensions.has(ext(path)) ? [path] : [];
 }
 
+const sourceFiles = new Map();
 for (const scanRoot of manifest.scanRoots ?? []) {
   let files = [];
   try { files = await walk(resolve(root, scanRoot)); } catch { errors.push(`scan root does not exist: ${scanRoot}`); continue; }
   for (const file of files) {
     const repoPath = relative(root, file).replaceAll('\\', '/');
     if (/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(repoPath) || repoPath.includes('/__tests__/')) continue;
-    const source = await readFile(file, 'utf8');
-    if (writerPatterns.some((pattern) => pattern.test(source))) errors.push(`undeclared first-party cookie writer: ${repoPath}`);
+    sourceFiles.set(repoPath, { file, source: await readFile(file, 'utf8') });
+  }
+}
+
+const quarantinedWriterSeen = new Set();
+for (const [repoPath, { source }] of sourceFiles) {
+  if (!writerPatterns.some((pattern) => pattern.test(source))) continue;
+
+  const quarantine = quarantined.get(repoPath);
+  if (!quarantine) {
+    errors.push(`undeclared first-party cookie writer: ${repoPath}`);
+    continue;
+  }
+
+  quarantinedWriterSeen.add(repoPath);
+  requireValue(
+    source.includes(quarantine.cookie),
+    `quarantined writer ${repoPath} no longer matches declared cookie ${quarantine.cookie}`,
+  );
+}
+
+for (const path of quarantined.keys()) {
+  requireValue(sourceFiles.has(path), `quarantined writer does not exist in scan roots: ${path}`);
+  requireValue(quarantinedWriterSeen.has(path), `quarantined source is not currently a cookie writer: ${path}`);
+}
+
+const stripSourceExtension = (path) => path.replace(/\.(?:[cm]?[jt]sx?|html)$/, '');
+const quarantinedModules = new Map(
+  [...quarantined.keys()].map((repoPath) => [stripSourceExtension(resolve(root, repoPath)), repoPath]),
+);
+const importPattern = /(?:from\s+|import\s*\()\s*['"]([^'"]+)['"]/g;
+
+function resolveImport(importer, specifier) {
+  if (specifier.startsWith('@/')) {
+    return resolve(root, 'admin/client/src', specifier.slice(2));
+  }
+  if (specifier.startsWith('.')) {
+    return resolve(dirname(importer), specifier);
+  }
+  return null;
+}
+
+for (const [repoPath, { file, source }] of sourceFiles) {
+  if (quarantined.has(repoPath)) continue;
+  for (const match of source.matchAll(importPattern)) {
+    const imported = resolveImport(file, match[1]);
+    if (!imported) continue;
+    const quarantinedPath = quarantinedModules.get(stripSourceExtension(imported));
+    if (quarantinedPath) {
+      errors.push(`production source ${repoPath} imports quarantined cookie writer: ${quarantinedPath}`);
+    }
   }
 }
 
@@ -71,6 +132,7 @@ if (errors.length) {
   process.exit(1);
 }
 console.log(`Cookie contract verified for ${manifest.repository}.`);
-console.log('First-party cookies: 0');
+console.log('Active first-party cookies: 0');
+console.log(`Quarantined inactive cookie writers: ${quarantined.size}`);
 console.log('Provider cookie: Cloudflare Access CF_Authorization');
 console.log('Origin trust input: Cf-Access-Jwt-Assertion');
