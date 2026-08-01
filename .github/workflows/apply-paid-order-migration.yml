@@ -1,0 +1,131 @@
+name: Apply Paid Order Uniqueness Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type APPLY_UNIQUE_STRIPE_SESSION_INDEX exactly
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: paid-order-production-migration
+  cancel-in-progress: false
+
+env:
+  EXPECTED_HEAD_SHA: ${{ github.sha }}
+
+jobs:
+  migrate:
+    name: Preflight, apply, and verify unique Stripe session index
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    environment: production-payments
+    defaults:
+      run:
+        working-directory: admin
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - name: Validate branch and confirmation
+        id: validate
+        continue-on-error: true
+        shell: bash
+        working-directory: .
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$CONFIRMATION" = "APPLY_UNIQUE_STRIPE_SESSION_INDEX"
+
+      - name: Check out exact requested head
+        if: steps.validate.outcome == 'success'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+
+      - name: Record and verify exact head
+        if: steps.validate.outcome == 'success'
+        shell: bash
+        working-directory: .
+        run: |
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        if: steps.validate.outcome == 'success'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - name: Install locked dependencies
+        if: steps.validate.outcome == 'success'
+        run: npm ci
+
+      - name: Run read-only duplicate preflight
+        id: preflight
+        if: steps.validate.outcome == 'success'
+        continue-on-error: true
+        run: npm run preflight:paid-order-migration
+
+      - name: Apply additive uniqueness migration
+        id: migration
+        if: steps.preflight.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          command -v psql >/dev/null
+          psql "$DATABASE_URL" --set=ON_ERROR_STOP=1 --file=migrations/002_unique_stripe_session.sql
+
+      - name: Verify unique index after migration
+        id: postflight
+        if: steps.migration.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          output_file="$(mktemp)"
+          GITHUB_OUTPUT="$output_file" npm run preflight:paid-order-migration
+          result="$(sed -n 's/^result=//p' "$output_file" | tail -n 1)"
+          rm -f "$output_file"
+          test "$result" = "passed-index-present"
+
+      - name: Publish migration status
+        id: status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
+          PREFLIGHT_OUTCOME: ${{ steps.preflight.outcome }}
+          MIGRATION_OUTCOME: ${{ steps.migration.outcome }}
+          POSTFLIGHT_OUTCOME: ${{ steps.postflight.outcome }}
+        with:
+          script: |
+            const outcome = (name) => process.env[name] || "skipped";
+            const result =
+              outcome("VALIDATE_OUTCOME") !== "success" ? "confirmation-failed" :
+              outcome("PREFLIGHT_OUTCOME") !== "success" ? "preflight-failed" :
+              outcome("MIGRATION_OUTCOME") !== "success" ? "migration-failed" :
+              outcome("POSTFLIGHT_OUTCOME") !== "success" ? "postflight-failed" :
+              "passed-index-present";
+            const passed = result === "passed-index-present";
+            core.setOutput("result", result);
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.EXPECTED_HEAD_SHA,
+              state: passed ? "success" : "failure",
+              context: `paid-order-production-migration/${result}`,
+              description: passed
+                ? "Unique Stripe session index applied and verified"
+                : "Paid-order migration did not complete",
+            });
+
+      - name: Fail unless migration and postflight passed
+        if: steps.status.outputs.result != 'passed-index-present'
+        run: exit 1
