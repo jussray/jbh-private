@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Truck, Heart, MessageCircle, ArrowRight, Check } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { ProductCard } from "@/components/ProductCard";
+import { BrandMoatSection } from "@/components/BrandMoatSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -12,18 +13,18 @@ import { PRODUCTS, FEATURED_IDS, getProduct, BRAND } from "@/lib/catalog";
 const VALUES = [
   {
     icon: Truck,
-    title: "Fast US Shipping",
-    body: "Most orders ship in 2–3 business days from our US warehouse partners.",
+    title: "Clear Shipping Expectations",
+    body: "Orders are processed in 1–2 business days; standard domestic transit is listed as 3–5 additional business days.",
   },
   {
     icon: Heart,
-    title: "Quality Guaranteed",
-    body: "Premium raw and virgin hair, hand-selected for softness, shine, and longevity.",
+    title: "Product Facts First",
+    body: "Use current product details and care guidance to decide what fits your install, routine, and budget.",
   },
   {
     icon: MessageCircle,
-    title: "Real Customer Care",
-    body: "Real humans, real answers. DM us on Instagram or email anytime.",
+    title: "Human Support",
+    body: "Questions before or after checkout can be sent to hello@jussbeautifulhair.com.",
   },
 ];
 
@@ -99,6 +100,8 @@ export default function Home() {
         </div>
       </section>
 
+      <BrandMoatSection />
+
       {/* FEATURED */}
       <section className="mx-auto max-w-7xl px-6 py-16 sm:py-20">
         <div className="flex items-end justify-between mb-8">
@@ -136,9 +139,9 @@ export default function Home() {
               Royal Raw Indian Temple Bundle 👑
             </h2>
             <p className="mt-4 text-primary-foreground/80 leading-relaxed">
-              Single-donor, cuticle-aligned raw Indian temple hair. Lifts to 613
-              effortlessly, never tangles, lasts 2+ years with proper care. Our
-              most exclusive offering.
+              A signature option in the current hair catalog. Review the product page
+              and current policies for the latest available construction, length, care,
+              stock, price, and fulfillment details before purchasing.
             </p>
             <Link href="/product/bundle-royal-indian">
               <Button
