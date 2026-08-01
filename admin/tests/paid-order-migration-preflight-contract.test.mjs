@@ -46,12 +46,13 @@ test("migration preflight fails closed with distinct exit codes", () => {
   assert.match(preflight, /operator reconciliation/);
 });
 
-test("production migration is manual, environment-gated, and main-only", () => {
+test("production migration is manual, repository-secret-gated, and main-only", () => {
   assert.match(migrationWorkflow, /workflow_dispatch:/);
   assert.match(migrationWorkflow, /approval_phrase:/);
   assert.match(migrationWorkflow, /NOT A SECRET\. Type only: APPLY_UNIQUE_STRIPE_SESSION_INDEX/);
-  assert.match(migrationWorkflow, /environment: production-payments/);
+  assert.doesNotMatch(migrationWorkflow, /environment:\s*production-payments/);
   assert.match(migrationWorkflow, /DATABASE_URL: \$\{\{ secrets\.DATABASE_URL \}\}/);
+  assert.match(migrationWorkflow, /Validate repository production database secret/);
   assert.match(migrationWorkflow, /APPROVAL_PHRASE: \$\{\{ inputs\.approval_phrase \}\}/);
   assert.match(migrationWorkflow, /test -n "\$DATABASE_URL"/);
   assert.match(migrationWorkflow, /refs\/heads\/main/);
