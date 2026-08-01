@@ -1,6 +1,13 @@
 name: Paid Order Production Preflight
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "admin/migrations/002_unique_stripe_session.sql"
+      - "admin/scripts/preflight-paid-order-migration.mjs"
+      - "admin/package.json"
+      - ".github/workflows/paid-order-production-preflight.yml"
   workflow_dispatch:
 
 permissions:
