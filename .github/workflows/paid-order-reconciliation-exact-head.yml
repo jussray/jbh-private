@@ -1,0 +1,64 @@
+name: Paid Order Reconciliation Exact-Head Gate
+
+on:
+  pull_request:
+    paths:
+      - "admin/api/stripe/webhook.ts"
+      - "admin/api/_lib/storage.ts"
+      - "admin/shared/schema.ts"
+      - "admin/migrations/002_unique_stripe_session.sql"
+      - "admin/tests/paid-order-reconciliation-contract.test.mjs"
+      - ".github/workflows/paid-order-reconciliation-exact-head.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: paid-order-private-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+defaults:
+  run:
+    working-directory: admin
+
+jobs:
+  verify:
+    name: Verify private paid-order reconciliation
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact requested head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+
+      - name: Record and verify exact head
+        shell: bash
+        working-directory: .
+        run: |
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run TypeScript
+        run: npm run check
+
+      - name: Run focused reconciliation contract
+        run: node --test tests/paid-order-reconciliation-contract.test.mjs
+
+      - name: Build private admin
+        run: npm run build
