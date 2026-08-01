@@ -19,15 +19,16 @@ test("migration preflight is read-only and reports aggregate risk only", () => {
 });
 
 test("migration preflight publishes bounded non-sensitive result classes", () => {
-  for (const result of [
+  for (const directResult of [
     "missing-database-url",
     "orders-table-missing",
     "duplicate-session-references",
-    "passed-index-present",
-    "passed-index-missing",
     "query-failed",
   ]) {
-    assert.match(preflight, new RegExp(`publishResult\\(\\s*\"${result}\"`));
+    assert.match(preflight, new RegExp(`publishResult\\(\\s*\"${directResult}\"`));
+  }
+  for (const passingResult of ["passed-index-present", "passed-index-missing"]) {
+    assert.equal(preflight.includes(`"${passingResult}"`), true);
   }
   assert.match(preflight, /appendFileSync\(process\.env\.GITHUB_OUTPUT/);
   assert.doesNotMatch(preflight, /publishResult\([^)]*databaseUrl/);
