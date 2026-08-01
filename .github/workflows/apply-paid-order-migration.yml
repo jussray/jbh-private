@@ -3,8 +3,8 @@ name: Apply Paid Order Uniqueness Migration
 on:
   workflow_dispatch:
     inputs:
-      confirmation:
-        description: Type APPLY_UNIQUE_STRIPE_SESSION_INDEX exactly
+      approval_phrase:
+        description: "NOT A SECRET. Type only: APPLY_UNIQUE_STRIPE_SESSION_INDEX"
         required: true
         type: string
 
@@ -30,25 +30,32 @@ jobs:
         working-directory: admin
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      CONFIRMATION: ${{ inputs.confirmation }}
+      APPROVAL_PHRASE: ${{ inputs.approval_phrase }}
     steps:
-      - name: Validate branch and confirmation
+      - name: Validate production database secret
+        id: database_secret
+        continue-on-error: true
+        shell: bash
+        working-directory: .
+        run: test -n "$DATABASE_URL"
+
+      - name: Validate branch and approval phrase
         id: validate
         continue-on-error: true
         shell: bash
         working-directory: .
         run: |
           test "$GITHUB_REF" = "refs/heads/main"
-          test "$CONFIRMATION" = "APPLY_UNIQUE_STRIPE_SESSION_INDEX"
+          test "$APPROVAL_PHRASE" = "APPLY_UNIQUE_STRIPE_SESSION_INDEX"
 
       - name: Check out exact requested head
-        if: steps.validate.outcome == 'success'
+        if: steps.database_secret.outcome == 'success' && steps.validate.outcome == 'success'
         uses: actions/checkout@v4
         with:
           ref: ${{ env.EXPECTED_HEAD_SHA }}
 
       - name: Record and verify exact head
-        if: steps.validate.outcome == 'success'
+        if: steps.database_secret.outcome == 'success' && steps.validate.outcome == 'success'
         shell: bash
         working-directory: .
         run: |
@@ -57,7 +64,7 @@ jobs:
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
       - name: Set up Node
-        if: steps.validate.outcome == 'success'
+        if: steps.database_secret.outcome == 'success' && steps.validate.outcome == 'success'
         uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -65,12 +72,12 @@ jobs:
           cache-dependency-path: admin/package-lock.json
 
       - name: Install locked dependencies
-        if: steps.validate.outcome == 'success'
+        if: steps.database_secret.outcome == 'success' && steps.validate.outcome == 'success'
         run: npm ci
 
       - name: Run read-only duplicate preflight
         id: preflight
-        if: steps.validate.outcome == 'success'
+        if: steps.database_secret.outcome == 'success' && steps.validate.outcome == 'success'
         continue-on-error: true
         run: npm run preflight:paid-order-migration
 
@@ -100,6 +107,7 @@ jobs:
         if: always()
         uses: actions/github-script@v7
         env:
+          DATABASE_SECRET_OUTCOME: ${{ steps.database_secret.outcome }}
           VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
           PREFLIGHT_OUTCOME: ${{ steps.preflight.outcome }}
           MIGRATION_OUTCOME: ${{ steps.migration.outcome }}
@@ -107,8 +115,12 @@ jobs:
         with:
           script: |
             const outcome = (name) => process.env[name] || "skipped";
+            const secretOkay = outcome("DATABASE_SECRET_OUTCOME") === "success";
+            const approvalOkay = outcome("VALIDATE_OUTCOME") === "success";
             const result =
-              outcome("VALIDATE_OUTCOME") !== "success" ? "confirmation-failed" :
+              !secretOkay && !approvalOkay ? "missing-database-url-and-approval-failed" :
+              !secretOkay ? "missing-database-url" :
+              !approvalOkay ? "approval-failed" :
               outcome("PREFLIGHT_OUTCOME") !== "success" ? "preflight-failed" :
               outcome("MIGRATION_OUTCOME") !== "success" ? "migration-failed" :
               outcome("POSTFLIGHT_OUTCOME") !== "success" ? "postflight-failed" :
