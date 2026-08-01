@@ -5,6 +5,13 @@
   "scanRoots": ["admin/api", "admin/client/src"],
   "allowedCookieWriters": [],
   "cookies": [],
+  "quarantinedInactiveCookieWriters": [
+    {
+      "path": "admin/client/src/components/ui/sidebar.tsx",
+      "cookie": "sidebar_state",
+      "reason": "Dormant generated sidebar template. Production imports are forbidden until the cookie write is removed or separately approved and declared."
+    }
+  ],
   "nonCookieState": [
     {
       "name": "local-order-records",
@@ -29,6 +36,7 @@
     "reading or forwarding CF_Authorization at the origin",
     "browser-bundled admin passwords in production routes",
     "customer, order, vendor, sourcing, margin, payment, or credential data in cookies",
-    "routing the local-only Admin.tsx page into the production App router"
+    "routing the local-only Admin.tsx page into the production App router",
+    "importing a quarantined inactive cookie writer into production source"
   ]
 }
