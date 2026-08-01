@@ -24,7 +24,6 @@ jobs:
     name: Preflight, apply, and verify unique Stripe session index
     runs-on: ubuntu-22.04
     timeout-minutes: 10
-    environment: production-payments
     defaults:
       run:
         working-directory: admin
@@ -32,7 +31,7 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       APPROVAL_PHRASE: ${{ inputs.approval_phrase }}
     steps:
-      - name: Validate production database secret
+      - name: Validate repository production database secret
         id: database_secret
         continue-on-error: true
         shell: bash
