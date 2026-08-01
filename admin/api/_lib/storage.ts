@@ -34,6 +34,39 @@ export const storage = {
     return row;
   },
 
+  async getOrderByStripeSessionId(
+    stripeSessionId: string,
+  ): Promise<Order | undefined> {
+    const [row] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.stripeSessionId, stripeSessionId));
+    return row;
+  },
+
+  async createPaidCheckoutOrder(
+    order: InsertOrder & { stripeSessionId: string },
+  ): Promise<{ order: Order; created: boolean }> {
+    const [created] = await db
+      .insert(orders)
+      .values(order)
+      .onConflictDoNothing()
+      .returning();
+
+    if (created) return { order: created, created: true };
+
+    const [existing] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.stripeSessionId, order.stripeSessionId));
+
+    if (!existing) {
+      throw new Error("paid_order_insert_conflict");
+    }
+
+    return { order: existing, created: false };
+  },
+
   async listOrders(): Promise<Order[]> {
     return db
       .select()
@@ -108,7 +141,7 @@ export const storage = {
 
   /**
    * Marks a Stripe event as successfully processed.
-   * Call this AFTER your handler logic succeeds — never before.
+   * Call this AFTER your handler logic succeeds, never before.
    * Safe to call multiple times (INSERT OR IGNORE via onConflictDoNothing).
    */
   async createProcessedEvent(stripeEventId: string): Promise<void> {
