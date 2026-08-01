@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 env:
   NODE_VERSION: '20'
@@ -35,5 +35,5 @@ jobs:
         run: npm install --no-save --package-lock=false --ignore-scripts playwright@1.61.1
       - name: Install Chromium
         run: npm exec -- playwright install --with-deps chromium
-      - name: Verify blended brand moat in browser
+      - name: Verify approved storefront truth mirror in browser
         run: npm run verify:playwright
