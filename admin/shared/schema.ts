@@ -24,7 +24,7 @@ export const orders = pgTable("orders", {
   total: doublePrecision("total").notNull(),
   notes: text("notes"),
   status: text("status").notNull().default("pending"),
-  stripeSessionId: text("stripe_session_id"),
+  stripeSessionId: text("stripe_session_id").unique(),
   stripePaymentIntentId: text("stripe_payment_intent_id"),
   paymentStatus: text("payment_status").notNull().default("unpaid"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

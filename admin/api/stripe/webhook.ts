@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Stripe from "stripe";
+import { getProduct } from "../../client/src/lib/catalog";
 import { storage } from "../_lib/storage";
 import { stripe, STRIPE_WEBHOOK_SECRET } from "../_lib/stripe";
 
@@ -7,6 +8,31 @@ import { stripe, STRIPE_WEBHOOK_SECRET } from "../_lib/stripe";
 export const config = { api: { bodyParser: false } };
 
 const MAX_WEBHOOK_BYTES = 1024 * 1024;
+const FREE_SHIPPING_THRESHOLD = 150;
+const FLAT_SHIPPING = 9.99;
+const CHECKOUT_ATTEMPT_ID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+interface ShippingAddress {
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+}
+
+interface ShippingDetails {
+  name?: string | null;
+  address?: ShippingAddress | null;
+}
+
+type CheckoutSessionWithCollectedInformation = Stripe.Checkout.Session & {
+  collected_information?: {
+    shipping_details?: ShippingDetails | null;
+  } | null;
+  shipping_details?: ShippingDetails | null;
+};
 
 class WebhookProcessingError extends Error {
   constructor(readonly code: string) {
@@ -75,15 +101,17 @@ async function writeToDlq(
   }
 }
 
-async function markCheckoutPaid(
+function paymentIntentId(session: Stripe.Checkout.Session): string | null {
+  return typeof session.payment_intent === "string"
+    ? session.payment_intent
+    : session.payment_intent?.id ?? null;
+}
+
+async function markLegacyCheckoutPaid(
   event: Stripe.Event,
   session: Stripe.Checkout.Session,
+  orderId: number,
 ): Promise<void> {
-  const orderId = Number(session.metadata?.order_id);
-  if (!Number.isSafeInteger(orderId) || orderId <= 0) {
-    throw new WebhookProcessingError("invalid_order_reference");
-  }
-
   if (session.payment_status !== "paid") return;
 
   const order = await storage.getOrder(orderId);
@@ -98,29 +126,245 @@ async function markCheckoutPaid(
     throw new WebhookProcessingError("amount_or_currency_mismatch");
   }
 
-  const paymentIntentId =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : null;
-
   const updated = await storage.markOrderPaid(
     orderId,
     session.id,
-    paymentIntentId,
+    paymentIntentId(session),
   );
   if (!updated) throw new WebhookProcessingError("order_update_failed");
 
   const safeId = event.id.slice(-8);
   console.log(
-    `[WEBHOOK] payment confirmed — order #${updated.id} — event …${safeId}`,
+    `[WEBHOOK] payment confirmed - order #${updated.id} - event …${safeId}`,
   );
+}
+
+function expandedProduct(lineItem: Stripe.LineItem): Stripe.Product | null {
+  const product = lineItem.price?.product;
+  if (!product || typeof product === "string") return null;
+  if ("deleted" in product && product.deleted) return null;
+  return product;
+}
+
+function shippingDetails(
+  session: CheckoutSessionWithCollectedInformation,
+): ShippingDetails | null {
+  return (
+    session.collected_information?.shipping_details ??
+    session.shipping_details ??
+    null
+  );
+}
+
+function money(cents: number): number {
+  return Number((cents / 100).toFixed(2));
+}
+
+async function createOrderFromHostedCheckout(
+  event: Stripe.Event,
+  eventSession: Stripe.Checkout.Session,
+  checkoutAttemptId: string,
+): Promise<void> {
+  if (!stripe) throw new WebhookProcessingError("stripe_not_configured");
+  if (!CHECKOUT_ATTEMPT_ID.test(checkoutAttemptId)) {
+    throw new WebhookProcessingError("invalid_checkout_attempt_id");
+  }
+
+  const retrieved = (await stripe.checkout.sessions.retrieve(eventSession.id, {
+    expand: ["line_items.data.price.product"],
+  })) as CheckoutSessionWithCollectedInformation;
+
+  if (retrieved.payment_status !== "paid") return;
+  if (
+    retrieved.metadata?.checkout_attempt_id !== checkoutAttemptId ||
+    retrieved.client_reference_id !== checkoutAttemptId
+  ) {
+    throw new WebhookProcessingError("checkout_attempt_mismatch");
+  }
+  if (retrieved.currency !== "usd") {
+    throw new WebhookProcessingError("amount_or_currency_mismatch");
+  }
+
+  const lineItems = retrieved.line_items?.data;
+  if (!lineItems?.length) {
+    throw new WebhookProcessingError("missing_line_items");
+  }
+
+  const items: Array<{
+    id: string;
+    name: string;
+    variant: string;
+    price: number;
+    qty: number;
+    image: string;
+  }> = [];
+  let subtotalCents = 0;
+  let shippingCents = 0;
+
+  for (const lineItem of lineItems) {
+    const product = expandedProduct(lineItem);
+    const metadata = product?.metadata;
+    const quantity = lineItem.quantity;
+    const unitAmount = lineItem.price?.unit_amount;
+
+    if (!product || !metadata || !quantity || quantity < 1 || !unitAmount) {
+      throw new WebhookProcessingError("invalid_line_item");
+    }
+
+    if (metadata.kind === "shipping") {
+      if (shippingCents !== 0 || quantity !== 1) {
+        throw new WebhookProcessingError("invalid_shipping_line");
+      }
+      shippingCents = unitAmount;
+      continue;
+    }
+
+    if (metadata.kind !== "product") {
+      throw new WebhookProcessingError("unknown_line_item_kind");
+    }
+
+    const productId = metadata.product_id;
+    const variantName = metadata.variant;
+    const canonicalProduct = productId ? getProduct(productId) : undefined;
+    const canonicalVariant = canonicalProduct?.variants.find(
+      (candidate) => candidate.option === variantName,
+    );
+
+    if (!canonicalProduct || !canonicalVariant) {
+      throw new WebhookProcessingError("catalog_item_not_found");
+    }
+
+    const canonicalUnitAmount = Math.round(canonicalVariant.price * 100);
+    if (unitAmount !== canonicalUnitAmount) {
+      throw new WebhookProcessingError("catalog_price_mismatch");
+    }
+
+    subtotalCents += canonicalUnitAmount * quantity;
+    items.push({
+      id: canonicalProduct.id,
+      name: canonicalProduct.name,
+      variant: canonicalVariant.option,
+      price: canonicalVariant.price,
+      qty: quantity,
+      image: canonicalProduct.image,
+    });
+  }
+
+  if (!items.length) throw new WebhookProcessingError("empty_order");
+
+  const expectedShippingCents =
+    subtotalCents >= FREE_SHIPPING_THRESHOLD * 100
+      ? 0
+      : Math.round(FLAT_SHIPPING * 100);
+  if (shippingCents !== expectedShippingCents) {
+    throw new WebhookProcessingError("shipping_mismatch");
+  }
+
+  const expectedSubtotalCents = subtotalCents + shippingCents;
+  if (retrieved.amount_subtotal !== expectedSubtotalCents) {
+    throw new WebhookProcessingError("subtotal_mismatch");
+  }
+
+  const discountCents = retrieved.total_details?.amount_discount ?? 0;
+  const taxCents = retrieved.total_details?.amount_tax ?? 0;
+  const stripeShippingCents = retrieved.total_details?.amount_shipping ?? 0;
+  const expectedTotalCents =
+    expectedSubtotalCents - discountCents + taxCents + stripeShippingCents;
+  if (
+    stripeShippingCents !== 0 ||
+    retrieved.amount_total !== expectedTotalCents
+  ) {
+    throw new WebhookProcessingError("total_mismatch");
+  }
+
+  const customer = retrieved.customer_details;
+  const delivery = shippingDetails(retrieved);
+  const address = delivery?.address;
+  const customerName = (delivery?.name ?? customer?.name ?? "").trim();
+  const email = (customer?.email ?? "").trim().toLowerCase();
+  const phone = (customer?.phone ?? "").trim();
+  const street = [address?.line1, address?.line2]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join(", ");
+  const city = (address?.city ?? "").trim();
+  const state = (address?.state ?? "").trim();
+  const zip = (address?.postal_code ?? "").trim();
+
+  if (
+    !customerName ||
+    !email ||
+    !phone ||
+    !street ||
+    !city ||
+    !state ||
+    !zip ||
+    address?.country !== "US"
+  ) {
+    throw new WebhookProcessingError("missing_customer_or_shipping_details");
+  }
+
+  const notes = [
+    `Checkout attempt: ${checkoutAttemptId}`,
+    discountCents > 0
+      ? `Stripe promotion discount: $${money(discountCents).toFixed(2)}`
+      : null,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join("\n");
+
+  const result = await storage.createPaidCheckoutOrder({
+    customerName,
+    email,
+    phone,
+    addressJson: { street, city, state, zip },
+    itemsJson: items,
+    subtotal: money(subtotalCents),
+    shipping: money(shippingCents),
+    total: money(retrieved.amount_total ?? 0),
+    notes,
+    status: "processing",
+    stripeSessionId: retrieved.id,
+    stripePaymentIntentId: paymentIntentId(retrieved),
+    paymentStatus: "paid",
+  });
+
+  if (!result.created && result.order.paymentStatus !== "paid") {
+    throw new WebhookProcessingError("existing_order_not_paid");
+  }
+
+  const safeId = event.id.slice(-8);
+  console.log(
+    `[WEBHOOK] hosted checkout reconciled - order #${result.order.id} - event …${safeId}`,
+  );
+}
+
+async function reconcileCheckoutPayment(
+  event: Stripe.Event,
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const rawOrderId = session.metadata?.order_id;
+  if (rawOrderId) {
+    const orderId = Number(rawOrderId);
+    if (!Number.isSafeInteger(orderId) || orderId <= 0) {
+      throw new WebhookProcessingError("invalid_order_reference");
+    }
+    await markLegacyCheckoutPaid(event, session, orderId);
+    return;
+  }
+
+  const checkoutAttemptId = session.metadata?.checkout_attempt_id;
+  if (!checkoutAttemptId) {
+    throw new WebhookProcessingError("missing_order_reference");
+  }
+
+  await createOrderFromHostedCheckout(event, session, checkoutAttemptId);
 }
 
 async function handleEvent(event: Stripe.Event): Promise<void> {
   switch (event.type) {
     case "checkout.session.completed":
     case "checkout.session.async_payment_succeeded":
-      await markCheckoutPaid(
+      await reconcileCheckoutPayment(
         event,
         event.data.object as Stripe.Checkout.Session,
       );
