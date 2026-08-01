@@ -46,6 +46,10 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function normalize(text) {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
 let browser;
 try {
   await waitForServer();
@@ -55,7 +59,9 @@ try {
   await page.goto(baseURL, {waitUntil: 'networkidle'});
   const moat = page.getByTestId('brand-moat');
   assert(await moat.isVisible(), 'Brand moat section is not visible on the hair homepage.');
-  assert((await moat.innerText()).includes('Every crown carries a chapter.'), 'Hair story heading is missing.');
+  const moatText = normalize(await moat.innerText());
+  assert(moatText.includes('Story. Quality. Care. Proof.'), 'Current hair truth heading is missing.');
+  assert(moatText.includes('Missing proof stays missing until verified.'), 'Proof boundary is missing.');
 
   for (const pillar of ['story', 'quality', 'care', 'proof']) {
     assert(
@@ -64,22 +70,33 @@ try {
     );
   }
 
-  const homeText = await page.locator('body').innerText();
+  const homeText = normalize(await page.locator('body').innerText());
   assert(homeText.includes('Royal Raw Indian Temple Bundle'), 'Existing signature hair product disappeared.');
   assert(homeText.includes('16 products across bundles, wigs, closures & essentials.'), 'Hair catalog count or categories changed.');
   assert(!homeText.includes('Crown Logo Cap'), 'Untold Stories products leaked into the hair catalog.');
+  for (const unsupported of [
+    'Quality Guaranteed',
+    'Most orders ship in 2–3 business days',
+    'never tangles',
+    'lasts 2+ years',
+  ]) {
+    assert(!homeText.includes(unsupported), `Unsupported homepage certainty remains: ${unsupported}`);
+  }
 
   await page.goto(`${baseURL}/about`, {waitUntil: 'networkidle'});
-  const aboutText = await page.locator('body').innerText();
-  assert(aboutText.includes('Beauty carries memory.'), 'Expanded hair brand philosophy is missing from About.');
-  assert(aboutText.includes('story, quality, care, and proof'), 'Shared moat language is missing from About.');
+  const aboutText = normalize(await page.locator('body').innerText());
+  assert(aboutText.includes('Beauty can carry memory.'), 'Current hair brand philosophy is missing from About.');
+  assert(aboutText.includes('Story, Quality, Care, and Proof'), 'Shared truth language is missing from About.');
+  for (const unsupported of ['trusted factories', 'factory pricing']) {
+    assert(!aboutText.includes(unsupported), `Unsupported About certainty remains: ${unsupported}`);
+  }
 
   await page.setViewportSize({width: 390, height: 844});
   await page.goto(baseURL, {waitUntil: 'networkidle'});
   assert(await page.getByTestId('button-shop-hero-mobile').isVisible(), 'Mobile hair CTA is not visible.');
   assert(await page.getByTestId('brand-moat').isVisible(), 'Brand moat is not visible on mobile.');
 
-  console.log('Playwright verification passed: hair moat, catalog separation, desktop, and mobile.');
+  console.log('Playwright verification passed: approved truth mirror, catalog separation, desktop, and mobile.');
 } finally {
   await browser?.close();
   if (server.exitCode === null) server.kill('SIGTERM');
