@@ -109,7 +109,7 @@ export const vendorFulfillmentGroups = pgTable(
     itemsJson: jsonb("items_json").notNull(),
     status: text("status").notNull().default("pending_owner_approval"),
     ownerApprovedAt: timestamp("owner_approved_at", { withTimezone: true }),
-    dispatchedAt: timestamp("dispatched_at", { withTimezone: true }),
+    queuedAt: timestamp("queued_at", { withTimezone: true }),
     trackingJson: jsonb("tracking_json"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -121,6 +121,19 @@ export const vendorFulfillmentGroups = pgTable(
     ),
   ],
 );
+
+export const vendorDispatchJobs = pgTable("vendor_dispatch_jobs", {
+  id: serial("id").primaryKey(),
+  fulfillmentGroupId: integer("fulfillment_group_id")
+    .notNull()
+    .unique()
+    .references(() => vendorFulfillmentGroups.id, { onDelete: "restrict" }),
+  status: text("status").notNull().default("queued"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const vendorRoutingExceptions = pgTable(
   "vendor_routing_exceptions",
@@ -149,6 +162,7 @@ export type Vendor = typeof vendors.$inferSelect;
 export type InsertVendor = typeof vendors.$inferInsert;
 export type VendorProductMapping = typeof vendorProductMappings.$inferSelect;
 export type VendorFulfillmentGroup = typeof vendorFulfillmentGroups.$inferSelect;
+export type VendorDispatchJob = typeof vendorDispatchJobs.$inferSelect;
 export type VendorRoutingException = typeof vendorRoutingExceptions.$inferSelect;
 
 // Newsletter signups
