@@ -1,0 +1,23 @@
+{
+  "name": "jbh-private-order-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@10.9.2",
+  "scripts": {
+    "typecheck:worker": "tsc -p admin/payment-worker/tsconfig.json",
+    "test:worker": "node --test admin/tests/private-order-worker-contract.test.mjs",
+    "verify:worker": "npm run typecheck:worker && npm run test:worker",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "0.10.4",
+    "stripe": "17.7.0",
+    "zod": "3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.27",
+    "typescript": "5.6.3",
+    "wrangler": "4.118.0"
+  }
+}
