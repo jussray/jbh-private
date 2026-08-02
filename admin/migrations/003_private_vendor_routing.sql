@@ -64,6 +64,20 @@ CREATE TABLE IF NOT EXISTS vendor_routing_exceptions (
 CREATE UNIQUE INDEX IF NOT EXISTS vendor_routing_exception_unique
   ON vendor_routing_exceptions (order_id, product_id, variant, reason);
 
+CREATE TABLE IF NOT EXISTS control_room_receipt_outbox (
+  id SERIAL PRIMARY KEY,
+  receipt_id UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE RESTRICT,
+  event_type TEXT NOT NULL,
+  group_count INTEGER NOT NULL DEFAULT 0 CHECK (group_count BETWEEN 0 AND 1000),
+  unresolved_count INTEGER NOT NULL DEFAULT 0 CHECK (unresolved_count BETWEEN 0 AND 1000),
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sent_at TIMESTAMPTZ,
+  UNIQUE (order_id, event_type)
+);
+
 CREATE INDEX IF NOT EXISTS vendor_fulfillment_order_idx
   ON vendor_fulfillment_groups (order_id, status);
 
@@ -72,6 +86,9 @@ CREATE INDEX IF NOT EXISTS vendor_dispatch_status_idx
 
 CREATE INDEX IF NOT EXISTS vendor_routing_exception_order_idx
   ON vendor_routing_exceptions (order_id, resolved_at);
+
+CREATE INDEX IF NOT EXISTS control_room_receipt_outbox_pending_idx
+  ON control_room_receipt_outbox (sent_at, created_at);
 
 CREATE OR REPLACE FUNCTION route_paid_order_to_private_vendors()
 RETURNS TRIGGER
@@ -154,6 +171,66 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION queue_sanitized_control_room_receipt()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  receipt_event TEXT;
+  group_total INTEGER;
+  unresolved_total INTEGER;
+BEGIN
+  IF TG_OP = 'INSERT' AND NEW.payment_status = 'paid' THEN
+    INSERT INTO control_room_receipt_outbox (
+      order_id,
+      event_type,
+      group_count,
+      unresolved_count
+    ) VALUES (NEW.id, 'paid_order_recorded', 0, 0)
+    ON CONFLICT (order_id, event_type) DO NOTHING;
+  END IF;
+
+  receipt_event := CASE NEW.status
+    WHEN 'needs_vendor_review' THEN 'vendor_review_required'
+    WHEN 'vendor_review' THEN 'vendor_groups_ready'
+    WHEN 'ready_to_dispatch' THEN 'owner_approved'
+    WHEN 'fulfillment_queued' THEN 'fulfillment_queued'
+    WHEN 'delivered' THEN 'completed'
+    ELSE NULL
+  END;
+
+  IF receipt_event IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT COUNT(*)::INTEGER
+  INTO group_total
+  FROM vendor_fulfillment_groups
+  WHERE order_id = NEW.id;
+
+  SELECT COUNT(*)::INTEGER
+  INTO unresolved_total
+  FROM vendor_routing_exceptions
+  WHERE order_id = NEW.id
+    AND resolved_at IS NULL;
+
+  INSERT INTO control_room_receipt_outbox (
+    order_id,
+    event_type,
+    group_count,
+    unresolved_count
+  ) VALUES (
+    NEW.id,
+    receipt_event,
+    group_total,
+    unresolved_total
+  )
+  ON CONFLICT (order_id, event_type) DO NOTHING;
+
+  RETURN NEW;
+END;
+$$;
+
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -165,6 +242,17 @@ BEGIN
       AFTER INSERT OR UPDATE OF payment_status ON orders
       FOR EACH ROW
       EXECUTE FUNCTION route_paid_order_to_private_vendors();
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger
+    WHERE tgname = 'orders_queue_sanitized_control_room_receipt'
+  ) THEN
+    CREATE TRIGGER orders_queue_sanitized_control_room_receipt
+      AFTER INSERT OR UPDATE OF status ON orders
+      FOR EACH ROW
+      EXECUTE FUNCTION queue_sanitized_control_room_receipt();
   END IF;
 END;
 $$;
