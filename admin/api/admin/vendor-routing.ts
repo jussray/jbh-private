@@ -18,7 +18,7 @@ const commandSchema = z.discriminatedUnion("action", [
     code: z.string().trim().min(2).max(50).regex(/^[a-z0-9][a-z0-9-]*$/),
     displayName: z.string().trim().min(2).max(120),
     fulfillmentEmail: z.string().trim().email().max(254).nullable().optional(),
-    active: z.boolean().optional(),
+    active: z.literal(false).optional(),
   }),
   z.object({
     action: z.literal("map_product"),
@@ -105,7 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           code: parsed.data.code,
           displayName: parsed.data.displayName,
           fulfillmentEmail: parsed.data.fulfillmentEmail ?? null,
-          active: parsed.data.active,
+          active: false,
         });
         return res.status(200).json({ vendor });
       }
