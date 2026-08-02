@@ -67,3 +67,39 @@ test("dispatch remains an auditable queue, not a fabricated vendor contact", asy
   assert.match(storage, /status: \"queued\"/);
   assert.doesNotMatch(storage, /status: \"sent\"|status: \"accepted\"/);
 });
+
+test("control room receives hashes and state counts, never private commerce data", async () => {
+  const [migration, dispatcher] = await Promise.all([
+    read("migrations/003_private_vendor_routing.sql"),
+    read("api/internal/control-room-receipts.ts"),
+  ]);
+
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS control_room_receipt_outbox/);
+  assert.match(migration, /queue_sanitized_control_room_receipt/);
+  assert.match(migration, /paid_order_recorded/);
+  assert.match(migration, /vendor_review_required/);
+  assert.match(migration, /vendor_groups_ready/);
+  assert.match(migration, /fulfillment_queued/);
+  assert.match(migration, /UNIQUE \(order_id, event_type\)/);
+
+  assert.match(dispatcher, /createHmac\(\"sha256\", hashSalt\)/);
+  assert.match(dispatcher, /jbh-order:\$\{orderId\}/);
+  assert.match(dispatcher, /x-jbh-receipt-token/);
+  assert.match(dispatcher, /exactCommitSha/);
+  assert.match(dispatcher, /sourceRepo: \"jussray\/jbh-private\"/);
+  assert.match(dispatcher, /attempt_count < 20/);
+
+  for (const forbidden of [
+    "customerName",
+    "customerEmail",
+    "shippingAddress",
+    "vendorName",
+    "vendorCode",
+    "fulfillmentEmail",
+    "wholesaleCost",
+    "margin",
+    "itemsJson",
+  ]) {
+    assert.doesNotMatch(dispatcher, new RegExp(forbidden, "i"));
+  }
+});
