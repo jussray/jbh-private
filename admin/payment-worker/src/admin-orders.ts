@@ -2,6 +2,11 @@ import { neon } from "@neondatabase/serverless";
 import { z } from "zod";
 import { validateAccess } from "./access";
 import {
+  applyVendorRoutingUpdates,
+  normalizeOrderLineItems,
+  VendorRoutingModelError,
+} from "./vendor-routing-model";
+import {
   type Env,
   json,
   MAX_ADMIN_BODY_BYTES,
@@ -22,6 +27,7 @@ const vendorStatusSchema = z.enum([
 
 const storedItemSchema = z.object({
   id: z.string().trim().min(1).max(100),
+  lineItemId: z.string().trim().max(200).optional().default(""),
   name: z.string().trim().min(1).max(500),
   variant: z.string().trim().max(500),
   price: z.number().min(0).max(1_000_000),
@@ -40,7 +46,7 @@ const routingUpdateSchema = z.object({
   items: z
     .array(
       z.object({
-        itemId: z.string().trim().min(1).max(100),
+        itemId: z.string().trim().min(1).max(200),
         assignedVendorId: z.string().trim().max(100),
         routeId: z.string().trim().max(100),
         vendorSku: z.string().trim().max(200),
@@ -51,40 +57,6 @@ const routingUpdateSchema = z.object({
     .min(1)
     .max(100),
 });
-
-type VendorStatus =
-  | "unassigned"
-  | "ready"
-  | "ordered"
-  | "confirmed"
-  | "shipped";
-
-interface StoredItem {
-  id: string;
-  name: string;
-  variant: string;
-  price: number;
-  qty: number;
-  image: string;
-  assignedVendorId: string;
-  routeId: string;
-  vendorSku: string;
-  vendorUnitCost: number;
-  vendorStatus: VendorStatus;
-}
-
-interface RoutingUpdateItem {
-  itemId: string;
-  assignedVendorId: string;
-  routeId: string;
-  vendorSku: string;
-  vendorUnitCost: number;
-  vendorStatus: VendorStatus;
-}
-
-interface RoutingUpdate {
-  items: RoutingUpdateItem[];
-}
 
 const orderStatusSchema = z.object({
   status: z.enum([
@@ -97,6 +69,9 @@ const orderStatusSchema = z.object({
     "cancelled",
   ]),
 });
+
+type StoredItem = z.infer<typeof storedItemSchema>;
+type RoutingUpdate = z.infer<typeof routingUpdateSchema>;
 
 interface OrderRow {
   id: number;
@@ -132,8 +107,12 @@ function decodeJson(value: unknown): unknown {
   }
 }
 
+function parseStoredItems(orderId: number, value: unknown) {
+  const parsed = storedItemsSchema.parse(decodeJson(value)) as StoredItem[];
+  return normalizeOrderLineItems(orderId, parsed);
+}
+
 function serializeOrder(row: OrderRow) {
-  const items = storedItemsSchema.parse(decodeJson(row.items_json)) as StoredItem[];
   return {
     id: row.id,
     createdAt:
@@ -145,7 +124,7 @@ function serializeOrder(row: OrderRow) {
     email: row.email,
     phone: row.phone,
     address: decodeJson(row.address_json),
-    items,
+    items: parseStoredItems(row.id, row.items_json),
     subtotal: Number(row.subtotal),
     shipping: Number(row.shipping),
     total: Number(row.total),
@@ -169,6 +148,12 @@ async function listOrders(env: Env): Promise<ReturnType<typeof serializeOrder>[]
     LIMIT ${MAX_ADMIN_ORDERS}
   `) as unknown as OrderRow[];
   return rows.map(serializeOrder);
+}
+
+function routingErrorCode(error: unknown): string {
+  return error instanceof VendorRoutingModelError
+    ? error.code
+    : safeErrorCode(error);
 }
 
 async function updateVendorRouting(
@@ -197,7 +182,7 @@ async function updateVendorRouting(
         privateHeaders(),
       );
     }
-    input = parsed.data as RoutingUpdate;
+    input = parsed.data;
   } catch (error) {
     const oversized = safeErrorCode(error) === "payload_too_large";
     return json(
@@ -219,35 +204,8 @@ async function updateVendorRouting(
       return json({ error: "Order not found" }, 404, privateHeaders());
     }
 
-    const items = storedItemsSchema.parse(
-      decodeJson(rows[0].items_json),
-    ) as StoredItem[];
-    const updates = new Map(input.items.map((item) => [item.itemId, item]));
-    for (const itemId of updates.keys()) {
-      if (!items.some((item) => item.id === itemId)) {
-        return json(
-          { error: "Vendor route references an unknown order item" },
-          409,
-          privateHeaders(),
-        );
-      }
-    }
-
-    const merged = items.map((item) => {
-      const update = updates.get(item.id);
-      if (!update) return item;
-      if (!update.assignedVendorId && update.vendorStatus !== "unassigned") {
-        throw new SafeProcessingError("vendor_required_for_status");
-      }
-      return {
-        ...item,
-        assignedVendorId: update.assignedVendorId,
-        routeId: update.routeId,
-        vendorSku: update.vendorSku,
-        vendorUnitCost: update.vendorUnitCost,
-        vendorStatus: update.vendorStatus,
-      };
-    });
+    const items = parseStoredItems(orderId, rows[0].items_json);
+    const merged = applyVendorRoutingUpdates(orderId, items, input.items);
 
     const mergedJson = JSON.stringify(merged);
     const updated = (await sql`
@@ -272,27 +230,27 @@ async function updateVendorRouting(
       {
         id: updated[0].id,
         status: updated[0].status,
-        items: storedItemsSchema.parse(
-          decodeJson(updated[0].items_json),
-        ) as StoredItem[],
+        items: parseStoredItems(orderId, updated[0].items_json),
       },
       200,
       privateHeaders(),
     );
   } catch (error) {
-    console.error(
-      `[ADMIN] vendor routing update failed (${safeErrorCode(error)})`,
-    );
-    const conflict = safeErrorCode(error) === "vendor_required_for_status";
-    return json(
-      {
-        error: conflict
-          ? "A vendor is required for this route status"
-          : "Unable to update vendor routing",
-      },
-      conflict ? 409 : 500,
-      privateHeaders(),
-    );
+    const code = routingErrorCode(error);
+    console.error(`[ADMIN] vendor routing update failed (${code})`);
+
+    const response =
+      code === "vendor_required_for_status"
+        ? { status: 409, error: "A vendor is required for this route status" }
+        : code === "unknown_order_line"
+          ? { status: 409, error: "Vendor route references an unknown order line" }
+          : code === "duplicate_routing_update"
+            ? { status: 400, error: "Vendor route repeats an order line" }
+            : code === "duplicate_line_item_identity"
+              ? { status: 409, error: "Order lines do not have unique identities" }
+              : { status: 500, error: "Unable to update vendor routing" };
+
+    return json({ error: response.error }, response.status, privateHeaders());
   }
 }
 
