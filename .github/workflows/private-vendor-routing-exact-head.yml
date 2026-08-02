@@ -8,8 +8,11 @@ on:
       - "admin/api/_lib/vendor-routing.ts"
       - "admin/api/admin/vendor-routing.ts"
       - "admin/api/internal/control-room-receipts.ts"
+      - "admin/data/vendor-prospects.json"
       - "admin/migrations/003_private_vendor_routing.sql"
+      - "admin/migrations/004_vendor_prospects_seed.sql"
       - "admin/tests/vendor-routing-contract.test.mjs"
+      - "admin/tests/vendor-prospect-seed-contract.test.mjs"
       - "admin/package.json"
       - ".github/workflows/private-vendor-routing-exact-head.yml"
   workflow_dispatch:
@@ -63,6 +66,9 @@ jobs:
 
       - name: Verify vendor routing contract
         run: npm run verify:vendor-routing
+
+      - name: Verify vendor prospect quarantine
+        run: node --test tests/vendor-prospect-seed-contract.test.mjs
 
       - name: Build private admin
         run: npm run build
