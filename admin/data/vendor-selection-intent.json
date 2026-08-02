@@ -1,10 +1,11 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "decidedAt": "2026-08-02",
   "business": "Juss Beautiful Hair",
   "selectionAuthority": "owner",
   "dispatchAuthority": false,
   "activationRule": "A selected vendor remains inactive until account ownership, commercial terms, sample quality, exact catalog variants, and fulfillment mechanics are verified.",
+  "orderRule": "No vendor purchase may be created without a confirmed supplier account, exact supplier SKU, quantity, landed price, payment authority, and ship-to decision.",
   "vendors": [
     {
       "code": "dropship-bundles",
