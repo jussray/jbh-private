@@ -12,6 +12,7 @@ const [
   webhook,
   adminOrders,
   access,
+  routingModel,
 ] = await Promise.all([
   read("wrangler.toml"),
   read("package.json"),
@@ -19,6 +20,7 @@ const [
   read("admin/payment-worker/src/webhook.ts"),
   read("admin/payment-worker/src/admin-orders.ts"),
   read("admin/payment-worker/src/access.ts"),
+  read("admin/payment-worker/src/vendor-routing-model.ts"),
 ]);
 
 const packageContract = JSON.parse(packageJson);
@@ -56,17 +58,26 @@ test("public Stripe events create one private paid order with routing fields", (
   assert.doesNotMatch(webhook, /SELECT\s+\*/i);
 });
 
-test("vendor order routes stay owner-only and mutate existing order items", () => {
+test("vendor order routes stay owner-only and mutate unique order lines", () => {
   assert.match(adminOrders, /validateAccess\(request, env\)/);
   assert.match(adminOrders, /\/api\/admin\/orders/);
   assert.match(adminOrders, /\/vendor-route/);
   assert.match(adminOrders, /\/api\/admin\/vendor-orders/);
+  assert.match(adminOrders, /lineItemId/);
+  assert.match(adminOrders, /applyVendorRoutingUpdates/);
   assert.match(adminOrders, /assignedVendorId/);
   assert.match(adminOrders, /vendorSku/);
   assert.match(adminOrders, /vendorUnitCost/);
   assert.match(adminOrders, /vendorStatus/);
   assert.match(adminOrders, /SET items_json = \$\{mergedJson\}::jsonb/);
+  assert.doesNotMatch(adminOrders, /updates\.get\(item\.id\)/);
   assert.doesNotMatch(adminOrders, /\b(?:DROP|TRUNCATE|DELETE)\b/i);
+
+  assert.match(routingModel, /fallbackLineItemId/);
+  assert.match(routingModel, /item\.lineItemId/);
+  assert.match(routingModel, /updatesByLine\.get\(item\.lineItemId\)/);
+  assert.match(routingModel, /duplicate_routing_update/);
+  assert.match(routingModel, /unknown_order_line/);
 });
 
 test("owner authorization verifies Access signature and allowlist", () => {
@@ -84,9 +95,9 @@ test("root scripts verify and deploy the exact Worker contract", () => {
     packageContract.scripts["typecheck:worker"],
     "tsc -p admin/payment-worker/tsconfig.json",
   );
-  assert.equal(
+  assert.match(
     packageContract.scripts["test:worker"],
-    "node --test admin/tests/private-order-worker-contract.test.mjs",
+    /tsconfig\.behavior\.json.*private-order-worker-\*\.test\.mjs/,
   );
   assert.equal(
     packageContract.scripts["dry-run:worker"],
