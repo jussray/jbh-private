@@ -9,10 +9,14 @@ on:
       - "admin/api/admin/vendor-routing.ts"
       - "admin/api/internal/control-room-receipts.ts"
       - "admin/data/vendor-prospects.json"
+      - "admin/data/vendor-selection-intent.json"
       - "admin/migrations/003_private_vendor_routing.sql"
       - "admin/migrations/004_vendor_prospects_seed.sql"
+      - "admin/migrations/005_vendor_reply_pipeline.sql"
+      - "admin/migrations/006_selected_vendor_stack.sql"
       - "admin/tests/vendor-routing-contract.test.mjs"
       - "admin/tests/vendor-prospect-seed-contract.test.mjs"
+      - "admin/tests/vendor-selection-intent-contract.test.mjs"
       - "admin/package.json"
       - ".github/workflows/private-vendor-routing-exact-head.yml"
   workflow_dispatch:
@@ -64,11 +68,8 @@ jobs:
       - name: Typecheck private admin and APIs
         run: npm run check
 
-      - name: Verify vendor routing contract
+      - name: Verify vendor routing, prospect, and selection contracts
         run: npm run verify:vendor-routing
-
-      - name: Verify vendor prospect quarantine
-        run: node --test tests/vendor-prospect-seed-contract.test.mjs
 
       - name: Build private admin
         run: npm run build
