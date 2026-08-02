@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {readFile} from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const EXPECTED_CODES = [
@@ -31,15 +31,16 @@ const PRODUCT_IDS = new Set([
   "hair-oil",
 ]);
 
-test("uploaded vendor evidence remains a private inactive prospect quarantine", async () => {
+test("owner-selected vendors remain private, contacted, and dispatch-disabled", async () => {
   const [rawManifest, migration] = await Promise.all([
     readFile("data/vendor-prospects.json", "utf8"),
     readFile("migrations/004_vendor_prospects_seed.sql", "utf8"),
   ]);
   const manifest = JSON.parse(rawManifest);
 
-  assert.equal(manifest.schemaVersion, 1);
+  assert.equal(manifest.schemaVersion, 2);
   assert.equal(manifest.dispatchAuthority, false);
+  assert.match(manifest.selectionDecision, /owner selected all seven vendors/i);
   assert.equal(manifest.prospects.length, EXPECTED_CODES.length);
 
   const codes = manifest.prospects.map((prospect) => prospect.code).sort();
@@ -47,10 +48,13 @@ test("uploaded vendor evidence remains a private inactive prospect quarantine", 
   assert.equal(new Set(codes).size, codes.length);
 
   for (const prospect of manifest.prospects) {
-    assert.equal(prospect.status, "prospect");
+    assert.equal(prospect.status, "selected-contacted");
+    assert.equal(prospect.contactedAt, "2026-08-02T22:15:00Z");
     assert.match(prospect.contactEmail, /^[^@\s]+@[^@\s]+\.[^@\s]+$/);
     assert.match(prospect.websiteUrl, /^https:\/\//);
     assert.equal(prospect.contactVerifiedAt, "2026-08-02");
+    assert.match(prospect.operatingRole, /primary|secondary|backup/);
+    assert.ok(prospect.evidence.includes("Gmail sent receipt"));
     assert.ok(prospect.productCandidates.length > 0);
     for (const productId of prospect.productCandidates) {
       assert.ok(PRODUCT_IDS.has(productId), `Unknown product candidate: ${productId}`);
@@ -62,16 +66,16 @@ test("uploaded vendor evidence remains a private inactive prospect quarantine", 
   assert.doesNotMatch(rawManifest, /contact@azhairvietnam\.com/i);
 
   assert.match(migration, /CREATE TABLE IF NOT EXISTS vendor_prospects/);
-  assert.match(migration, /status TEXT NOT NULL DEFAULT 'prospect'/);
+  assert.match(migration, /status TEXT NOT NULL DEFAULT 'selected_contacted'/);
   assert.match(migration, /INSERT INTO vendor_prospects/);
-  assert.doesNotMatch(migration, /INSERT INTO\s+vendors\b/i);
+  assert.match(migration, /TIMESTAMPTZ '2026-08-02 22:15:00\+00'/);
   assert.doesNotMatch(migration, /INSERT INTO\s+vendor_product_mappings\b/i);
   assert.doesNotMatch(migration, /INSERT INTO\s+vendor_fulfillment_groups\b/i);
   assert.doesNotMatch(migration, /INSERT INTO\s+vendor_dispatch_jobs\b/i);
   assert.doesNotMatch(migration, /DELETE FROM|TRUNCATE|DROP TABLE/i);
 });
 
-test("prospect artifacts contain no credentials or live activation fields", async () => {
+test("selected-vendor artifacts contain no credentials or live dispatch activation", async () => {
   const joined = `${await readFile("data/vendor-prospects.json", "utf8")}\n${await readFile(
     "migrations/004_vendor_prospects_seed.sql",
     "utf8",
@@ -86,6 +90,8 @@ test("prospect artifacts contain no credentials or live activation fields", asyn
     "password",
     "routingEnabled\": true",
     "dispatchAuthority\": true",
+    "INSERT INTO vendor_product_mappings",
+    "INSERT INTO vendor_dispatch_jobs",
   ]) {
     assert.doesNotMatch(joined, new RegExp(forbidden, "i"));
   }
