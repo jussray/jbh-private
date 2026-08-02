@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-02",
+  "business": "Juss Beautiful Hair",
+  "dispatchAuthority": false,
+  "promotionRule": "A prospect may be promoted only after owner review, verified terms, sample approval, and exact product/variant mapping.",
+  "sourceArtifacts": [
+    "jbh_vendor_emails.md",
+    "jussbeautifulhair_static 2.zip",
+    "jbh_stripe_links_TEMPLATE.md",
+    "payment_links.csv"
+  ],
+  "prospects": [
+    {
+      "code": "dropship-bundles",
+      "displayName": "Dropship Bundles",
+      "contactEmail": "Service@DropshipBundles.com",
+      "websiteUrl": "https://www.dropshipbundles.com",
+      "status": "prospect",
+      "contactVerifiedAt": "2026-08-02",
+      "productCandidates": [
+        "bundle-bodywave",
+        "bundle-deepwave",
+        "bundle-loosewave",
+        "bundle-kinkystraight",
+        "closure-4x4",
+        "closure-5x5",
+        "frontal-13x4",
+        "wig-glueless-bodywave",
+        "wig-13x4-straight",
+        "wig-upart-deepwave",
+        "wig-13x6-bob"
+      ],
+      "evidence": ["owner outreach kit", "official contact page"],
+      "notes": "US dropship candidate. Membership, catalog feed, fulfillment SLA, branding, and tracking sync require confirmation."
+    },
+    {
+      "code": "dropship-beauty",
+      "displayName": "Dropship Beauty",
+      "contactEmail": "service@dropshipbeauty.com",
+      "websiteUrl": "https://www.dropshipbeauty.com",
+      "status": "prospect",
+      "contactVerifiedAt": "2026-08-02",
+      "productCandidates": [
+        "bundle-bodywave",
+        "bundle-deepwave",
+        "bundle-loosewave",
+        "bundle-kinkystraight",
+        "closure-4x4",
+        "closure-5x5",
+        "frontal-13x4",
+        "wig-glueless-bodywave",
+        "wig-13x4-straight",
+        "wig-upart-deepwave",
+        "wig-13x6-bob",
+        "edge-control",
+        "lace-melt-spray",
+        "hair-oil"
+      ],
+      "evidence": ["legacy static routing map", "owner outreach kit", "official refund policy"],
+      "notes": "Legacy build assigned most hair products here. Current app, selected-catalog import, branding, and fulfillment terms require confirmation."
+    },
+    {
+      "code": "apohair",
+      "displayName": "APOHAIR",
+      "contactEmail": "wholesale@apohair.com",
+      "websiteUrl": "https://apohair.com",
+      "status": "prospect",
+      "contactVerifiedAt": "2026-08-02",
+      "productCandidates": [
+        "bundle-bodywave",
+        "bundle-bonestraight",
+        "bundle-deepwave",
+        "bundle-loosewave",
+        "bundle-kinkystraight",
+        "closure-4x4",
+        "closure-5x5",
+        "frontal-13x4",
+        "wig-glueless-bodywave",
+        "wig-13x4-straight",
+        "wig-upart-deepwave",
+        "wig-13x6-bob"
+      ],
+      "evidence": ["owner outreach kit", "official wholesale contact"],
+      "notes": "Vietnamese manufacturer candidate. Sample quality, MOQ, shipping, packaging, and claims process require approval."
+    },
+    {
+      "code": "5s-hair",
+      "displayName": "5S Hair Factory",
+      "contactEmail": "info@5shair.com",
+      "websiteUrl": "https://5shair.com",
+      "status": "prospect",
+      "contactVerifiedAt": "2026-08-02",
+      "productCandidates": [
+        "bundle-bonestraight",
+        "bundle-bodywave",
+        "bundle-deepwave",
+        "closure-4x4",
+        "closure-5x5"
+      ],
+      "evidence": ["owner outreach kit", "official contact page"],
+      "notes": "Bone-straight sample candidate. No customer fulfillment authority until sample and commercial review pass."
+    },
+    {
+      "code": "az-hair-vietnam",
+      "displayName": "AZ Hair Vietnam",
+      "contactEmail": "sale@azhairvietnam.com",
+      "websiteUrl": "https://www.azhairvietnam.com",
+      "status": "prospect",
+      "contactVerifiedAt": "2026-08-02",
+      "productCandidates": [
+        "bundle-bodywave",
+        "bundle-bonestraight",
+        "bundle-loosewave",
+        "closure-4x4",
+        "closure-5x5",
+        "frontal-13x4",
+        "wig-glueless-bodywave",
+        "wig-13x4-straight",
+        "wig-13x6-bob"
+      ],
+      "evidence": ["owner outreach kit", "official contact and FAQ pages"],
+      "notes": "The uploaded contact address was stale and was corrected to the current official sales address."
+    },
+    {
+      "code": "jaipur-hair",
+      "displayName": "Jaipur Hair",
+      "contactEmail": "info@jaipurhair.com",
+      "websiteUrl": "https://www.jaipurhair.com",
+      "status": "prospect",
+      "contactVerifiedAt": "2026-08-02",
+      "productCandidates": ["bundle-royal-indian"],
+      "evidence": ["legacy static routing map", "official contact page"],
+      "notes": "Legacy build assigned the Royal Raw Indian Temple bundle to this direct-factory candidate. Sample and duties review required."
+    },
+    {
+      "code": "indique",
+      "displayName": "Indique Hair",
+      "contactEmail": "retailers@indiquehair.com",
+      "websiteUrl": "https://www.indiquehair.com",
+      "status": "prospect",
+      "contactVerifiedAt": "2026-08-02",
+      "productCandidates": [
+        "bundle-royal-indian",
+        "closure-4x4",
+        "closure-5x5",
+        "frontal-13x4",
+        "wig-13x4-straight"
+      ],
+      "evidence": ["owner outreach kit", "official authorized retailer page"],
+      "notes": "Premium US retailer/private-label candidate. Current minimum investment and online-retailer eligibility require confirmation."
+    }
+  ]
+}
