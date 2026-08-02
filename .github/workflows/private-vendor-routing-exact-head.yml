@@ -7,6 +7,7 @@ on:
       - "admin/api/_lib/storage.ts"
       - "admin/api/_lib/vendor-routing.ts"
       - "admin/api/admin/vendor-routing.ts"
+      - "admin/api/internal/control-room-receipts.ts"
       - "admin/migrations/003_private_vendor_routing.sql"
       - "admin/tests/vendor-routing-contract.test.mjs"
       - "admin/package.json"
