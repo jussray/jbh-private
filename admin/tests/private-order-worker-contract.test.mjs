@@ -88,6 +88,11 @@ test("root scripts verify and deploy the exact Worker contract", () => {
     packageContract.scripts["test:worker"],
     "node --test admin/tests/private-order-worker-contract.test.mjs",
   );
+  assert.equal(
+    packageContract.scripts["dry-run:worker"],
+    "wrangler deploy --dry-run --outdir .wrangler/dry-run",
+  );
+  assert.match(packageContract.scripts["verify:worker"], /dry-run:worker/);
   assert.equal(packageContract.scripts.deploy, "wrangler deploy");
   assert.equal(packageContract.devDependencies.wrangler, "4.118.0");
 });
