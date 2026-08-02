@@ -1,6 +1,7 @@
--- Private vendor prospect quarantine derived from owner-provided sourcing artifacts.
--- This migration creates no active vendor, product mapping, fulfillment group,
--- dispatch job, external message, credential, or production order.
+-- Private vendor prospect evidence derived from owner-provided sourcing artifacts.
+-- These seven companies are now owner-selected and contacted. This migration
+-- still creates no active product mapping, fulfillment group, dispatch job,
+-- external purchase, credential, or production order.
 
 CREATE TABLE IF NOT EXISTS vendor_prospects (
   id SERIAL PRIMARY KEY,
@@ -8,10 +9,12 @@ CREATE TABLE IF NOT EXISTS vendor_prospects (
   display_name TEXT NOT NULL,
   contact_email TEXT NOT NULL,
   website_url TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'prospect'
+  status TEXT NOT NULL DEFAULT 'selected_contacted'
     CHECK (status IN (
-      'prospect',
-      'contacted',
+      'selected_contacted',
+      'replied',
+      'terms_review',
+      'sample_requested',
       'sample_ordered',
       'sample_approved',
       'rejected',
@@ -20,6 +23,7 @@ CREATE TABLE IF NOT EXISTS vendor_prospects (
   product_candidates_json JSONB NOT NULL DEFAULT '[]'::jsonb,
   evidence_json JSONB NOT NULL DEFAULT '[]'::jsonb,
   contacted_at TIMESTAMPTZ,
+  reply_received_at TIMESTAMPTZ,
   sample_ordered_at TIMESTAMPTZ,
   sample_approved_at TIMESTAMPTZ,
   rejected_at TIMESTAMPTZ,
@@ -44,16 +48,18 @@ INSERT INTO vendor_prospects (
   website_url,
   status,
   product_candidates_json,
-  evidence_json
+  evidence_json,
+  contacted_at
 )
 SELECT
   prospect.code,
   prospect.display_name,
   prospect.contact_email,
   prospect.website_url,
-  'prospect',
+  'selected_contacted',
   prospect.product_candidates_json,
-  prospect.evidence_json
+  prospect.evidence_json,
+  TIMESTAMPTZ '2026-08-02 22:15:00+00'
 FROM (
   VALUES
     (
@@ -62,15 +68,15 @@ FROM (
       'Service@DropshipBundles.com',
       'https://www.dropshipbundles.com',
       '["bundle-bodywave","bundle-deepwave","bundle-loosewave","bundle-kinkystraight","closure-4x4","closure-5x5","frontal-13x4","wig-glueless-bodywave","wig-13x4-straight","wig-upart-deepwave","wig-13x6-bob"]'::jsonb,
-      '["owner outreach kit","official contact verified 2026-08-02"]'::jsonb
+      '["owner-selected","owner outreach kit","official contact verified 2026-08-02","Gmail sent receipt"]'::jsonb
     ),
     (
       'dropship-beauty',
       'Dropship Beauty',
       'service@dropshipbeauty.com',
       'https://www.dropshipbeauty.com',
-      '["bundle-bodywave","bundle-deepwave","bundle-loosewave","bundle-kinkystraight","closure-4x4","closure-5x5","frontal-13x4","wig-glueless-bodywave","wig-13x4-straight","wig-upart-deepwave","wig-13x6-bob","edge-control","lace-melt-spray","hair-oil"]'::jsonb,
-      '["legacy static routing map","owner outreach kit","official contact verified 2026-08-02"]'::jsonb
+      '["edge-control","lace-melt-spray","hair-oil"]'::jsonb,
+      '["owner-selected","owner outreach kit","official contact verified 2026-08-02","Gmail sent receipt"]'::jsonb
     ),
     (
       'apohair',
@@ -78,15 +84,15 @@ FROM (
       'wholesale@apohair.com',
       'https://apohair.com',
       '["bundle-bodywave","bundle-bonestraight","bundle-deepwave","bundle-loosewave","bundle-kinkystraight","closure-4x4","closure-5x5","frontal-13x4","wig-glueless-bodywave","wig-13x4-straight","wig-upart-deepwave","wig-13x6-bob"]'::jsonb,
-      '["owner outreach kit","official contact verified 2026-08-02"]'::jsonb
+      '["owner-selected","owner outreach kit","official contact verified 2026-08-02","Gmail sent receipt"]'::jsonb
     ),
     (
       '5s-hair',
       '5S Hair Factory',
       'info@5shair.com',
       'https://5shair.com',
-      '["bundle-bonestraight","bundle-bodywave","bundle-deepwave","closure-4x4","closure-5x5"]'::jsonb,
-      '["owner outreach kit","official contact verified 2026-08-02"]'::jsonb
+      '["bundle-bonestraight"]'::jsonb,
+      '["owner-selected","owner outreach kit","official contact verified 2026-08-02","Gmail sent receipt"]'::jsonb
     ),
     (
       'az-hair-vietnam',
@@ -94,7 +100,7 @@ FROM (
       'sale@azhairvietnam.com',
       'https://www.azhairvietnam.com',
       '["bundle-bodywave","bundle-bonestraight","bundle-loosewave","closure-4x4","closure-5x5","frontal-13x4","wig-glueless-bodywave","wig-13x4-straight","wig-13x6-bob"]'::jsonb,
-      '["owner outreach kit","official contact corrected and verified 2026-08-02"]'::jsonb
+      '["owner-selected","owner outreach kit","official contact corrected and verified 2026-08-02","Gmail sent receipt"]'::jsonb
     ),
     (
       'jaipur-hair',
@@ -102,7 +108,7 @@ FROM (
       'info@jaipurhair.com',
       'https://www.jaipurhair.com',
       '["bundle-royal-indian"]'::jsonb,
-      '["legacy static routing map","official contact verified 2026-08-02"]'::jsonb
+      '["owner-selected","legacy static routing map","official contact verified 2026-08-02","Gmail sent receipt"]'::jsonb
     ),
     (
       'indique',
@@ -110,7 +116,7 @@ FROM (
       'retailers@indiquehair.com',
       'https://www.indiquehair.com',
       '["bundle-royal-indian","closure-4x4","closure-5x5","frontal-13x4","wig-13x4-straight"]'::jsonb,
-      '["owner outreach kit","official retailer contact verified 2026-08-02"]'::jsonb
+      '["owner-selected","owner outreach kit","official retailer contact verified 2026-08-02","Gmail sent receipt"]'::jsonb
     )
 ) AS prospect(
   code,
@@ -124,10 +130,15 @@ ON CONFLICT (code) DO UPDATE
 SET display_name = EXCLUDED.display_name,
     contact_email = EXCLUDED.contact_email,
     website_url = EXCLUDED.website_url,
+    status = CASE
+      WHEN vendor_prospects.status IN ('replied','terms_review','sample_requested','sample_ordered','sample_approved','rejected','promoted')
+        THEN vendor_prospects.status
+      ELSE 'selected_contacted'
+    END,
     product_candidates_json = EXCLUDED.product_candidates_json,
     evidence_json = EXCLUDED.evidence_json,
+    contacted_at = COALESCE(vendor_prospects.contacted_at, EXCLUDED.contacted_at),
     updated_at = NOW();
 
--- Promotion is deliberately absent. The owner-only application must explicitly
--- create an inactive/active vendor decision after terms and sample approval,
--- then create exact product + variant mappings in a separate audited action.
+-- Selection and contact are recorded. Promotion remains a separate owner-only
+-- decision after terms, samples, and exact product + variant mapping evidence.
