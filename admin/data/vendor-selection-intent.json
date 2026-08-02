@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "decidedAt": "2026-08-02",
+  "business": "Juss Beautiful Hair",
+  "selectionAuthority": "owner",
+  "dispatchAuthority": false,
+  "activationRule": "A selected vendor remains inactive until account ownership, commercial terms, sample quality, exact catalog variants, and fulfillment mechanics are verified.",
+  "vendors": [
+    {
+      "code": "dropship-bundles",
+      "displayName": "Dropship Bundles",
+      "role": "primary-us-hair-dropship",
+      "state": "selected-contacted",
+      "productAssignments": [
+        {"productId":"bundle-bodywave","role":"primary"},
+        {"productId":"bundle-deepwave","role":"primary"},
+        {"productId":"bundle-loosewave","role":"primary"},
+        {"productId":"bundle-kinkystraight","role":"primary"},
+        {"productId":"closure-4x4","role":"primary"},
+        {"productId":"closure-5x5","role":"primary"},
+        {"productId":"frontal-13x4","role":"primary"},
+        {"productId":"wig-glueless-bodywave","role":"primary"},
+        {"productId":"wig-13x4-straight","role":"primary"},
+        {"productId":"wig-upart-deepwave","role":"primary"},
+        {"productId":"wig-13x6-bob","role":"primary"}
+      ]
+    },
+    {
+      "code": "dropship-beauty",
+      "displayName": "Dropship Beauty",
+      "role": "primary-beauty-essentials",
+      "state": "selected-contacted",
+      "productAssignments": [
+        {"productId":"edge-control","role":"primary"},
+        {"productId":"lace-melt-spray","role":"primary"},
+        {"productId":"hair-oil","role":"primary"}
+      ]
+    },
+    {
+      "code": "5s-hair",
+      "displayName": "5S Hair Factory",
+      "role": "primary-bone-straight-factory",
+      "state": "selected-contacted",
+      "productAssignments": [
+        {"productId":"bundle-bonestraight","role":"primary"}
+      ]
+    },
+    {
+      "code": "jaipur-hair",
+      "displayName": "Jaipur Hair",
+      "role": "primary-indian-temple-hair",
+      "state": "selected-contacted",
+      "productAssignments": [
+        {"productId":"bundle-royal-indian","role":"primary"}
+      ]
+    },
+    {
+      "code": "apohair",
+      "displayName": "APOHAIR",
+      "role": "backup-vietnamese-factory",
+      "state": "selected-contacted",
+      "productAssignments": [
+        {"productId":"bundle-bodywave","role":"backup"},
+        {"productId":"bundle-bonestraight","role":"backup"},
+        {"productId":"bundle-deepwave","role":"backup"},
+        {"productId":"bundle-loosewave","role":"backup"},
+        {"productId":"bundle-kinkystraight","role":"backup"},
+        {"productId":"closure-4x4","role":"backup"},
+        {"productId":"closure-5x5","role":"backup"},
+        {"productId":"frontal-13x4","role":"backup"},
+        {"productId":"wig-glueless-bodywave","role":"backup"},
+        {"productId":"wig-13x4-straight","role":"backup"},
+        {"productId":"wig-upart-deepwave","role":"backup"},
+        {"productId":"wig-13x6-bob","role":"backup"}
+      ]
+    },
+    {
+      "code": "az-hair-vietnam",
+      "displayName": "AZ Hair Vietnam",
+      "role": "secondary-vietnamese-factory",
+      "state": "selected-contacted",
+      "productAssignments": [
+        {"productId":"bundle-bodywave","role":"secondary"},
+        {"productId":"bundle-bonestraight","role":"secondary"},
+        {"productId":"bundle-loosewave","role":"secondary"},
+        {"productId":"closure-4x4","role":"secondary"},
+        {"productId":"closure-5x5","role":"secondary"},
+        {"productId":"frontal-13x4","role":"secondary"},
+        {"productId":"wig-glueless-bodywave","role":"secondary"},
+        {"productId":"wig-13x4-straight","role":"secondary"},
+        {"productId":"wig-13x6-bob","role":"secondary"}
+      ]
+    },
+    {
+      "code": "indique",
+      "displayName": "Indique Hair",
+      "role": "premium-indian-backup",
+      "state": "selected-contacted",
+      "productAssignments": [
+        {"productId":"bundle-royal-indian","role":"backup"},
+        {"productId":"closure-4x4","role":"premium-backup"},
+        {"productId":"closure-5x5","role":"premium-backup"},
+        {"productId":"frontal-13x4","role":"premium-backup"},
+        {"productId":"wig-13x4-straight","role":"premium-backup"}
+      ]
+    }
+  ]
+}
