@@ -3,6 +3,10 @@ name: Paid Order Reconciliation Exact-Head Gate
 on:
   pull_request:
     paths:
+      - "package.json"
+      - "wrangler.toml"
+      - "admin/payment-worker/**"
+      - "admin/tests/private-order-worker-contract.test.mjs"
       - "admin/api/stripe/webhook.ts"
       - "admin/api/_lib/storage.ts"
       - "admin/shared/schema.ts"
@@ -34,7 +38,7 @@ jobs:
   verify:
     name: Verify private paid-order reconciliation
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Check out exact requested head
         uses: actions/checkout@v4
@@ -56,10 +60,18 @@ jobs:
           cache: npm
           cache-dependency-path: admin/package-lock.json
 
-      - name: Install locked dependencies
+      - name: Install private admin dependencies
         run: npm ci
 
-      - name: Run TypeScript
+      - name: Install private Worker dependencies
+        working-directory: .
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Verify private order Worker
+        working-directory: .
+        run: npm run verify:worker
+
+      - name: Run private admin TypeScript
         run: npm run check
 
       - name: Run focused reconciliation contracts
