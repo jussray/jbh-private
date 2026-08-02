@@ -7,6 +7,7 @@ import {
   timestamp,
   integer,
   boolean,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -62,6 +63,93 @@ export const insertOrderSchema = z.object({
 export type CheckoutOrderInput = z.infer<typeof insertOrderSchema>;
 export type InsertOrder = typeof orders.$inferInsert;
 export type Order = typeof orders.$inferSelect;
+
+// Private vendor registry. These rows must never be exposed by a public route.
+export const vendors = pgTable("vendors", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  fulfillmentEmail: text("fulfillment_email"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const vendorProductMappings = pgTable(
+  "vendor_product_mappings",
+  {
+    id: serial("id").primaryKey(),
+    productId: text("product_id").notNull(),
+    variant: text("variant").notNull(),
+    vendorId: integer("vendor_id")
+      .notNull()
+      .references(() => vendors.id, { onDelete: "restrict" }),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("vendor_product_mapping_unique").on(
+      table.productId,
+      table.variant,
+    ),
+  ],
+);
+
+export const vendorFulfillmentGroups = pgTable(
+  "vendor_fulfillment_groups",
+  {
+    id: serial("id").primaryKey(),
+    orderId: integer("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "restrict" }),
+    vendorId: integer("vendor_id")
+      .notNull()
+      .references(() => vendors.id, { onDelete: "restrict" }),
+    itemsJson: jsonb("items_json").notNull(),
+    status: text("status").notNull().default("pending_owner_approval"),
+    ownerApprovedAt: timestamp("owner_approved_at", { withTimezone: true }),
+    dispatchedAt: timestamp("dispatched_at", { withTimezone: true }),
+    trackingJson: jsonb("tracking_json"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("vendor_fulfillment_order_vendor_unique").on(
+      table.orderId,
+      table.vendorId,
+    ),
+  ],
+);
+
+export const vendorRoutingExceptions = pgTable(
+  "vendor_routing_exceptions",
+  {
+    id: serial("id").primaryKey(),
+    orderId: integer("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "restrict" }),
+    productId: text("product_id").notNull(),
+    variant: text("variant").notNull(),
+    reason: text("reason").notNull(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("vendor_routing_exception_unique").on(
+      table.orderId,
+      table.productId,
+      table.variant,
+      table.reason,
+    ),
+  ],
+);
+
+export type Vendor = typeof vendors.$inferSelect;
+export type InsertVendor = typeof vendors.$inferInsert;
+export type VendorProductMapping = typeof vendorProductMappings.$inferSelect;
+export type VendorFulfillmentGroup = typeof vendorFulfillmentGroups.$inferSelect;
+export type VendorRoutingException = typeof vendorRoutingExceptions.$inferSelect;
 
 // Newsletter signups
 export const newsletter = pgTable("newsletter", {
