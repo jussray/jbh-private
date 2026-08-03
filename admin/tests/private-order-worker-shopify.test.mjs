@@ -5,7 +5,7 @@ import test from "node:test";
 import {
   normalizePaidHairMatchOrder,
   verifyShopifyWebhookHmac,
-} from "../../.worker-test-dist/shopify-webhook.js";
+} from "../../.worker-test-dist/shopify-order-model.js";
 
 function paidHairMatchOrder(overrides = {}) {
   return {
