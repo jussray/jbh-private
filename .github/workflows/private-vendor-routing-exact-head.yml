@@ -14,9 +14,13 @@ on:
       - "admin/migrations/004_vendor_prospects_seed.sql"
       - "admin/migrations/005_vendor_reply_pipeline.sql"
       - "admin/migrations/006_selected_vendor_stack.sql"
+      - "admin/migrations/007_vendor_sample_readiness.sql"
+      - "admin/payment-worker/src/index.ts"
+      - "admin/payment-worker/src/vendor-sourcing.ts"
       - "admin/tests/vendor-routing-contract.test.mjs"
       - "admin/tests/vendor-prospect-seed-contract.test.mjs"
       - "admin/tests/vendor-selection-intent-contract.test.mjs"
+      - "admin/tests/vendor-sourcing-contract.test.mjs"
       - "admin/package.json"
       - ".github/workflows/private-vendor-routing-exact-head.yml"
   workflow_dispatch:
@@ -70,6 +74,9 @@ jobs:
 
       - name: Verify vendor routing, prospect, and selection contracts
         run: npm run verify:vendor-routing
+
+      - name: Verify vendor quote and sample readiness contract
+        run: node --test tests/vendor-sourcing-contract.test.mjs
 
       - name: Build private admin
         run: npm run build
