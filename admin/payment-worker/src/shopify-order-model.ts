@@ -52,6 +52,17 @@ const shopifyOrderSchema = z
     current_subtotal_price: moneyString.optional(),
     total_price: moneyString.optional(),
     current_total_price: moneyString.optional(),
+    note_attributes: z
+      .array(
+        z
+          .object({
+            name: z.string().trim().min(1).max(80),
+            value: z.string().trim().min(1).max(120),
+          })
+          .passthrough(),
+      )
+      .max(20)
+      .optional(),
     line_items: z
       .array(
         z
@@ -83,6 +94,25 @@ export interface NormalizedPaidService {
   total: number;
   currency: "USD";
 }
+
+interface HairMatchPreferences {
+  hairGoal: string;
+  preferredLength: string;
+  budget: string;
+  maintenance: string;
+}
+
+const allowedPreferences = {
+  hair_goal: new Set(["not-sure", "wig", "bundles", "closure-frontal"]),
+  preferred_length: new Set([
+    "not-sure",
+    "short-10-14",
+    "medium-16-20",
+    "long-22-plus",
+  ]),
+  budget: new Set(["not-sure", "under-150", "150-250", "250-plus"]),
+  maintenance: new Set(["not-sure", "low-maintenance", "flexible"]),
+};
 
 function cents(value: string): number {
   const amount = Number(value);
@@ -135,6 +165,34 @@ export function normalizedShopDomain(value: string): string | null {
   return domain;
 }
 
+function normalizePreferences(
+  noteAttributes: Array<{ name: string; value: string }> | undefined,
+): HairMatchPreferences {
+  const attributes = new Map(
+    (noteAttributes ?? []).map(({ name, value }) => [name, value]),
+  );
+  if (
+    attributes.get("source") !== "jussbeautifulhair.com" ||
+    attributes.get("offer") !== HAIR_MATCH_SERVICE_CODE
+  ) {
+    throw new ShopifyOrderModelError("hair_match_origin_mismatch");
+  }
+
+  for (const [key, allowed] of Object.entries(allowedPreferences)) {
+    const value = attributes.get(key);
+    if (!value || !allowed.has(value)) {
+      throw new ShopifyOrderModelError(`invalid_${key}`);
+    }
+  }
+
+  return {
+    hairGoal: attributes.get("hair_goal") as string,
+    preferredLength: attributes.get("preferred_length") as string,
+    budget: attributes.get("budget") as string,
+    maintenance: attributes.get("maintenance") as string,
+  };
+}
+
 export function normalizePaidHairMatchOrder(payload: unknown): NormalizedPaidService {
   const parsed = shopifyOrderSchema.safeParse(payload);
   if (!parsed.success) throw new ShopifyOrderModelError("invalid_shopify_order");
@@ -174,6 +232,7 @@ export function normalizePaidHairMatchOrder(payload: unknown): NormalizedPaidSer
     throw new ShopifyOrderModelError("shopify_total_mismatch");
   }
 
+  const preferences = normalizePreferences(order.note_attributes);
   const email = (
     order.email ??
     order.contact_email ??
@@ -216,6 +275,7 @@ export function normalizePaidHairMatchOrder(payload: unknown): NormalizedPaidSer
         sku: line.sku ?? null,
         quantity: 1,
         unitPrice: 25,
+        consultationPreferences: preferences,
         vendorRoutingStatus: "not_applicable",
       },
     ]),
