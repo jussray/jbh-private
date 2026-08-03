@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "../../.worker-test-dist",
+    "rootDir": "./src",
+    "declaration": false
+  },
+  "include": ["src/vendor-routing-model.ts"]
+}
