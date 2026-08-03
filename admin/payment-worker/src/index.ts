@@ -1,5 +1,6 @@
 import { handleAdminRequest } from "./admin-orders";
 import { type Env, isApprovedHost, json, text } from "./shared";
+import { handleShopifyWebhook } from "./shopify-webhook";
 import { handleWebhook } from "./webhook";
 
 export default {
@@ -13,6 +14,10 @@ export default {
 
     if (pathname === "/api/stripe/webhook") {
       return handleWebhook(request, env);
+    }
+
+    if (pathname === "/webhooks/shopify/orders-paid") {
+      return handleShopifyWebhook(request, env);
     }
 
     if (pathname.startsWith("/api/admin/")) {
