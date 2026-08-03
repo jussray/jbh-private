@@ -70,7 +70,7 @@ export const vendors = pgTable("vendors", {
   code: text("code").notNull().unique(),
   displayName: text("display_name").notNull(),
   fulfillmentEmail: text("fulfillment_email"),
-  active: boolean("active").notNull().default(true),
+  active: boolean("active").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
