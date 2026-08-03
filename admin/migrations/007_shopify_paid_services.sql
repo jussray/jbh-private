@@ -14,18 +14,26 @@ CREATE TABLE IF NOT EXISTS shopify_paid_services (
   customer_name TEXT,
   customer_phone TEXT,
   items_json JSONB NOT NULL,
-  subtotal DOUBLE PRECISION NOT NULL,
-  total DOUBLE PRECISION NOT NULL,
+  subtotal NUMERIC(12, 2) NOT NULL,
+  total NUMERIC(12, 2) NOT NULL,
   currency TEXT NOT NULL,
   payment_status TEXT NOT NULL DEFAULT 'paid',
   fulfillment_status TEXT NOT NULL DEFAULT 'service_pending',
   vendor_routing_status TEXT NOT NULL DEFAULT 'not_applicable',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT shopify_paid_services_service_check
+    CHECK (service_code = 'jbh-hair-match-v1'),
+  CONSTRAINT shopify_paid_services_topic_check
+    CHECK (topic = 'orders/paid'),
   CONSTRAINT shopify_paid_services_currency_check CHECK (currency = 'USD'),
   CONSTRAINT shopify_paid_services_payment_check CHECK (payment_status = 'paid'),
-  CONSTRAINT shopify_paid_services_vendor_check CHECK (vendor_routing_status = 'not_applicable'),
-  CONSTRAINT shopify_paid_services_amount_check CHECK (subtotal >= 0 AND total >= subtotal)
+  CONSTRAINT shopify_paid_services_fulfillment_check
+    CHECK (fulfillment_status = 'service_pending'),
+  CONSTRAINT shopify_paid_services_vendor_check
+    CHECK (vendor_routing_status = 'not_applicable'),
+  CONSTRAINT shopify_paid_services_amount_check
+    CHECK (subtotal = 25.00 AND total >= subtotal AND total <= subtotal + 25.00)
 );
 
 CREATE INDEX IF NOT EXISTS shopify_paid_services_created_at_idx
@@ -37,6 +45,9 @@ CREATE TABLE IF NOT EXISTS processed_shopify_events (
   processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS processed_shopify_events_order_idx
+  ON processed_shopify_events (shopify_order_id);
+
 CREATE TABLE IF NOT EXISTS failed_shopify_events (
   webhook_id TEXT PRIMARY KEY,
   topic TEXT NOT NULL,
@@ -44,5 +55,6 @@ CREATE TABLE IF NOT EXISTS failed_shopify_events (
   retry_count INTEGER NOT NULL DEFAULT 1,
   last_error TEXT,
   resolved BOOLEAN NOT NULL DEFAULT FALSE,
-  resolved_at TIMESTAMPTZ
+  resolved_at TIMESTAMPTZ,
+  CONSTRAINT failed_shopify_events_retry_check CHECK (retry_count >= 1)
 );
