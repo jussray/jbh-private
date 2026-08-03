@@ -8,5 +8,5 @@
     "rootDir": "./src",
     "declaration": false
   },
-  "include": ["src/vendor-routing-model.ts", "src/shopify-webhook.ts"]
+  "include": ["src/vendor-routing-model.ts", "src/shopify-order-model.ts"]
 }
