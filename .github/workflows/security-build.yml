@@ -8,6 +8,7 @@ on:
 
 env:
   NODE_VERSION: '20'
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
   
 jobs:
   verify:
@@ -17,7 +18,15 @@ jobs:
       run:
         working-directory: admin
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out immutable target head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+      - name: Record and verify immutable head
+        run: |
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
