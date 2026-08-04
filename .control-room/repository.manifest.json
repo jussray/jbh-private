@@ -1,0 +1,149 @@
+{
+  "schemaVersion": "1.0",
+  "projectId": "jbh-private",
+  "repository": {
+    "provider": "github",
+    "identifier": "jussray/jbh-private",
+    "defaultBranch": "main"
+  },
+  "verification": {
+    "requiredSignals": [
+      {
+        "id": "paid-order-exact-head",
+        "name": "Verify private paid-order reconciliation",
+        "required": true
+      }
+    ],
+    "testCatalog": [
+      {
+        "id": "admin-typecheck",
+        "name": "Private admin TypeScript",
+        "kind": "typecheck",
+        "signalId": "paid-order-exact-head",
+        "required": true,
+        "command": "npm --prefix admin run check",
+        "workflow": ".github/workflows/paid-order-reconciliation-exact-head.yml"
+      },
+      {
+        "id": "paid-order-contracts",
+        "name": "Paid-order reconciliation contracts",
+        "kind": "contract",
+        "signalId": "paid-order-exact-head",
+        "required": true,
+        "command": "node --test admin/tests/paid-order-reconciliation-contract.test.mjs admin/tests/paid-order-migration-preflight-contract.test.mjs",
+        "workflow": ".github/workflows/paid-order-reconciliation-exact-head.yml"
+      },
+      {
+        "id": "admin-build",
+        "name": "Private admin production build",
+        "kind": "build",
+        "signalId": "paid-order-exact-head",
+        "required": true,
+        "command": "npm --prefix admin run build",
+        "workflow": ".github/workflows/paid-order-reconciliation-exact-head.yml"
+      }
+    ]
+  },
+  "capabilities": [
+    {
+      "id": "private-paid-order-reconciliation",
+      "description": "Validates paid Stripe sessions, migration readiness, exact-head TypeScript, focused reconciliation contracts, and the private admin build without exposing private commerce data.",
+      "status": "active",
+      "evidencePaths": [
+        "admin/api/stripe/webhook.ts",
+        "admin/api/_lib/storage.ts",
+        "admin/shared/schema.ts",
+        "admin/migrations/002_unique_stripe_session.sql",
+        "admin/scripts/preflight-paid-order-migration.mjs",
+        "admin/tests/paid-order-reconciliation-contract.test.mjs",
+        "admin/tests/paid-order-migration-preflight-contract.test.mjs",
+        ".github/workflows/paid-order-reconciliation-exact-head.yml"
+      ],
+      "requiredSignals": [
+        "paid-order-exact-head"
+      ],
+      "usageAssertions": [
+        {
+          "id": "workflow-runs-focused-contracts",
+          "path": ".github/workflows/paid-order-reconciliation-exact-head.yml",
+          "marker": "paid-order-reconciliation-contract.test.mjs",
+          "description": "The exact-head workflow executes the paid-order reconciliation contract."
+        },
+        {
+          "id": "workflow-runs-private-build",
+          "path": ".github/workflows/paid-order-reconciliation-exact-head.yml",
+          "marker": "npm run build",
+          "description": "The same exact head must build the private admin surface."
+        }
+      ]
+    },
+    {
+      "id": "repo-local-private-test-control-room",
+      "description": "Keeps the complete private-operations test catalog inside the repository and exports only sanitized check summaries to Founder Control Room.",
+      "status": "active",
+      "evidencePaths": [
+        "control-room.manifest.json",
+        ".control-room/repository.manifest.json",
+        "admin/package.json"
+      ],
+      "requiredSignals": [
+        "paid-order-exact-head"
+      ],
+      "usageAssertions": [
+        {
+          "id": "local-manifest-denies-private-content",
+          "path": "control-room.manifest.json",
+          "marker": "\"privateContentAllowed\": false",
+          "description": "The local control room refuses private commerce content in portfolio evidence."
+        },
+        {
+          "id": "local-manifest-catalogs-playwright",
+          "path": "control-room.manifest.json",
+          "marker": "\"id\": \"admin-playwright\"",
+          "description": "The local control room includes rendered verification even though it is not collapsed into the paid-order provider check."
+        }
+      ]
+    }
+  ],
+  "buildAssist": {
+    "enabled": true,
+    "preferredBuilder": "codex",
+    "riskLevel": "high"
+  },
+  "privacy": {
+    "allowlistedPacketFields": [
+      "projectId",
+      "repository.provider",
+      "repository.identifier",
+      "commitSha",
+      "branch",
+      "manifestHash",
+      "generatedAt",
+      "runner.provider",
+      "runner.runId",
+      "runner.detailsUrl",
+      "checks.id",
+      "checks.name",
+      "checks.required",
+      "checks.status",
+      "checks.detailsUrl",
+      "capabilities.id",
+      "capabilities.claimedStatus",
+      "capabilities.observedStatus",
+      "capabilities.evidencePaths",
+      "capabilities.usageAssertionIds",
+      "capabilities.failedUsageAssertionIds",
+      "capabilities.reason"
+    ],
+    "forbiddenData": [
+      "vendor identities or communications",
+      "supplier pricing or sourcing terms",
+      "product costs or margins",
+      "customer names, emails, addresses, or order contents",
+      "Stripe payloads, sessions, or secrets",
+      "database credentials or connection strings",
+      "raw private logs",
+      "usage assertion marker text in runner packets"
+    ]
+  }
+}
