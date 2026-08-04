@@ -2,6 +2,7 @@ import {readFile} from 'node:fs/promises';
 
 const files = {
   operator: await readFile(new URL('../skills/juss-beautiful-hair-private/SKILL.md', import.meta.url), 'utf8'),
+  agentOperator: await readFile(new URL('../.agents/skills/jbh-private-operator/SKILL.md', import.meta.url), 'utf8'),
   sales: await readFile(new URL('../skills/sales/SKILL.md', import.meta.url), 'utf8'),
   devil: await readFile(new URL('../skills/devil/SKILL.md', import.meta.url), 'utf8'),
   agents: await readFile(new URL('../AGENTS.md', import.meta.url), 'utf8'),
@@ -22,11 +23,24 @@ const requireText = (label, source, expected) => {
 for (const value of [
   'name: juss-beautiful-hair-private', 'version: 1.0.0', 'review_cadence: quarterly',
   '/garyvee lindymode redteam l99 redteam ooda', '## Who', '## What', '## When',
-  '## Where', '## Why', '## How', '## Product and data boundary',
+  '## Where', '## Why', '## Exact-fix doctrine', '## How', '## Product and data boundary',
   '## Vendor decision contract', '## Authority', '## Evidence',
   '## Failure and rollback', '## Ten-year maintenance contract', '## Definition of done',
   'steps: null', 'No AI may automatically contact, approve, purchase from, or publish a vendor.',
+  'exact evidence-backed fix', 'full correctness',
 ]) requireText('private operator skill', files.operator, value);
+
+for (const value of [
+  '## Exact-fix doctrine',
+  'exact evidence-backed implementation',
+  'full correctness boundary',
+]) requireText('private agent operator', files.agentOperator, value);
+
+for (const value of [
+  '## Exact-fix doctrine',
+  'exact evidence-backed fix',
+  'full correctness boundary',
+]) requireText('AGENTS exact-fix contract', files.agents, value);
 
 for (const [label, source, metadata] of [
   ['sales', files.sales, ['name: sales', 'version: 1.0.0', 'status: active', 'scope: jbh-private']],
@@ -58,8 +72,16 @@ for (const [label, source, phrase] of [
 ]) requireText(label, source, phrase);
 
 const all = Object.values(files).join('\n').toLowerCase();
-for (const forbidden of ['guaranteed conversion', 'bypass founder approval', 'automatic outreach without approval']) {
-  if (all.includes(forbidden)) failures.push(`unsafe contract text: ${forbidden}`);
+for (const forbidden of [
+  'guaranteed conversion',
+  'bypass founder approval',
+  'automatic outreach without approval',
+  'the smallest safe implementation',
+  'choose the smallest reversible action',
+  'make the smallest coherent, reversible change',
+  'act minimally, verify, and loop',
+]) {
+  if (all.includes(forbidden)) failures.push(`unsafe or partial-fix contract text: ${forbidden}`);
 }
 
 if (failures.length) {

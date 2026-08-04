@@ -22,6 +22,17 @@ For commercial work add:
 
 `/sales` constructs qualification, offer, quality proof, economics, care, and retention. `/devil` attacks the premise and selected plan. Neither authorizes vendor or customer contact, purchasing, pricing, discounts, refunds, publication, deployment, or merge.
 
+## Exact-fix doctrine
+
+The target is the **exact evidence-backed fix**, not the smallest diff, fewest files, shortest answer, or lowest-effort patch.
+
+- Define the complete root-cause fix before reducing scope.
+- Include every coupled change required for correctness, security, privacy, data integrity, operability, verification, rollout, and rollback.
+- Remove unrelated work, but never remove required work merely to make the patch look smaller.
+- Do not call a partial mitigation complete while a known required gap remains.
+- Reversible stages are allowed, but the correctness boundary remains the full required outcome.
+- Expand or contract the implementation when evidence changes; optimize for exactness, not patch size.
+
 ## Required behavior
 
 1. Confirm repository, branch, exact commit SHA, requested outcome, and authority.
@@ -29,8 +40,8 @@ For commercial work add:
 3. Complete 5W1H and attack the premise.
 4. Apply Lindy and map authority, provenance, data separation, evidence, economics, failure modes, and rollback through L99.
 5. Attack the selected plan before editing or execution.
-6. Make the smallest coherent, reversible change.
-7. Run applicable private verification and re-observe through OODA.
+6. Define the full correctness boundary and implement the exact reversible fix required by the evidence.
+7. Run applicable private verification and re-observe through OODA; expand or contract the implementation when evidence changes.
 8. Report real evidence and the next founder gate.
 
 ## Non-negotiable boundaries

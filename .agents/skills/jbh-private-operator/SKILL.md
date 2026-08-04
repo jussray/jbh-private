@@ -13,9 +13,13 @@ Before planning, editing, or claiming completion, establish and state:
 - **Where** — the exact repository, branch, environment, runtime, route, service, data store, and provider boundary.
 - **When** — the current lifecycle or release state, required ordering, timing constraint, and rollback window.
 - **Why** — the user problem and verified evidence that justify the work.
-- **How** — the smallest safe implementation, required permissions, verification evidence, rollout, and rollback.
+- **How** — the exact evidence-backed implementation, required permissions, verification evidence, rollout, and rollback.
 
 Inspect repository and runtime truth for unknowns. Ask only when a missing answer materially changes the safe solution or authority. Re-run 5W1H after red-team/OODA findings change the plan. Finish by mapping the result, evidence, remaining blocker, and next owner back to all six questions.
+
+## Exact-fix doctrine
+
+Define and implement the complete fix required by the evidence. Do not optimize for the smallest diff, fewest files, shortest response, or lowest effort when that leaves a known requirement unresolved. Remove unrelated scope only after the full correctness boundary is understood. Reversible stages are allowed; partial correctness presented as completion is not.
 
 ## Repository identity
 
@@ -38,10 +42,11 @@ This is a reviewed orientation, not permanent truth. Re-read the current README,
 1. Observe the exact branch, changed files, existing implementation, data boundaries, and available evidence.
 2. Complete 5W1H and identify any authority or safety gap.
 3. Red-team the premise, privacy, security, misuse, failure modes, and rollback.
-4. Choose the smallest reversible action that preserves existing work.
-5. Implement only within the confirmed repository role.
+4. Define the full correctness boundary and choose the exact reversible implementation that satisfies it.
+5. Implement only within the confirmed repository role, including every coupled change required for correctness and verification.
 6. Run proportionate checks on the exact head.
-7. Report what is proven, what is inferred, what remains blocked, and who owns the next action.
+7. Re-observe through OODA; expand or contract the implementation when evidence changes.
+8. Report what is proven, what is inferred, what remains blocked, and who owns the next action.
 
 ## Verification
 
