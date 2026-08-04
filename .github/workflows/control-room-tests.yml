@@ -1,0 +1,68 @@
+name: Private Operations Control Room Tests
+
+on:
+  pull_request:
+    paths:
+      - "control-room.manifest.json"
+      - ".control-room/repository.manifest.json"
+      - "scripts/verify-control-room-tests.mjs"
+      - "admin/package.json"
+      - "admin/tests/**"
+      - "admin/scripts/**"
+      - ".github/workflows/control-room-tests.yml"
+      - ".github/workflows/paid-order-reconciliation-exact-head.yml"
+  push:
+    branches: [main]
+    paths:
+      - "control-room.manifest.json"
+      - ".control-room/repository.manifest.json"
+      - "scripts/verify-control-room-tests.mjs"
+      - "admin/package.json"
+      - "admin/tests/**"
+      - "admin/scripts/**"
+      - ".github/workflows/control-room-tests.yml"
+      - ".github/workflows/paid-order-reconciliation-exact-head.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  CONTROL_ROOM_TEST_REPORT_PATH: artifacts/control-room-tests.json
+
+jobs:
+  catalog:
+    name: Verify private operations test catalog
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    steps:
+      - name: Check out exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Validate local and federated control-room test contracts
+        run: node scripts/verify-control-room-tests.mjs
+
+      - name: Retain sanitized test catalog receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jbh-private-control-room-tests-${{ env.EXPECTED_HEAD_SHA }}
+          path: artifacts/control-room-tests.json
+          if-no-files-found: error
+          retention-days: 14
