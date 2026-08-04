@@ -39,6 +39,10 @@ Invoke it for vendor research, sourcing records, product evidence, internal admi
 
 The private repository protects the operational advantage behind the hair brand: supplier knowledge, quality proof, care discipline, and evidence-based expansion. Story improves meaning; it never weakens private sourcing controls.
 
+## Exact-fix doctrine
+
+The objective is the exact evidence-backed fix. Do not optimize for the smallest patch, fewest files, shortest response, or lowest effort when that leaves a known requirement unresolved. First define the full correctness, privacy, security, operational, verification, rollout, and rollback boundary. Then remove only unrelated work. Reversible stages are allowed; partial correctness presented as completion is not.
+
 ## How
 
 Use the exact stack:
@@ -52,7 +56,8 @@ Use the exact stack:
 3. Red Team the premise: determine whether a product, vendor, automation, or public claim should exist.
 4. Map vendor provenance, landed cost, quality evidence, fulfillment, customer care, privacy, authority, and rollback.
 5. Red Team the plan for counterfeit risk, weak samples, hidden costs, supplier lock-in, data leakage, and catalog contamination.
-6. Act minimally, verify, and loop.
+6. Define and implement the full evidence-backed fix, including every coupled change required for correctness and verification.
+7. Re-observe through OODA and expand or contract the implementation when evidence changes.
 
 ## Product and data boundary
 
@@ -118,4 +123,4 @@ Fail closed if supplier evidence is weak, private data may leak, the product bou
 
 ## Definition of done
 
-Work is complete only when the exact final head passes every applicable check, private and public boundaries remain intact, founder-gated actions remain pending or explicitly approved, rollback is documented, and unresolved risks are zero or founder-accepted.
+Work is complete only when the exact final head passes every applicable check, the full required outcome is satisfied, private and public boundaries remain intact, founder-gated actions remain pending or explicitly approved, rollback is documented, and unresolved risks are zero or founder-accepted.
