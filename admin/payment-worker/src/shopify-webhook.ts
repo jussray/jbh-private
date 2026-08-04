@@ -25,25 +25,47 @@ function shopifyErrorCode(error: unknown): string {
   return safeErrorCode(error);
 }
 
-async function alreadyProcessed(sql: Sql, webhookId: string): Promise<boolean> {
+async function processedOrderId(
+  sql: Sql,
+  webhookId: string,
+): Promise<string | null> {
   const rows = (await sql`
-    SELECT webhook_id
+    SELECT shopify_order_id
     FROM processed_shopify_events
     WHERE webhook_id = ${webhookId}
     LIMIT 1
-  `) as unknown as Array<{ webhook_id: string }>;
-  return Boolean(rows[0]);
+  `) as unknown as Array<{ shopify_order_id: string }>;
+  return rows[0]?.shopify_order_id ?? null;
 }
 
 async function markProcessed(
   sql: Sql,
   webhookId: string,
   shopifyOrderId: string,
-): Promise<void> {
-  await sql`
+): Promise<boolean> {
+  const created = (await sql`
     INSERT INTO processed_shopify_events (webhook_id, shopify_order_id)
     VALUES (${webhookId}, ${shopifyOrderId})
     ON CONFLICT (webhook_id) DO NOTHING
+    RETURNING shopify_order_id
+  `) as unknown as Array<{ shopify_order_id: string }>;
+
+  if (created[0]) return false;
+
+  const existingOrderId = await processedOrderId(sql, webhookId);
+  if (existingOrderId !== shopifyOrderId) {
+    throw new SafeProcessingError("existing_shopify_webhook_mismatch");
+  }
+  return true;
+}
+
+async function resolveFailure(sql: Sql, webhookId: string): Promise<void> {
+  await sql`
+    UPDATE failed_shopify_events
+    SET resolved = true,
+        resolved_at = COALESCE(resolved_at, NOW())
+    WHERE webhook_id = ${webhookId}
+      AND resolved = false
   `;
 }
 
@@ -99,28 +121,28 @@ async function storePaidService(
 
   if (created[0]) return;
 
-  const existing = (await sql`
-    SELECT service_code, subtotal, currency, payment_status,
-           vendor_routing_status
+  const exactMatch = (await sql`
+    SELECT id
     FROM shopify_paid_services
     WHERE shopify_order_id = ${order.shopifyOrderId}
+      AND shopify_order_gid IS NOT DISTINCT FROM ${order.shopifyOrderGid}
+      AND shop_domain = ${shopDomain}
+      AND topic = ${topic}
+      AND service_code = ${HAIR_MATCH_SERVICE_CODE}
+      AND customer_email = ${order.customerEmail}
+      AND customer_name IS NOT DISTINCT FROM ${order.customerName}
+      AND customer_phone IS NOT DISTINCT FROM ${order.customerPhone}
+      AND items_json = ${order.itemsJson}::jsonb
+      AND subtotal = ${order.subtotal}
+      AND total = ${order.total}
+      AND currency = ${order.currency}
+      AND payment_status = 'paid'
+      AND fulfillment_status = 'service_pending'
+      AND vendor_routing_status = 'not_applicable'
     LIMIT 1
-  `) as unknown as Array<{
-    service_code: string;
-    subtotal: number | string;
-    currency: string;
-    payment_status: string;
-    vendor_routing_status: string;
-  }>;
-  const row = existing[0];
-  if (
-    !row ||
-    row.service_code !== HAIR_MATCH_SERVICE_CODE ||
-    Number(row.subtotal) !== order.subtotal ||
-    row.currency !== "USD" ||
-    row.payment_status !== "paid" ||
-    row.vendor_routing_status !== "not_applicable"
-  ) {
+  `) as unknown as Array<{ id: number }>;
+
+  if (!exactMatch[0]) {
     throw new SafeProcessingError("existing_shopify_order_mismatch");
   }
 }
@@ -167,10 +189,6 @@ export async function handleShopifyWebhook(
 
   const sql = neon(env.DATABASE_URL);
   try {
-    if (await alreadyProcessed(sql, webhookId)) {
-      return json({ received: true, duplicate: true });
-    }
-
     let payload: unknown;
     try {
       payload = JSON.parse(rawBody);
@@ -179,9 +197,19 @@ export async function handleShopifyWebhook(
     }
 
     const order = normalizePaidHairMatchOrder(payload);
+    const existingOrderId = await processedOrderId(sql, webhookId);
+    if (existingOrderId) {
+      if (existingOrderId !== order.shopifyOrderId) {
+        throw new SafeProcessingError("existing_shopify_webhook_mismatch");
+      }
+      await resolveFailure(sql, webhookId);
+      return json({ received: true, duplicate: true });
+    }
+
     await storePaidService(sql, order, webhookId, shopDomain, topic);
-    await markProcessed(sql, webhookId, order.shopifyOrderId);
-    return json({ received: true });
+    const duplicate = await markProcessed(sql, webhookId, order.shopifyOrderId);
+    await resolveFailure(sql, webhookId);
+    return json({ received: true, duplicate });
   } catch (error) {
     await writeToDlq(sql, webhookId, topic, error);
     console.error(
