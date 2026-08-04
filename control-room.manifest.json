@@ -67,7 +67,7 @@
         "kind": "deployment",
         "command": "npm --prefix admin run preflight:paid-order-migration",
         "required": true,
-        "status": "active",
+        "status": "founder-gated",
         "evidencePaths": [
           "admin/scripts/preflight-paid-order-migration.mjs",
           ".github/workflows/paid-order-production-preflight.yml"
