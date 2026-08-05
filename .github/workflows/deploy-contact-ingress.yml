@@ -1,0 +1,172 @@
+name: Deploy Private Contact Ingress
+
+on:
+  workflow_dispatch:
+    inputs:
+      approval_phrase:
+        description: "Type exactly DEPLOY_JBH_CONTACT_INGRESS"
+        required: true
+        type: string
+      route_pattern:
+        description: "Cloudflare route, for example contact.example.com/*"
+        required: true
+        type: string
+      zone_name:
+        description: "Cloudflare zone containing the route hostname"
+        required: true
+        type: string
+      allowed_origins:
+        description: "Comma-separated exact HTTPS storefront origins"
+        required: true
+        type: string
+      allowed_hostnames:
+        description: "Comma-separated exact Turnstile storefront hostnames"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-jbh-contact-ingress-production
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  deploy:
+    name: Verify and deploy existing private contact Worker
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
+      APPROVAL_PHRASE: ${{ inputs.approval_phrase }}
+      CONTACT_ROUTE_PATTERN: ${{ inputs.route_pattern }}
+      CONTACT_ZONE_NAME: ${{ inputs.zone_name }}
+      ALLOWED_CONTACT_ORIGINS: ${{ inputs.allowed_origins }}
+      ALLOWED_CONTACT_HOSTNAMES: ${{ inputs.allowed_hostnames }}
+      CONTACT_WRANGLER_CONFIG: contact-worker/wrangler.production.json
+    steps:
+      - name: Require main and explicit deployment approval
+        shell: bash
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$APPROVAL_PHRASE" = "DEPLOY_JBH_CONTACT_INGRESS"
+
+      - name: Validate required bindings without printing values
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$DATABASE_URL"
+          test -n "$TURNSTILE_SECRET_KEY"
+          test -n "$CONTACT_ROUTE_PATTERN"
+          test -n "$CONTACT_ZONE_NAME"
+          test -n "$ALLOWED_CONTACT_ORIGINS"
+          test -n "$ALLOWED_CONTACT_HOSTNAMES"
+
+      - name: Check out exact main head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Record exact deployment head
+        shell: bash
+        run: |
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$GITHUB_SHA" "$actual"
+          test "$actual" = "$GITHUB_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify private ingress contract
+        run: npm run verify:contact-ingress
+
+      - name: Validate route, origins, and Turnstile hostnames
+        shell: bash
+        run: |
+          node --input-type=commonjs <<'NODE'
+          const route = process.env.CONTACT_ROUTE_PATTERN || '';
+          const zone = process.env.CONTACT_ZONE_NAME || '';
+          const origins = (process.env.ALLOWED_CONTACT_ORIGINS || '').split(',').map(v => v.trim()).filter(Boolean);
+          const hostnames = (process.env.ALLOWED_CONTACT_HOSTNAMES || '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
+          if (!/^[a-z0-9.-]+\/\*$/.test(route)) throw new Error('invalid_route_pattern');
+          if (!/^[a-z0-9.-]+$/.test(zone)) throw new Error('invalid_zone_name');
+          const routeHost = route.slice(0, -2);
+          if (routeHost !== zone && !routeHost.endsWith(`.${zone}`)) throw new Error('route_outside_zone');
+          if (origins.length === 0 || hostnames.length === 0) throw new Error('empty_allowlist');
+
+          const originHostnames = [];
+          for (const origin of origins) {
+            const url = new URL(origin);
+            if (url.protocol !== 'https:' || url.origin !== origin || origin.includes('*')) {
+              throw new Error('invalid_allowed_origin');
+            }
+            originHostnames.push(url.hostname.toLowerCase());
+          }
+
+          for (const hostname of hostnames) {
+            if (!/^[a-z0-9.-]+$/.test(hostname) || hostname.includes('*')) {
+              throw new Error('invalid_allowed_hostname');
+            }
+          }
+
+          const originSet = new Set(originHostnames);
+          const hostnameSet = new Set(hostnames);
+          for (const hostname of originSet) {
+            if (!hostnameSet.has(hostname)) throw new Error('origin_hostname_not_turnstile_allowed');
+          }
+          for (const hostname of hostnameSet) {
+            if (!originSet.has(hostname)) throw new Error('turnstile_hostname_without_allowed_origin');
+          }
+          NODE
+
+      - name: Render immutable production Wrangler config and secret file
+        shell: bash
+        run: |
+          node --input-type=commonjs <<'NODE'
+          const fs = require('node:fs');
+          const source = JSON.parse(fs.readFileSync('contact-worker/wrangler.jsonc', 'utf8'));
+          source.routes = [{
+            pattern: process.env.CONTACT_ROUTE_PATTERN,
+            zone_name: process.env.CONTACT_ZONE_NAME,
+          }];
+          source.vars = {
+            ALLOWED_CONTACT_ORIGINS: process.env.ALLOWED_CONTACT_ORIGINS,
+            ALLOWED_CONTACT_HOSTNAMES: process.env.ALLOWED_CONTACT_HOSTNAMES,
+          };
+          fs.writeFileSync(process.env.CONTACT_WRANGLER_CONFIG, JSON.stringify(source, null, 2));
+
+          const secrets = {
+            DATABASE_URL: process.env.DATABASE_URL,
+            TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
+          };
+          const required = ['DATABASE_URL', 'TURNSTILE_SECRET_KEY'];
+          for (const key of required) {
+            if (!secrets[key]) throw new Error(`missing_${key.toLowerCase()}`);
+          }
+          fs.writeFileSync(process.env.RUNNER_TEMP + '/contact-secrets.json', JSON.stringify(secrets));
+          NODE
+
+      - name: Prove Worker service already exists
+        run: npx wrangler deployments list --config "$CONTACT_WRANGLER_CONFIG"
+
+      - name: Deploy exact verified code, routes, variables, and secrets together
+        run: npx wrangler deploy --strict --secrets-file "$RUNNER_TEMP/contact-secrets.json" --config "$CONTACT_WRANGLER_CONFIG"
+
+      - name: Remove generated config and temporary secret file
+        if: always()
+        shell: bash
+        run: rm -f "$CONTACT_WRANGLER_CONFIG" "$RUNNER_TEMP/contact-secrets.json"
