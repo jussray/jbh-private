@@ -12,6 +12,7 @@
     "verify:cookies": "node ../scripts/verify-cookie-contract.mjs",
     "verify:mcp": "node ../scripts/verify-mcp-config.mjs",
     "verify:ai-skills": "node ../scripts/verify-ai-skill-contract.mjs",
+    "verify:vendor-routing": "node --test tests/vendor-routing-contract.test.mjs tests/vendor-prospect-seed-contract.test.mjs tests/vendor-selection-intent-contract.test.mjs",
     "verify:playwright": "node scripts/playwright-verify.mjs"
   },
   "dependencies": {

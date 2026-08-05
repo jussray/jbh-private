@@ -1,0 +1,85 @@
+name: Private Vendor Routing Exact-Head Gate
+
+on:
+  pull_request:
+    paths:
+      - "admin/shared/schema.ts"
+      - "admin/api/_lib/storage.ts"
+      - "admin/api/_lib/vendor-routing.ts"
+      - "admin/api/admin/vendor-routing.ts"
+      - "admin/api/internal/control-room-receipts.ts"
+      - "admin/data/vendor-prospects.json"
+      - "admin/data/vendor-selection-intent.json"
+      - "admin/migrations/003_private_vendor_routing.sql"
+      - "admin/migrations/004_vendor_prospects_seed.sql"
+      - "admin/migrations/005_vendor_reply_pipeline.sql"
+      - "admin/migrations/006_selected_vendor_stack.sql"
+      - "admin/migrations/007_vendor_sample_readiness.sql"
+      - "admin/payment-worker/src/index.ts"
+      - "admin/payment-worker/src/vendor-sourcing.ts"
+      - "admin/tests/vendor-routing-contract.test.mjs"
+      - "admin/tests/vendor-prospect-seed-contract.test.mjs"
+      - "admin/tests/vendor-selection-intent-contract.test.mjs"
+      - "admin/tests/vendor-sourcing-contract.test.mjs"
+      - "admin/package.json"
+      - ".github/workflows/private-vendor-routing-exact-head.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-vendor-routing-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+defaults:
+  run:
+    working-directory: admin
+
+jobs:
+  verify:
+    name: Verify private vendor routing and owner boundary
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact requested head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+
+      - name: Record and verify exact head
+        working-directory: .
+        shell: bash
+        run: |
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Typecheck private admin and APIs
+        run: npm run check
+
+      - name: Verify vendor routing, prospect, and selection contracts
+        run: npm run verify:vendor-routing
+
+      - name: Verify vendor quote and sample readiness contract
+        run: node --test tests/vendor-sourcing-contract.test.mjs
+
+      - name: Build private admin
+        run: npm run build
+
+      - name: Verify owner UI desktop and mobile
+        run: npm run verify:playwright
