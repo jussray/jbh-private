@@ -8,6 +8,8 @@ export interface Env {
   CF_ACCESS_TEAM_DOMAIN: string;
   CF_ACCESS_AUD: string;
   CF_ACCESS_ALLOWED_EMAILS: string;
+  SHOPIFY_WEBHOOK_SECRET: string;
+  SHOPIFY_SHOP_DOMAIN: string;
 }
 
 export class SafeProcessingError extends Error {
