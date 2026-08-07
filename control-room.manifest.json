@@ -1,0 +1,146 @@
+{
+  "schemaVersion": "1.0",
+  "repository": "jussray/jbh-private",
+  "portfolioHub": "jussray/founder-control-room",
+  "role": "runtime-control-room",
+  "authority": {
+    "sourceOfTruth": "Private operations main, exact-head paid-order reconciliation, admin build evidence, and founder-approved migration gates",
+    "portfolioMode": "sanitized-read-only-observer",
+    "productionMutation": "separate-founder-gate"
+  },
+  "controlRoom": {
+    "localSurface": true,
+    "surfaces": [
+      "control-room.manifest.json",
+      ".control-room/repository.manifest.json",
+      ".github/workflows/paid-order-reconciliation-exact-head.yml",
+      "admin/package.json"
+    ],
+    "privateContentAllowed": false
+  },
+  "tests": {
+    "authority": "repo-native",
+    "aggregation": "sanitized-check-summary-to-founder-control-room",
+    "rawLogsAllowed": false,
+    "catalog": [
+      {
+        "id": "admin-typecheck",
+        "name": "Private admin TypeScript",
+        "kind": "typecheck",
+        "command": "npm --prefix admin run check",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/package.json",
+          "admin/tsconfig.json",
+          ".github/workflows/paid-order-reconciliation-exact-head.yml"
+        ]
+      },
+      {
+        "id": "paid-order-contracts",
+        "name": "Paid-order reconciliation contracts",
+        "kind": "contract",
+        "command": "node --test admin/tests/paid-order-reconciliation-contract.test.mjs admin/tests/paid-order-migration-preflight-contract.test.mjs",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/tests/paid-order-reconciliation-contract.test.mjs",
+          "admin/tests/paid-order-migration-preflight-contract.test.mjs",
+          ".github/workflows/paid-order-reconciliation-exact-head.yml"
+        ]
+      },
+      {
+        "id": "admin-build",
+        "name": "Private admin production build",
+        "kind": "build",
+        "command": "npm --prefix admin run build",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/package.json",
+          ".github/workflows/paid-order-reconciliation-exact-head.yml"
+        ]
+      },
+      {
+        "id": "paid-order-migration-preflight",
+        "name": "Paid-order migration preflight",
+        "kind": "deployment",
+        "command": "npm --prefix admin run preflight:paid-order-migration",
+        "required": true,
+        "status": "founder-gated",
+        "evidencePaths": [
+          "admin/scripts/preflight-paid-order-migration.mjs",
+          ".github/workflows/paid-order-production-preflight.yml"
+        ]
+      },
+      {
+        "id": "cookie-contract",
+        "name": "Private operations cookie contract",
+        "kind": "security",
+        "command": "npm --prefix admin run verify:cookies",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "scripts/verify-cookie-contract.mjs",
+          "admin/package.json"
+        ]
+      },
+      {
+        "id": "mcp-contract",
+        "name": "Private operations MCP contract",
+        "kind": "contract",
+        "command": "npm --prefix admin run verify:mcp",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "scripts/verify-mcp-config.mjs",
+          "admin/package.json"
+        ]
+      },
+      {
+        "id": "ai-skill-contract",
+        "name": "Private hair AI-skill contract",
+        "kind": "contract",
+        "command": "npm --prefix admin run verify:ai-skills",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "scripts/verify-ai-skill-contract.mjs",
+          "admin/package.json"
+        ]
+      },
+      {
+        "id": "admin-playwright",
+        "name": "Private admin rendered verification",
+        "kind": "e2e",
+        "command": "npm --prefix admin run verify:playwright",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/scripts/playwright-verify.mjs",
+          "admin/package.json"
+        ]
+      }
+    ]
+  },
+  "evidence": {
+    "status": "integrated",
+    "commit": "660325d3575fc81bdfa7fd7d6001016bad20cf21",
+    "observedAt": "2026-08-04",
+    "proofRefs": [
+      ".github/workflows/paid-order-reconciliation-exact-head.yml",
+      "admin/package.json",
+      "admin/tests/paid-order-reconciliation-contract.test.mjs",
+      "admin/tests/paid-order-migration-preflight-contract.test.mjs"
+    ]
+  },
+  "risk": {
+    "level": "high",
+    "blockers": [
+      "Production migration application remains a separate founder approval gate",
+      "Private vendor, cost, margin, customer, and sourcing data must never enter portfolio packets",
+      "A catalog entry is not a pass until its exact-head runner produces evidence"
+    ]
+  },
+  "nextGate": "Verify the complete local catalog on an exact head, publish only sanitized check summaries, and keep migration plus production actions behind separate founder approval."
+}
