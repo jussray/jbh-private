@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const root = new URL("../..", import.meta.url);
-const read = (path) => readFileSync(new URL(path, root), "utf8");
+const adminRoot = new URL("../", import.meta.url);
+const read = (path) => readFileSync(new URL(path, adminRoot), "utf8");
 
 const indexSource = read("payment-worker/src/index.ts");
 const sharedSource = read("payment-worker/src/shared.ts");
