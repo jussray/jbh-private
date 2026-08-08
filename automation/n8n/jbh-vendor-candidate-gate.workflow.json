@@ -1,0 +1,56 @@
+{
+  "name": "JBH Vendor Candidate Gate -> Shopify Draft Payload",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jbh/vendor-product-candidate",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "4c7f4016-1d76-47ca-9246-70093b4ac153",
+      "name": "Vendor Candidate Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-520, 0],
+      "webhookId": "b4b18ac4-ad00-4835-9cea-6fb19726fe51"
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json.body ?? $json;\nconst supplier = source.supplier ?? {};\nconst product = source.product ?? {};\nconst media = Array.isArray(source.media_urls) ? source.media_urls : [];\nconst evidence = Array.isArray(supplier.evidence_urls) ? supplier.evidence_urls : [];\nconst problems = [];\n\nconst text = (value) => typeof value === 'string' ? value.trim() : '';\nconst number = (value) => {\n  const parsed = Number(value);\n  return Number.isFinite(parsed) ? parsed : null;\n};\nconst https = (value) => /^https:\\/\\//i.test(text(value));\n\nconst requiredText = [\n  ['supplier.name', supplier.name],\n  ['supplier.product_url', supplier.product_url],\n  ['product.title', product.title],\n  ['product.product_type', product.product_type],\n  ['product.sku', product.sku],\n  ['product.currency', product.currency],\n  ['product.fulfillment_method', product.fulfillment_method],\n];\nfor (const [field, value] of requiredText) {\n  if (!text(value)) problems.push(`${field}:missing`);\n}\n\nif (text(product.currency).toUpperCase() !== 'USD') problems.push('product.currency:must_be_USD');\nif (!https(supplier.product_url)) problems.push('supplier.product_url:must_be_https');\nif (evidence.length === 0 || evidence.some((url) => !https(url))) problems.push('supplier.evidence_urls:https_evidence_required');\nif (supplier.terms_verified !== true) problems.push('supplier.terms_verified:required');\nif (!text(supplier.terms_verified_at)) problems.push('supplier.terms_verified_at:required');\n\nconst unitCost = number(product.unit_cost);\nconst shippingCost = number(product.shipping_cost);\nconst retailPrice = number(product.retail_price);\nconst minDays = number(product.fulfillment_days_min);\nconst maxDays = number(product.fulfillment_days_max);\nfor (const [field, value] of [\n  ['product.unit_cost', unitCost],\n  ['product.shipping_cost', shippingCost],\n  ['product.retail_price', retailPrice],\n  ['product.fulfillment_days_min', minDays],\n  ['product.fulfillment_days_max', maxDays],\n]) {\n  if (value === null || value < 0) problems.push(`${field}:invalid_number`);\n}\nif (minDays !== null && maxDays !== null && minDays > maxDays) problems.push('product.fulfillment_days:invalid_range');\n\nconst landedCost = unitCost !== null && shippingCost !== null ? unitCost + shippingCost : null;\nconst grossMargin = landedCost !== null && retailPrice !== null ? retailPrice - landedCost : null;\nconst marginRate = grossMargin !== null && retailPrice > 0 ? grossMargin / retailPrice : null;\nif (landedCost !== null && retailPrice !== null && retailPrice <= landedCost) problems.push('pricing:no_positive_margin');\nif (marginRate !== null && marginRate < 0.35) problems.push('pricing:margin_below_35_percent');\n\nconst readyForDraft = problems.length === 0;\nconst sampleVerified = source.sample_verified === true;\nconst mediaVerified = source.media_verified === true && media.length > 0 && media.every((url) => https(url));\nconst ownerPublishApproved = source.owner_publish_approved === true;\nconst publishEligible = readyForDraft && sampleVerified && mediaVerified && ownerPublishApproved;\n\nreturn [{\n  json: {\n    workflow_contract: 'jbh-vendor-candidate-gate-v1',\n    status: readyForDraft ? 'ready_for_shopify_draft' : 'blocked',\n    ready_for_draft: readyForDraft,\n    publish_eligible: publishEligible,\n    blockers: problems,\n    economics: {\n      unit_cost: unitCost,\n      shipping_cost: shippingCost,\n      landed_cost: landedCost,\n      retail_price: retailPrice,\n      gross_margin: grossMargin,\n      margin_rate: marginRate,\n    },\n    shopify_draft: readyForDraft ? {\n      status: 'DRAFT',\n      title: text(product.title),\n      vendor: 'Juss Beautiful Hair',\n      product_type: text(product.product_type),\n      sku: text(product.sku),\n      price: retailPrice,\n      currency: 'USD',\n      requires_shipping: true,\n      source_supplier: text(supplier.name),\n      source_product_url: text(supplier.product_url),\n      evidence_urls: evidence,\n      fulfillment_method: text(product.fulfillment_method),\n      fulfillment_days_min: minDays,\n      fulfillment_days_max: maxDays,\n      media_urls: media.filter((url) => https(url)),\n      publish_allowed: false\n    } : null,\n    gates: {\n      supplier_terms_verified: supplier.terms_verified === true,\n      sample_verified: sampleVerified,\n      media_verified: mediaVerified,\n      owner_publish_approved: ownerPublishApproved\n    }\n  }\n}];"
+      },
+      "id": "a0212cc0-2b87-47f1-9ced-26633bc9a2e7",
+      "name": "Normalize + Fail Closed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-220, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $json;\nreturn [{ json: {\n  ok: result.ready_for_draft === true,\n  status: result.status,\n  blockers: result.blockers,\n  economics: result.economics,\n  shopify_draft: result.shopify_draft,\n  publish_eligible: result.publish_eligible,\n  activation_guard: 'This workflow prepares a draft payload only. It does not create or publish a Shopify product.',\n  next_gate: result.ready_for_draft ? 'owner approval + credentialed Shopify draft writer' : 'repair candidate evidence and retry'\n} }];"
+      },
+      "id": "2bf97985-0588-48e7-a5a2-c0f46d51b216",
+      "name": "Return Gate Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [80, 0]
+    }
+  ],
+  "connections": {
+    "Vendor Candidate Webhook": {
+      "main": [[{"node":"Normalize + Fail Closed","type":"main","index":0}]]
+    },
+    "Normalize + Fail Closed": {
+      "main": [[{"node":"Return Gate Result","type":"main","index":0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
