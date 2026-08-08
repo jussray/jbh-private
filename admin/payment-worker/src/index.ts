@@ -1,5 +1,7 @@
 import { handleAdminRequest } from "./admin-orders";
 import { type Env, isApprovedHost, json, text } from "./shared";
+import { handleShopifyProcurementAdminRequest } from "./shopify-procurement-admin";
+import { handleShopifyPhysicalWebhook } from "./shopify-physical-webhook";
 import { handleVendorSourcingRequest } from "./vendor-sourcing";
 import { handleWebhook } from "./webhook";
 
@@ -14,6 +16,14 @@ export default {
 
     if (pathname === "/api/stripe/webhook") {
       return handleWebhook(request, env);
+    }
+
+    if (pathname === "/webhooks/shopify/orders-paid") {
+      return handleShopifyPhysicalWebhook(request, env);
+    }
+
+    if (pathname.startsWith("/api/admin/procurement-orders")) {
+      return handleShopifyProcurementAdminRequest(request, env);
     }
 
     if (pathname.startsWith("/api/admin/vendor-sourcing")) {
