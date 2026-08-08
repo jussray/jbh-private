@@ -1,0 +1,37 @@
+name: n8n Vendor Contract
+
+on:
+  pull_request:
+    paths:
+      - "automation/n8n/**"
+      - ".github/workflows/n8n-contract.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "automation/n8n/**"
+      - ".github/workflows/n8n-contract.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  vendor-candidate-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate workflow JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('automation/n8n/jbh-vendor-candidate-gate.workflow.json','utf8'))"
+
+      - name: Run n8n contract tests
+        run: node --test automation/n8n/jbh-vendor-candidate-gate.test.mjs
