@@ -4,6 +4,8 @@ export interface Env {
   DATABASE_URL: string;
   STRIPE_SECRET_KEY: string;
   STRIPE_WEBHOOK_SECRET: string;
+  SHOPIFY_WEBHOOK_SECRET: string;
+  SHOPIFY_SHOP_DOMAIN: string;
   WORKER_HOST: string;
   CF_ACCESS_TEAM_DOMAIN: string;
   CF_ACCESS_AUD: string;
