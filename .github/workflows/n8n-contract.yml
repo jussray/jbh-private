@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  vendor-candidate-gate:
+  n8n-contracts:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -30,8 +30,9 @@ jobs:
         with:
           node-version: 20
 
-      - name: Validate workflow JSON
-        run: node -e "JSON.parse(require('fs').readFileSync('automation/n8n/jbh-vendor-candidate-gate.workflow.json','utf8'))"
+      - name: Validate all workflow JSON
+        run: >-
+          node -e "const fs=require('fs'); const dir='automation/n8n'; const files=fs.readdirSync(dir).filter(f=>f.endsWith('.workflow.json')); if(!files.length) throw new Error('no n8n workflows'); for(const f of files) JSON.parse(fs.readFileSync(dir+'/'+f,'utf8')); console.log('validated', files.length, 'workflow files')"
 
-      - name: Run n8n contract tests
-        run: node --test automation/n8n/jbh-vendor-candidate-gate.test.mjs
+      - name: Run all n8n contract tests
+        run: node --test automation/n8n/*.test.mjs
