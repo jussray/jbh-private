@@ -45,6 +45,35 @@ State what is known, inferred, assumed, unknown, blocked, and still needing veri
 
 Identify the bottleneck, highest-leverage correction, reusable operating standard, accountable owner, and what must not be scaled or automated yet.
 
+## Scaling default
+
+Scalability is a default design constraint, not permission to increase suppliers, catalog, purchasing, customer outreach, automation, or operational complexity before evidence supports it.
+
+Use this loop for material private-operations work:
+
+```text
+Goal
+→ Inspect reality
+→ Identify the bottleneck
+→ Make the smallest reversible fix
+→ Verify the real path
+→ Measure
+→ Ship
+→ Observe
+→ Repeat
+```
+
+Private Juss Beautiful Hair operations must:
+
+- scale verified supplier, product, pricing, inventory, order, fulfillment, and service workflows while keeping each source of truth explicit;
+- preserve the public/private repository boundary as operations grow so vendor terms, costs, customer data, credentials, and internal strategy do not leak into public surfaces;
+- prefer boring, composable workflows with explicit authority, idempotency, readback proof, and rollback over agent-only memory or hidden operational state;
+- automate repetitive founder work only after the manual path, financial authority, customer impact, and failure recovery are proven;
+- leave reusable contracts, evidence, provenance, tests, disablement, and rollback paths so another builder can operate without reconstructing private context;
+- refuse to scale unverified vendors, unsupported demand, uncertain inventory, ambiguous order/payment state, unauthorized outreach, or unnecessary provider complexity.
+
+When operating volume is not yet proven, build the seam for future capacity rather than creating commitments, spend, or automation ahead of need.
+
 ## /elonmusk
 
 Question every workflow, integration, and requirement. Remove duplicate catalog paths, needless handoffs, hidden state, and ornamental automation before optimizing.
