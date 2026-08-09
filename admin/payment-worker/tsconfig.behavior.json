@@ -8,5 +8,8 @@
     "rootDir": "./src",
     "declaration": false
   },
-  "include": ["src/vendor-routing-model.ts"]
+  "include": [
+    "src/vendor-routing-model.ts",
+    "src/shopify-physical-order-model.ts"
+  ]
 }
