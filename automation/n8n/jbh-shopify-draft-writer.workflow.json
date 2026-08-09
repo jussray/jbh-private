@@ -1,0 +1,83 @@
+{
+  "name": "JBH Shopify DRAFT Writer + Readback Proof",
+  "active": false,
+  "nodes": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "When Executed by Approved Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-840, 0],
+      "parameters": {"inputSource": "passthrough"}
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "name": "Require Draft Authority",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-600, 0],
+      "parameters": {"jsCode": "const s=$json.body??$json; const fail=m=>{throw new Error(m)}; const txt=v=>typeof v==='string'?v.trim():''; const num=v=>{const n=Number(v);return Number.isFinite(n)?n:null};\nif(s.workflow_contract!=='jbh-vendor-candidate-gate-v1') fail('draft_authority:wrong_upstream_contract');\nif(s.ready_for_draft!==true) fail('draft_authority:not_ready_for_draft');\nif(s.draft_write_authorized!==true) fail('draft_authority:explicit_authorization_required');\nconst d=s.shopify_draft;\nif(!d||d.status!=='DRAFT'||d.publish_allowed!==false) fail('draft_authority:invalid_draft_contract');\nconst key=txt(s.idempotency_key), title=txt(d.title), productType=txt(d.product_type), sku=txt(d.sku), price=num(d.price);\nif(!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,95}$/.test(key)) fail('draft_authority:invalid_idempotency_key');\nif(!title||title.length>180) fail('draft_authority:invalid_title');\nif(!productType||productType.length>80) fail('draft_authority:invalid_product_type');\nif(!/^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$/.test(sku)) fail('draft_authority:invalid_sku');\nif(price===null||price<=0) fail('draft_authority:invalid_price');\nconst expected={idempotency_key:key,title,vendor:'Juss Beautiful Hair',product_type:productType,sku,price:Number(price.toFixed(2)),status:'DRAFT',publish_allowed:false,inventory_tracked:false,requires_shipping:true};\nconst query=`query JbhDraftPreflight($query: String!) { productVariants(first: 2, query: $query) { nodes { id sku product { id title status } } } }`;\nreturn [{json:{workflow_contract:'jbh-shopify-draft-writer-v1',expected,preflight_body:{query,variables:{query:`sku:${sku}`}}}}];"}
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "name": "Shopify SKU Preflight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-360, 0],
+      "parameters": {"method":"POST","url":"https://8qp1z2-az.myshopify.com/admin/api/2026-07/graphql.json","authentication":"predefinedCredentialType","nodeCredentialType":"shopifyAccessTokenApi","sendBody":true,"specifyBody":"json","jsonBody":"={{ $json.preflight_body }}","options":{}}
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000004",
+      "name": "Block Duplicate + Build DRAFT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-120, 0],
+      "parameters": {"jsCode": "const a=$('Require Draft Authority').item.json, r=$json, fail=m=>{throw new Error(m)};\nif(!r||typeof r!=='object'||(Array.isArray(r.errors)&&r.errors.length)) fail('shopify_preflight:graphql_errors');\nconst nodes=r?.data?.productVariants?.nodes;\nif(!Array.isArray(nodes)) fail('shopify_preflight:invalid_response');\nif(nodes.length) fail('shopify_preflight:sku_exists');\nconst e=a.expected;\nconst query=`mutation JbhCreateDraft($input: ProductSetInput!) { productSet(synchronous: true, input: $input) { product { id title status vendor productType variants(first: 2) { nodes { id sku price inventoryItem { tracked requiresShipping } } } } userErrors { field message code } } }`;\nconst input={title:e.title,status:'DRAFT',vendor:'Juss Beautiful Hair',productType:e.product_type,tags:['jbh-n8n-draft',`jbh-source-key:${e.idempotency_key}`],productOptions:[{name:'Title',position:1,values:[{name:'Default Title'}]}],variants:[{optionValues:[{optionName:'Title',name:'Default Title'}],price:e.price.toFixed(2),sku:e.sku,inventoryItem:{sku:e.sku,tracked:false,requiresShipping:true}}]};\nreturn [{json:{workflow_contract:a.workflow_contract,expected:e,mutation_body:{query,variables:{input}}}}];"}
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000005",
+      "name": "Shopify Create DRAFT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [120, 0],
+      "parameters": {"method":"POST","url":"https://8qp1z2-az.myshopify.com/admin/api/2026-07/graphql.json","authentication":"predefinedCredentialType","nodeCredentialType":"shopifyAccessTokenApi","sendBody":true,"specifyBody":"json","jsonBody":"={{ $json.mutation_body }}","options":{}}
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "name": "Validate Create Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [360, 0],
+      "parameters": {"jsCode": "const b=$('Block Duplicate + Build DRAFT').item.json, r=$json, fail=m=>{throw new Error(m)};\nif(!r||typeof r!=='object'||(Array.isArray(r.errors)&&r.errors.length)) fail('shopify_create:graphql_errors');\nconst ps=r?.data?.productSet;\nif(!ps) fail('shopify_create:missing_product_set');\nif(Array.isArray(ps.userErrors)&&ps.userErrors.length) fail('shopify_create:user_errors');\nconst p=ps.product,e=b.expected,vs=p?.variants?.nodes;\nif(!p?.id||p.status!=='DRAFT'||p.title!==e.title||p.vendor!=='Juss Beautiful Hair'||p.productType!==e.product_type) fail('shopify_create:product_mismatch');\nif(!Array.isArray(vs)||vs.length!==1) fail('shopify_create:variant_count_mismatch');\nconst v=vs[0];\nif(v.sku!==e.sku||Number(v.price)!==e.price||v?.inventoryItem?.tracked!==false||v?.inventoryItem?.requiresShipping!==true) fail('shopify_create:variant_mismatch');\nconst query=`query JbhDraftReadback($id: ID!) { product(id: $id) { id title status vendor productType variants(first: 2) { nodes { id sku price inventoryItem { tracked requiresShipping } } } } }`;\nreturn [{json:{workflow_contract:b.workflow_contract,expected:{...e,product_id:p.id,variant_id:v.id},readback_body:{query,variables:{id:p.id}}}}];"}
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000007",
+      "name": "Shopify Readback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [600, 0],
+      "parameters": {"method":"POST","url":"https://8qp1z2-az.myshopify.com/admin/api/2026-07/graphql.json","authentication":"predefinedCredentialType","nodeCredentialType":"shopifyAccessTokenApi","sendBody":true,"specifyBody":"json","jsonBody":"={{ $json.readback_body }}","options":{}}
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000008",
+      "name": "Prove DRAFT Readback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 0],
+      "parameters": {"jsCode": "const c=$('Validate Create Response').item.json, r=$json, fail=m=>{throw new Error(m)};\nif(!r||typeof r!=='object'||(Array.isArray(r.errors)&&r.errors.length)) fail('shopify_readback:graphql_errors');\nconst p=r?.data?.product,e=c.expected,vs=p?.variants?.nodes;\nif(!p?.id||p.id!==e.product_id||p.status!=='DRAFT'||p.title!==e.title||p.vendor!=='Juss Beautiful Hair'||p.productType!==e.product_type) fail('shopify_readback:product_mismatch');\nif(!Array.isArray(vs)||vs.length!==1) fail('shopify_readback:variant_count_mismatch');\nconst v=vs[0];\nif(v.id!==e.variant_id||v.sku!==e.sku||Number(v.price)!==e.price||v?.inventoryItem?.tracked!==false||v?.inventoryItem?.requiresShipping!==true) fail('shopify_readback:variant_mismatch');\nreturn [{json:{ok:true,workflow_contract:'jbh-shopify-draft-writer-v1',status:'shopify_draft_verified',idempotency_key:e.idempotency_key,shopify_product_id:p.id,shopify_variant_id:v.id,sku:v.sku,product_status:p.status,publish_allowed:false,inventory_tracked:false,requires_shipping:true,next_gate:'sample + media + separate owner publish approval'}}];"}
+    }
+  ],
+  "connections": {
+    "When Executed by Approved Workflow": {"main":[[{"node":"Require Draft Authority","type":"main","index":0}]]},
+    "Require Draft Authority": {"main":[[{"node":"Shopify SKU Preflight","type":"main","index":0}]]},
+    "Shopify SKU Preflight": {"main":[[{"node":"Block Duplicate + Build DRAFT","type":"main","index":0}]]},
+    "Block Duplicate + Build DRAFT": {"main":[[{"node":"Shopify Create DRAFT","type":"main","index":0}]]},
+    "Shopify Create DRAFT": {"main":[[{"node":"Validate Create Response","type":"main","index":0}]]},
+    "Validate Create Response": {"main":[[{"node":"Shopify Readback","type":"main","index":0}]]},
+    "Shopify Readback": {"main":[[{"node":"Prove DRAFT Readback","type":"main","index":0}]]}
+  },
+  "pinData": {},
+  "settings": {"executionOrder":"v1"},
+  "meta": {"templateCredsSetupCompleted":false},
+  "tags": []
+}
