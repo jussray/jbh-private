@@ -55,7 +55,7 @@ Use this loop for material private-operations work:
 Goal
 → Inspect reality
 → Identify the bottleneck
-→ Make the smallest reversible fix
+→ Implement the exact reversible fix required by evidence
 → Verify the real path
 → Measure
 → Ship
