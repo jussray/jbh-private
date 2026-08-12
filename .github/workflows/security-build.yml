@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '20'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  NODE_VERSION: '24'
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
   
 jobs:
