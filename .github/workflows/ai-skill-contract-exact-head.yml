@@ -1,0 +1,63 @@
+name: Private Hair AI Skill Contract Exact-Head Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "AGENTS.md"
+      - "AGENTS_FOUNDER_INTELLIGENCE.md"
+      - "skills/juss-beautiful-hair-private/**"
+      - ".agents/skills/jbh-private-operator/**"
+      - "skills/sales/**"
+      - "skills/devil/**"
+      - "brand/BRAND_MOAT.md"
+      - "artifacts/redteam/SALES_DEVIL_ATTACK.md"
+      - "artifacts/lindymode/SALES_DURABILITY.md"
+      - "artifacts/l99/SALES_AUTHORITY_MODEL.md"
+      - "artifacts/ooda/SALES_EXECUTION_LOOP.md"
+      - "artifacts/ultrathink/SALES_DEVIL_SYNTHESIS.md"
+      - "artifacts/billgates/SALES_PLATFORM_LEVERAGE.md"
+      - "scripts/verify-ai-skill-contract.mjs"
+      - "admin/package.json"
+      - ".github/workflows/ai-skill-contract-exact-head.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-hair-ai-skill-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  verify:
+    name: Verify private hair AI skill contract
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact requested head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Validate private admin package metadata
+        run: node -e "JSON.parse(require('node:fs').readFileSync('admin/package.json', 'utf8'))"
+
+      - name: Verify portable Juss OS and private authority contract
+        run: npm --prefix admin run verify:ai-skills

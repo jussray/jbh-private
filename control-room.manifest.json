@@ -14,6 +14,7 @@
       "control-room.manifest.json",
       ".control-room/repository.manifest.json",
       ".github/workflows/paid-order-reconciliation-exact-head.yml",
+      ".github/workflows/ai-skill-contract-exact-head.yml",
       "admin/package.json"
     ],
     "privateContentAllowed": false
@@ -105,8 +106,10 @@
         "required": true,
         "status": "active",
         "evidencePaths": [
+          "AGENTS_FOUNDER_INTELLIGENCE.md",
           "scripts/verify-ai-skill-contract.mjs",
-          "admin/package.json"
+          "admin/package.json",
+          ".github/workflows/ai-skill-contract-exact-head.yml"
         ]
       },
       {
