@@ -6,6 +6,7 @@ const files = {
   sales: await readFile(new URL('../skills/sales/SKILL.md', import.meta.url), 'utf8'),
   devil: await readFile(new URL('../skills/devil/SKILL.md', import.meta.url), 'utf8'),
   agents: await readFile(new URL('../AGENTS.md', import.meta.url), 'utf8'),
+  founder: await readFile(new URL('../AGENTS_FOUNDER_INTELLIGENCE.md', import.meta.url), 'utf8'),
   moat: await readFile(new URL('../brand/BRAND_MOAT.md', import.meta.url), 'utf8'),
   redteam: await readFile(new URL('../artifacts/redteam/SALES_DEVIL_ATTACK.md', import.meta.url), 'utf8'),
   lindy: await readFile(new URL('../artifacts/lindymode/SALES_DURABILITY.md', import.meta.url), 'utf8'),
@@ -54,11 +55,24 @@ for (const phrase of ['Pass I — premise attack', 'Pass II — selected-plan at
   requireText('devil invariant', files.devil, phrase);
 }
 
+requireText('AGENTS founder entry', files.agents, 'AGENTS_FOUNDER_INTELLIGENCE.md');
 requireText('AGENTS operator entry', files.agents, 'skills/juss-beautiful-hair-private/SKILL.md');
 requireText('AGENTS sales entry', files.agents, 'skills/sales/SKILL.md');
 requireText('AGENTS devil entry', files.agents, 'skills/devil/SKILL.md');
 requireText('AGENTS commercial extension', files.agents, '/sales /devil');
 requireText('AGENTS separation', files.agents, 'separate from Untold Stories');
+
+for (const command of ['/goalfix', '/ultrathink', '/truthmode', '/confess', '/redteam', '/lindymode', '/ooda', '/visualize']) {
+  requireText('portable Juss OS command surface', files.founder, command);
+}
+for (const phrase of [
+  'Portable Juss OS command surface:',
+  'These are reasoning/planning modes only.',
+  'never expand execution authority',
+  'They do not authorize vendor or customer contact',
+  'Repository-local private-data, commerce, approval, evidence, rollback, and production gates remain authoritative',
+]) requireText('founder authority boundary', files.founder, phrase);
+
 requireText('brand moat', files.moat, 'Shared philosophy does not create a shared catalog');
 requireText('brand moat', files.moat, 'private vendor intelligence and supplier negotiations');
 
