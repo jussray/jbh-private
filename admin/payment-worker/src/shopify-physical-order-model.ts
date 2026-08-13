@@ -54,6 +54,29 @@ export const PHYSICAL_CATALOG_BY_SKU: Record<string, CatalogEntry> = {
   "JBH-EDGE-4OZ": { productCode: "edge-control", variant: "4 oz", unitPriceCents: 1000 },
   "JBH-LACE-2OZ": { productCode: "lace-melt-spray", variant: "2 oz", unitPriceCents: 1500 },
   "JBH-OIL-2OZ": { productCode: "hair-oil", variant: "2 oz", unitPriceCents: 1800 },
+
+  // Supplier-connected Shopify SKUs are aliases only. They preserve the
+  // provider mapping while normalizing paid orders back to JBH product codes.
+  // Only owner-approved lengths and retail prices are accepted here.
+  "BRAZ-SEW-BW-14": { productCode: "bundle-bodywave", variant: '14"', unitPriceCents: 7500 },
+  "BRAZ-SEW-BW-16": { productCode: "bundle-bodywave", variant: '16"', unitPriceCents: 8500 },
+  "BRAZ-SEW-BW-18": { productCode: "bundle-bodywave", variant: '18"', unitPriceCents: 9000 },
+  "BRAZ-SEW-BW-20": { productCode: "bundle-bodywave", variant: '20"', unitPriceCents: 10000 },
+  "BRAZ-SEW-BW-22": { productCode: "bundle-bodywave", variant: '22"', unitPriceCents: 11000 },
+  "BRAZ-SEW-BW-24": { productCode: "bundle-bodywave", variant: '24"', unitPriceCents: 12500 },
+  "BRAZ-SEW-BW-26": { productCode: "bundle-bodywave", variant: '26"', unitPriceCents: 14000 },
+  "BRAZ-SEW-DW-14": { productCode: "bundle-deepwave", variant: '14"', unitPriceCents: 8000 },
+  "BRAZ-SEW-DW-18": { productCode: "bundle-deepwave", variant: '18"', unitPriceCents: 9500 },
+  "BRAZ-SEW-DW-22": { productCode: "bundle-deepwave", variant: '22"', unitPriceCents: 11500 },
+  "BRAZ-SEW-DW-26": { productCode: "bundle-deepwave", variant: '26"', unitPriceCents: 14500 },
+  "BRAZ-SEW-LW-14": { productCode: "bundle-loosewave", variant: '14"', unitPriceCents: 8000 },
+  "BRAZ-SEW-LW-18": { productCode: "bundle-loosewave", variant: '18"', unitPriceCents: 9500 },
+  "BRAZ-SEW-LW-22": { productCode: "bundle-loosewave", variant: '22"', unitPriceCents: 11500 },
+  "BRAZ-SEW-LW-26": { productCode: "bundle-loosewave", variant: '26"', unitPriceCents: 14500 },
+  "BRAZ-SEW-KS-14": { productCode: "bundle-kinkystraight", variant: '14"', unitPriceCents: 8500 },
+  "BRAZ-SEW-KS-18": { productCode: "bundle-kinkystraight", variant: '18"', unitPriceCents: 10000 },
+  "BRAZ-SEW-KS-22": { productCode: "bundle-kinkystraight", variant: '22"', unitPriceCents: 12000 },
+  "BRAZ-SEW-KS-26": { productCode: "bundle-kinkystraight", variant: '26"', unitPriceCents: 15500 },
 };
 
 const moneyString = z.string().regex(/^\d{1,10}(?:\.\d{1,2})?$/);
