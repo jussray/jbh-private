@@ -19,6 +19,21 @@ Required loop:
 → Repeat
 ```
 
+Portable Juss OS command surface:
+
+```text
+/goalfix
+/ultrathink
+/truthmode
+/confess
+/redteam
+/lindymode
+/ooda
+/visualize
+```
+
+These are reasoning/planning modes only. They may change how a problem is analyzed, attacked, visualized, or decomposed, but they never expand execution authority. They do not authorize vendor or customer contact, purchasing, pricing changes, discounts, refunds, publication, deployment, credential changes, migrations, database writes, destructive actions, or merge. Repository-local private-data, commerce, approval, evidence, rollback, and production gates remain authoritative and may be stricter than the portable command layer.
+
 Required remembrance question:
 
 > How would it be remembered by building this?
