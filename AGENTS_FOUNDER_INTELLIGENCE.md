@@ -39,3 +39,5 @@ Required remembrance question:
 > How would it be remembered by building this?
 
 This entrypoint supplements repository-local instructions and never weakens truthful commerce, privacy, brand ownership, approvals, evidence, rollback, or non-deletion.
+
+Verification note: this authority entrypoint participates in the exact-head private AI-skill contract gate; this note does not expand execution authority.
