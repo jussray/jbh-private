@@ -7,16 +7,54 @@ const manifest = JSON.parse(
 const failures = [];
 const fail = (message) => failures.push(message);
 const expectedPlugins = ['GitHub', 'Shopify', 'HubSpot'];
+const allowedManifestKeys = [
+  'schemaVersion',
+  'contract',
+  'repository',
+  'authorityRepository',
+  'controlPlane',
+  'runtimeDiscoveryRequired',
+  'liveStateStored',
+  'writesRequireExplicitUserIntent',
+  'writesRequireFreshRepositoryAuthority',
+  'permissionStateSource',
+  'connectionStateSource',
+  'truthBoundary',
+  'safetyBoundary',
+  'plugins',
+].sort();
+const allowedPluginKeys = ['name', 'role', 'runtimeDiscoveryRequired', 'defaultMode'].sort();
 const forbiddenLiveStateKeys = new Set([
   'installed',
   'connected',
+  'connection',
   'permission',
-  'permissionMode',
-  'permission_mode',
-  'oauthScopes',
+  'permissions',
+  'permissionmode',
+  'oauthscopes',
   'token',
+  'accesstoken',
+  'refreshtoken',
   'secret',
+  'secrets',
 ]);
+
+const normalizedKey = (key) => key.replace(/[_-]/g, '').toLowerCase();
+
+function forbiddenLiveStatePaths(value, path = 'manifest') {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry, index) => forbiddenLiveStatePaths(entry, `${path}[${index}]`));
+  }
+  if (value === null || typeof value !== 'object') return [];
+
+  const paths = [];
+  for (const [key, child] of Object.entries(value)) {
+    const childPath = `${path}.${key}`;
+    if (forbiddenLiveStateKeys.has(normalizedKey(key))) paths.push(childPath);
+    paths.push(...forbiddenLiveStatePaths(child, childPath));
+  }
+  return paths;
+}
 
 if (manifest.schemaVersion !== 1) fail('schemaVersion must be 1');
 if (manifest.contract !== 'juss/chatgpt-plugin-management@v1') fail('unexpected contract');
@@ -36,6 +74,11 @@ if (!/supplier intelligence.*truthful commerce.*purchasing.*customer contact.*se
   fail('commerce authority boundary is missing');
 }
 
+if (JSON.stringify(Object.keys(manifest).sort()) !== JSON.stringify(allowedManifestKeys)) {
+  fail(`manifest schema mismatch: ${JSON.stringify(Object.keys(manifest).sort())}`);
+}
+for (const path of forbiddenLiveStatePaths(manifest)) fail(`forbidden live-state key at ${path}`);
+
 const plugins = Array.isArray(manifest.plugins) ? manifest.plugins : [];
 const pluginNames = plugins.map((plugin) => plugin?.name);
 if (JSON.stringify(pluginNames) !== JSON.stringify(expectedPlugins)) {
@@ -47,12 +90,12 @@ for (const plugin of plugins) {
     fail('plugin entries must be objects');
     continue;
   }
+  if (JSON.stringify(Object.keys(plugin).sort()) !== JSON.stringify(allowedPluginKeys)) {
+    fail(`${plugin.name || 'unknown'}: plugin schema mismatch`);
+  }
   if (typeof plugin.role !== 'string' || plugin.role.trim() === '') fail(`${plugin.name}: missing role`);
   if (plugin.runtimeDiscoveryRequired !== true) fail(`${plugin.name}: runtime discovery must be required`);
   if (plugin.defaultMode !== 'read-first') fail(`${plugin.name}: default mode must be read-first`);
-  for (const key of Object.keys(plugin)) {
-    if (forbiddenLiveStateKeys.has(key)) fail(`${plugin.name}: forbidden live-state key ${key}`);
-  }
 }
 
 if (failures.length) {
