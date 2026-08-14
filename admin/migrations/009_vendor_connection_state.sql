@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS vendor_connection_states (
   state TEXT NOT NULL
     CHECK (state IN (
       'pending_account',
+      'account_observed',
       'selected_contacted',
       'catalog_observed',
       'terms_review',
@@ -73,8 +74,8 @@ FROM (
     (
       'faire',
       'manual_wholesale',
-      'pending_account',
-      '["owner-selected wholesale sourcing lane","retailer account or API connection is not yet proven","manual procurement only until account and terms are verified"]'::jsonb,
+      'account_observed',
+      '["Faire retailer buying emails are present in the owner inbox","Faire first-order retailer offers date back to 2023 and Faire Market shopping mail was received in June 2026","no Faire API or Shopify fulfillment connection is proven","manual procurement only until terms and order-path proof are verified"]'::jsonb,
       NULL::timestamptz
     )
 ) AS connection(code, connection_mode, state, evidence_json, verified_at)
