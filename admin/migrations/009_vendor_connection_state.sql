@@ -58,17 +58,17 @@ FROM (
   VALUES
     (
       'dropship-bundles',
-      'shopify_supplier_feed',
-      'catalog_observed',
-      '["Shopify supplier-backed BRAZ-SEW SKU aliases are normalized by the private paid-order model","catalog observation is not purchase or dispatch authority"]'::jsonb,
-      TIMESTAMPTZ '2026-08-13 00:00:00+00'
+      'manual_wholesale',
+      'selected_contacted',
+      '["owner-selected hair dropship lane","live Shopify inventory is currently attributed to the separate Dropship Beauty location","dispatch remains disabled"]'::jsonb,
+      NULL::timestamptz
     ),
     (
       'dropship-beauty',
-      'shopify_app_pending_verification',
-      'selected_contacted',
-      '["owner-selected beauty-essentials lane","Shopify installed-app visibility is not proven by repository evidence","dispatch remains disabled"]'::jsonb,
-      NULL::timestamptz
+      'shopify_supplier_feed',
+      'catalog_observed',
+      '["Shopify location gid://shopify/Location/94408442099 is named Dropship Beauty","stocked BRAZ-SEW Body Wave, Deep Wave, Loose Wave, and Kinky Straight variants carry available inventory at that location","catalog connection is not purchase or dispatch authority"]'::jsonb,
+      TIMESTAMPTZ '2026-08-14 01:35:00+00'
     ),
     (
       'faire',
@@ -96,9 +96,10 @@ SET vendor_id = EXCLUDED.vendor_id,
     verified_at = COALESCE(vendor_connection_states.verified_at, EXCLUDED.verified_at),
     updated_at = NOW();
 
--- Supplier-connected hair SKUs already carry a provider-specific BRAZ-SEW prefix.
--- Use that evidence to prefill the private manual-procurement lane only. The order
--- remains procurement_needed and still requires owner action before supplier_ordered.
+-- The currently stocked supplier-connected hair SKUs carry a BRAZ-SEW prefix,
+-- and live Shopify inventory for those products is attributed to the Dropship Beauty
+-- location. Prefill that private manual-procurement lane only. The order remains
+-- procurement_needed and still requires owner action before supplier_ordered.
 CREATE OR REPLACE FUNCTION hint_shopify_supplier_lane()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -112,7 +113,7 @@ BEGIN
        FROM jsonb_array_elements(NEW.items_json) AS item(value)
        WHERE COALESCE(item.value ->> 'sku', '') !~ '^BRAZ-SEW-'
      ) THEN
-    NEW.supplier_code := 'dropship-bundles';
+    NEW.supplier_code := 'dropship-beauty';
   END IF;
 
   RETURN NEW;
@@ -126,7 +127,7 @@ CREATE TRIGGER shopify_physical_hint_supplier_lane
   EXECUTE FUNCTION hint_shopify_supplier_lane();
 
 UPDATE shopify_physical_orders
-SET supplier_code = 'dropship-bundles',
+SET supplier_code = 'dropship-beauty',
     updated_at = NOW()
 WHERE supplier_code IS NULL
   AND procurement_status = 'procurement_needed'
