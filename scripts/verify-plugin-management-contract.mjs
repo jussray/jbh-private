@@ -7,6 +7,15 @@ const manifest = JSON.parse(
 const failures = [];
 const fail = (message) => failures.push(message);
 const expectedPlugins = ['GitHub', 'Shopify', 'HubSpot'];
+const expectedTruthBoundary =
+  'This file declares intended plugin capability only. It does not prove that a plugin is installed, connected, permitted, or that any action executed.';
+const expectedSafetyBoundary =
+  'Private supplier intelligence, truthful commerce, pricing, purchasing, customer contact, publication, refunds, credentials, and production changes remain separately gated and never become authorized merely because a plugin is available.';
+const expectedRoles = {
+  GitHub: 'Authoritative repository, branch, pull request, review, exact-head, and CI evidence.',
+  Shopify: 'Catalog, inventory, checkout, order, and storefront evidence within truthful-commerce boundaries.',
+  HubSpot: 'CRM evidence and gated commercial follow-up without automatic outreach authority.',
+};
 const allowedManifestKeys = [
   'schemaVersion',
   'contract',
@@ -67,12 +76,8 @@ if (manifest.writesRequireExplicitUserIntent !== true) fail('plugin writes must 
 if (manifest.writesRequireFreshRepositoryAuthority !== true) fail('plugin writes must require fresh repository authority');
 if (manifest.permissionStateSource !== 'chatgpt-runtime') fail('permission state source must be chatgpt-runtime');
 if (manifest.connectionStateSource !== 'chatgpt-runtime') fail('connection state source must be chatgpt-runtime');
-if (!/does not prove.*installed.*connected.*permitted.*executed/i.test(manifest.truthBoundary || '')) {
-  fail('truth boundary must reject live-state claims');
-}
-if (!/supplier intelligence.*truthful commerce.*purchasing.*customer contact.*separately gated/i.test(manifest.safetyBoundary || '')) {
-  fail('commerce authority boundary is missing');
-}
+if (manifest.truthBoundary !== expectedTruthBoundary) fail('truth boundary must match canonical authority text');
+if (manifest.safetyBoundary !== expectedSafetyBoundary) fail('commerce authority boundary must match canonical safety text');
 
 if (JSON.stringify(Object.keys(manifest).sort()) !== JSON.stringify(allowedManifestKeys)) {
   fail(`manifest schema mismatch: ${JSON.stringify(Object.keys(manifest).sort())}`);
@@ -93,7 +98,7 @@ for (const plugin of plugins) {
   if (JSON.stringify(Object.keys(plugin).sort()) !== JSON.stringify(allowedPluginKeys)) {
     fail(`${plugin.name || 'unknown'}: plugin schema mismatch`);
   }
-  if (typeof plugin.role !== 'string' || plugin.role.trim() === '') fail(`${plugin.name}: missing role`);
+  if (plugin.role !== expectedRoles[plugin.name]) fail(`${plugin.name}: role must match approved authority text`);
   if (plugin.runtimeDiscoveryRequired !== true) fail(`${plugin.name}: runtime discovery must be required`);
   if (plugin.defaultMode !== 'read-first') fail(`${plugin.name}: default mode must be read-first`);
 }
