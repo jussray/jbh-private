@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "contract": "juss/chatgpt-plugin-management@v1",
+  "repository": "jussray/jbh-private",
+  "authorityRepository": "jussray/founder-control-room",
+  "controlPlane": "ChatGPT Plugin Management",
+  "runtimeDiscoveryRequired": true,
+  "liveStateStored": false,
+  "writesRequireExplicitUserIntent": true,
+  "writesRequireFreshRepositoryAuthority": true,
+  "permissionStateSource": "chatgpt-runtime",
+  "connectionStateSource": "chatgpt-runtime",
+  "truthBoundary": "This file declares intended plugin capability only. It does not prove that a plugin is installed, connected, permitted, or that any action executed.",
+  "safetyBoundary": "Private supplier intelligence, truthful commerce, pricing, purchasing, customer contact, publication, refunds, credentials, and production changes remain separately gated and never become authorized merely because a plugin is available.",
+  "plugins": [
+    {
+      "name": "GitHub",
+      "role": "Authoritative repository, branch, pull request, review, exact-head, and CI evidence.",
+      "runtimeDiscoveryRequired": true,
+      "defaultMode": "read-first"
+    },
+    {
+      "name": "Shopify",
+      "role": "Catalog, inventory, checkout, order, and storefront evidence within truthful-commerce boundaries.",
+      "runtimeDiscoveryRequired": true,
+      "defaultMode": "read-first"
+    },
+    {
+      "name": "HubSpot",
+      "role": "CRM evidence and gated commercial follow-up without automatic outreach authority.",
+      "runtimeDiscoveryRequired": true,
+      "defaultMode": "read-first"
+    }
+  ]
+}
