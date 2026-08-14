@@ -13,18 +13,19 @@ test("Faire is registered privately without dispatch authority", () => {
   assert.match(migration, /retailer account or API connection is not yet proven/);
 });
 
-test("Dropship Beauty stays selected while app installation proof is pending", () => {
+test("Dropship Beauty is catalog-connected from live Shopify inventory evidence", () => {
   assert.match(
     migration,
-    /'dropship-beauty',[\s\S]*?'shopify_app_pending_verification',[\s\S]*?'selected_contacted'/,
+    /'dropship-beauty',[\s\S]*?'shopify_supplier_feed',[\s\S]*?'catalog_observed'/,
   );
-  assert.match(migration, /Shopify installed-app visibility is not proven/);
+  assert.match(migration, /gid:\/\/shopify\/Location\/94408442099/);
+  assert.match(migration, /Body Wave, Deep Wave, Loose Wave, and Kinky Straight/);
 });
 
 test("supplier-backed Shopify hair orders receive only a private procurement hint", () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION hint_shopify_supplier_lane/);
   assert.match(migration, /\^BRAZ-SEW-/);
-  assert.match(migration, /NEW\.supplier_code := 'dropship-bundles'/);
+  assert.match(migration, /NEW\.supplier_code := 'dropship-beauty'/);
   assert.match(migration, /procurement_status = 'procurement_needed'/);
 });
 
