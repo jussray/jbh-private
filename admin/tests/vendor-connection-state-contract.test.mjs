@@ -7,10 +7,11 @@ const migration = readFileSync(
   "utf8",
 );
 
-test("Faire is registered privately without dispatch authority", () => {
+test("Faire is registered privately as an observed manual wholesale account", () => {
   assert.match(migration, /\('faire', 'Faire', NULL, FALSE\)/);
-  assert.match(migration, /'faire',[\s\S]*?'manual_wholesale',[\s\S]*?'pending_account'/);
-  assert.match(migration, /retailer account or API connection is not yet proven/);
+  assert.match(migration, /'faire',[\s\S]*?'manual_wholesale',[\s\S]*?'account_observed'/);
+  assert.match(migration, /Faire retailer buying emails are present in the owner inbox/);
+  assert.match(migration, /no Faire API or Shopify fulfillment connection is proven/);
 });
 
 test("Dropship Beauty is catalog-connected from live Shopify inventory evidence", () => {
