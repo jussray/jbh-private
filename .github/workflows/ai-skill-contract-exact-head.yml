@@ -17,6 +17,8 @@ on:
       - "artifacts/ooda/SALES_EXECUTION_LOOP.md"
       - "artifacts/ultrathink/SALES_DEVIL_SYNTHESIS.md"
       - "artifacts/billgates/SALES_PLATFORM_LEVERAGE.md"
+      - ".control-room/plugin-management.json"
+      - "scripts/verify-plugin-management-contract.mjs"
       - "scripts/verify-ai-skill-contract.mjs"
       - "admin/package.json"
       - ".github/workflows/ai-skill-contract-exact-head.yml"
@@ -58,6 +60,9 @@ jobs:
 
       - name: Validate private admin package metadata
         run: node -e "JSON.parse(require('node:fs').readFileSync('admin/package.json', 'utf8'))"
+
+      - name: Verify ChatGPT plugin management contract
+        run: node scripts/verify-plugin-management-contract.mjs
 
       - name: Verify portable Juss OS and private authority contract
         run: npm --prefix admin run verify:ai-skills

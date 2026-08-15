@@ -13,6 +13,8 @@
     "surfaces": [
       "control-room.manifest.json",
       ".control-room/repository.manifest.json",
+      ".control-room/plugin-management.json",
+      "scripts/verify-plugin-management-contract.mjs",
       ".github/workflows/paid-order-reconciliation-exact-head.yml",
       ".github/workflows/ai-skill-contract-exact-head.yml",
       "admin/package.json"
@@ -109,6 +111,19 @@
           "AGENTS_FOUNDER_INTELLIGENCE.md",
           "scripts/verify-ai-skill-contract.mjs",
           "admin/package.json",
+          ".github/workflows/ai-skill-contract-exact-head.yml"
+        ]
+      },
+      {
+        "id": "plugin-management-contract",
+        "name": "ChatGPT plugin management authority contract",
+        "kind": "security",
+        "command": "node scripts/verify-plugin-management-contract.mjs",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          ".control-room/plugin-management.json",
+          "scripts/verify-plugin-management-contract.mjs",
           ".github/workflows/ai-skill-contract-exact-head.yml"
         ]
       },
