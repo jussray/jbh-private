@@ -20,8 +20,9 @@
     "authority": "external-provider-evidence",
     "repoMergeAloneIsActivationProof": false,
     "requiredProof": [
-      "public /version exposes this contract id",
-      "private /health exposes this contract id",
+      "public /version returns the exact deployed release SHA",
+      "public Shopify catalog and no-payment cart smoke test pass on the branded storefront",
+      "private /health returns the expected service identity from the approved private hostname",
       "private Worker custom hostname is deployed and approved",
       "SHOPIFY_SHOP_DOMAIN matches shopDomain",
       "SHOPIFY_WEBHOOK_SECRET is configured outside source",
