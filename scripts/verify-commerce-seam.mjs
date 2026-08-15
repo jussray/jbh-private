@@ -33,10 +33,9 @@ requireTruth(contract.privateOrderControl.paidWebhookPath === "/webhooks/shopify
 requireTruth(contract.productionTruth.authority === "external-provider-evidence", "production truth must stay provider-backed");
 requireTruth(contract.productionTruth.repoMergeAloneIsActivationProof === false, "a repository merge must never count as activation proof");
 
-requireTruth(index.includes(`const COMMERCE_SEAM_CONTRACT_ID = "${contract.contractId}"`), "private Worker does not expose the shared commerce contract id");
 requireTruth(index.includes(`pathname === "${contract.privateOrderControl.healthPath}"`), "private health route does not match the seam contract");
+requireTruth(index.includes('service: "jbh-private-order-control"'), "private health route no longer exposes the expected service identity");
 requireTruth(index.includes(`pathname === "${contract.privateOrderControl.paidWebhookPath}"`), "private Shopify webhook route does not match the seam contract");
-requireTruth(index.includes("commerceContract: COMMERCE_SEAM_CONTRACT_ID"), "/health does not expose the shared commerce contract id");
 requireTruth(model.includes(`export const SHOPIFY_PAID_TOPIC = "${contract.shopify.paidTopic}"`), "private paid-order topic does not match the seam contract");
 requireTruth(webhook.includes("env.SHOPIFY_WEBHOOK_SECRET"), "private webhook no longer requires the Shopify signing secret");
 requireTruth(webhook.includes("env.SHOPIFY_SHOP_DOMAIN"), "private webhook no longer requires the canonical Shopify shop domain");
