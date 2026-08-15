@@ -3,8 +3,12 @@ name: Paid Order Reconciliation Exact-Head Gate
 on:
   pull_request:
     paths:
+      - ".control-room/commerce-seam.json"
       - "package.json"
+      - "README.md"
       - "wrangler.toml"
+      - "scripts/verify-commerce-seam.mjs"
+      - "admin/README.md"
       - "admin/payment-worker/**"
       - "admin/tests/private-order-worker-contract.test.mjs"
       - "admin/tests/private-order-worker-shopify-physical.test.mjs"
