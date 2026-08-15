@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "contractId": "jbh-shopify-private-orders@v1",
+  "publicRepository": "jussray/jussbeautifulhair-site",
+  "privateRepository": "jussray/jbh-private",
+  "shopify": {
+    "shopDomain": "8qp1z2-az.myshopify.com",
+    "apiVersion": "2026-07",
+    "publicVendor": "JBH",
+    "catalogPath": "/api/shopify/catalog",
+    "cartPath": "/api/shopify/cart",
+    "paidTopic": "orders/paid"
+  },
+  "privateOrderControl": {
+    "serviceName": "jbh-private-payment-control",
+    "healthPath": "/health",
+    "paidWebhookPath": "/webhooks/shopify/orders-paid"
+  },
+  "productionTruth": {
+    "authority": "external-provider-evidence",
+    "repoMergeAloneIsActivationProof": false,
+    "requiredProof": [
+      "public /version exposes this contract id",
+      "private /health exposes this contract id",
+      "private Worker custom hostname is deployed and approved",
+      "SHOPIFY_SHOP_DOMAIN matches shopDomain",
+      "SHOPIFY_WEBHOOK_SECRET is configured outside source",
+      "Shopify orders/paid subscription targets the private paidWebhookPath",
+      "admin/migrations/008_shopify_physical_procurement.sql is applied to the intended private database",
+      "signed synthetic paid webhook is accepted once, duplicate is idempotent, invalid signature is rejected"
+    ]
+  }
+}
