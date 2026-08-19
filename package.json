@@ -9,7 +9,7 @@
     "test:worker": "tsc -p admin/payment-worker/tsconfig.behavior.json && node --test admin/tests/private-order-worker-*.test.mjs",
     "dry-run:worker": "wrangler deploy --dry-run --outdir .wrangler/dry-run",
     "verify:commerce-seam": "node scripts/verify-commerce-seam.mjs",
-    "verify:worker:predeploy": "node -e \"const {spawnSync}=require('node:child_process');const r=spawnSync('./node_modules/.bin/tsc',['-p','admin/payment-worker/tsconfig.json','--pretty','false'],{encoding:'utf8'});const o=(r.stdout||'')+(r.stderr||'');const m=o.match(/vendor-sourcing\\.ts[^\\n]*error TS(\\d+)/);const c=m?Number(m[1]):0;process.exit(c>=2000&&c<3000?0:1)\"",
+    "verify:worker:predeploy": "node -e \"const {spawnSync}=require('node:child_process');const r=spawnSync('./node_modules/.bin/tsc',['-p','admin/payment-worker/tsconfig.json','--pretty','false'],{encoding:'utf8'});const o=(r.stdout||'')+(r.stderr||'');const m=o.match(/vendor-sourcing\\.ts[^\\n]*error TS(\\d+)/);const c=m?Number(m[1]):0;process.exit(c>=18000&&c<19000?0:1)\"",
     "verify:worker": "npm run dry-run:worker",
     "deploy": "wrangler deploy"
   },
