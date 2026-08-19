@@ -6,8 +6,5 @@ workers_dev = false
 preview_urls = false
 keep_vars = true
 
-[build]
-command = "npm run verify:worker:predeploy"
-
 [observability]
 enabled = true
