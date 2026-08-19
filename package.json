@@ -9,7 +9,7 @@
     "test:worker": "tsc -p admin/payment-worker/tsconfig.behavior.json && node --test admin/tests/private-order-worker-*.test.mjs",
     "dry-run:worker": "wrangler deploy --dry-run --outdir .wrangler/dry-run",
     "verify:commerce-seam": "node scripts/verify-commerce-seam.mjs",
-    "verify:worker:predeploy": "npm run typecheck:worker",
+    "verify:worker:predeploy": "npm run test:worker",
     "verify:worker": "npm run dry-run:worker",
     "deploy": "wrangler deploy"
   },
