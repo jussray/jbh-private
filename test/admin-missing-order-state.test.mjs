@@ -16,8 +16,13 @@ test("missing admin orders render a visible recovery state instead of mutating v
     source,
     /if \(!target\) \{\s*setView\(\{ mode: "list" \}\);\s*return null;\s*\}/,
   );
-  assert.match(
-    source,
-    /if \(!target\) return <MissingOrderState onBack=\{\(\) => setView\(\{ mode: "list" \}\)\} \/>;/,
+
+  const failSafeBranch =
+    /if \(!target\) return <MissingOrderState onBack=\{\(\) => setView\(\{ mode: "list" \}\)\} \/>;/g;
+  const failSafeMatches = source.match(failSafeBranch) ?? [];
+  assert.equal(
+    failSafeMatches.length,
+    2,
+    "both edit and detail modes must render the missing-order recovery state",
   );
 });
