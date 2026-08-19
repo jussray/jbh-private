@@ -135,6 +135,25 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
   );
 }
 
+function MissingOrderState({ onBack }: { onBack: () => void }) {
+  return (
+    <Layout>
+      <div className="mx-auto max-w-md px-6 py-20" data-testid="missing-order-state">
+        <div className="rounded-lg border border-card-border bg-card p-8 text-center">
+          <Package className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+          <h1 className="font-display text-2xl text-foreground mb-2">Order unavailable</h1>
+          <p className="text-sm text-muted-foreground mb-5">
+            This order is no longer available. It may have been deleted or replaced since this view was opened.
+          </p>
+          <Button onClick={onBack}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to orders
+          </Button>
+        </div>
+      </div>
+    </Layout>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Login screen
 // ---------------------------------------------------------------------------
@@ -640,10 +659,7 @@ export default function Admin() {
   // Edit order form
   if (view.mode === "edit") {
     const target = orders.find((o) => o.id === view.id);
-    if (!target) {
-      setView({ mode: "list" });
-      return null;
-    }
+    if (!target) return <MissingOrderState onBack={() => setView({ mode: "list" })} />;
     return (
       <OrderForm
         initial={target}
@@ -660,10 +676,7 @@ export default function Admin() {
   // Order detail
   if (view.mode === "detail") {
     const target = orders.find((o) => o.id === view.id);
-    if (!target) {
-      setView({ mode: "list" });
-      return null;
-    }
+    if (!target) return <MissingOrderState onBack={() => setView({ mode: "list" })} />;
     return (
       <OrderDetail
         order={target}
@@ -745,7 +758,7 @@ export default function Admin() {
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
               {orders.length === 0
-                ? "When a DM, WhatsApp, or email order comes in, click \u201CNew order\u201D to log it."
+                ? "When a DM, WhatsApp, or email order comes in, click “New order” to log it."
                 : "Try a different filter or search."}
             </p>
             {orders.length === 0 && (
