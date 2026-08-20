@@ -1,0 +1,54 @@
+name: X Engagement Gate Adapter Exact-Head
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "automation/social/**"
+      - "package.json"
+      - ".gitignore"
+      - "skills/juss-beautiful-hair-private/SKILL.md"
+      - ".github/workflows/x-engagement-adapter.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: x-engagement-adapter-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  verify:
+    name: Verify X engagement adapter
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    steps:
+      - name: Check out exact requested head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install exact declared dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Verify adapter without live Apify credentials
+        env:
+          APIFY_TOKEN: ""
+        run: npm run verify:x-engagement
