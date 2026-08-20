@@ -31,6 +31,7 @@ Invoke it for vendor research, sourcing records, product evidence, internal admi
 
 - `vendor-docs/` and other private operational records contain sourcing truth.
 - `admin/` contains the private control application.
+- `automation/social/` contains private external-signal adapters used only as bounded evidence inputs.
 - `brand/BRAND_MOAT.md` defines the shared philosophy and product-separation boundary.
 - `skills/juss-beautiful-hair-private/SKILL.md` defines AI behavior.
 - Public customer-facing implementation belongs in `jussray/jussbeautifulhair-site`, not here.
@@ -81,6 +82,30 @@ A vendor candidate may advance only when evidence covers:
 
 No AI may automatically contact, approve, purchase from, or publish a vendor. Founder approval is separate at each stage.
 
+## X engagement evidence gate
+
+Gate 3 may use `automation/social/x-engagement-adapter.ts` only as a private external-signal input for topic qualification. It does not publish content, contact customers, change prices, or authorize a campaign.
+
+Run it through:
+
+```text
+APIFY_TOKEN=<private environment secret> npm run query:x-engagement -- "<topic>"
+```
+
+The adapter contract is:
+
+- actor authority is pinned to `apidojo/tweet-scraper` and validated before a paid run;
+- one normalized topic may trigger at most one cached run per UTC date in the same persistent execution environment;
+- input requests `Top`, at most 40 results, and at least 50 replies;
+- results are locally re-filtered to the exact prior 48 hours because provider date filters are not treated as final truth;
+- engagement is `likes + reposts + replies + quotes` so the returned number is comparable to visible interaction totals rather than provider rank;
+- the output number is the median of the top 10 qualifying engagement totals, or all qualifying rows when fewer than 10 exist;
+- provider, rate-limit, configuration, actor, cache, or empty-data failures return `UNKNOWN` and never synthesize `0`;
+- `UNKNOWN` means Gate 3 is `HOLD`, never `KILL`;
+- a `KNOWN` result is evidence for a separately supplied owned-channel median comparison, not a publication decision by itself.
+
+`APIFY_TOKEN` belongs only in a private execution environment. Do not put it in the public storefront, browser variables, committed `.env` files, or the customer-facing Cloudflare front door. A third-party scraper does not transfer X policy or legal responsibility away from the founder; paid activation remains a separate founder-accepted external-service decision.
+
 ## Authority
 
 Separate approval is required for:
@@ -107,6 +132,8 @@ npm run verify:playwright
 ```
 
 Evidence must be bound to the exact commit SHA. Skipped, stale, missing-log, `steps: null`, transferred, or truncated-critical results are not proof. Playwright must verify desktop, mobile, the existing hair catalog, signature products, and negative Untold-product leakage.
+
+For `automation/social/**`, also run the exact-head `X Engagement Gate Adapter` workflow. Its unit contract uses injected clients and must not spend Apify credits or require a live token in pull-request CI.
 
 ## Failure and rollback
 
