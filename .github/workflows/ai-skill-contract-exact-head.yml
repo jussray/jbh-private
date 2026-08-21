@@ -1,6 +1,6 @@
 name: Private Hair AI Skill Contract Exact-Head Gate
 
-# Revalidation note: this PR intentionally re-runs the existing exact-head private Juss OS contract against current main-derived source without changing runtime or private-data behavior.
+# Revalidation note: current-main proof refresh for Plugin Management authority; no runtime or private-data behavior changes.
 
 on:
   pull_request:
