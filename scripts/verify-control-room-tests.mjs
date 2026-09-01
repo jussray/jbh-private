@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const MANIFEST_PATH = 'control-room.manifest.json';
 const EXPECTED_REPOSITORY = 'jussray/jbh-private';
+const LOCAL_RUNNER_PATH = 'scripts/control-room-local-runner.mjs';
 const ALLOWED_KINDS = new Set([
   'typecheck',
   'lint',
@@ -57,6 +58,7 @@ function nodeTestFiles(command) {
 const raw = await readFile(MANIFEST_PATH, 'utf8');
 const manifest = JSON.parse(raw);
 const adminPackage = JSON.parse(await readFile('admin/package.json', 'utf8'));
+const rootPackage = JSON.parse(await readFile('package.json', 'utf8'));
 const errors = [];
 
 if (manifest.schemaVersion !== '1.0') errors.push('schemaVersion must be 1.0');
@@ -67,6 +69,16 @@ if (manifest.tests?.rawLogsAllowed !== false) errors.push('raw test logs must be
 if (!Array.isArray(manifest.tests?.catalog) || manifest.tests.catalog.length === 0) {
   errors.push('tests.catalog must contain repository-native tests');
 }
+
+const localRunner = manifest.controlRoom?.localRunner;
+if (localRunner?.script !== LOCAL_RUNNER_PATH) errors.push(`local runner script must be ${LOCAL_RUNNER_PATH}`);
+if (localRunner?.mode !== 'supplemental-local-evidence') errors.push('local runner must remain supplemental-local-evidence');
+if (localRunner?.authoritativeForMerge !== false) errors.push('local runner must not be authoritative for merge');
+if (localRunner?.providerSignalSubstitution !== false) errors.push('local runner must not substitute for provider signals');
+if (localRunner?.founderGatedExecution !== false) errors.push('local runner must not execute founder-gated actions');
+if (!safePath(localRunner?.script) || !(await exists(localRunner.script))) errors.push('local runner script is missing or unsafe');
+if (rootPackage.scripts?.['verify:control-room-local'] !== `node ${LOCAL_RUNNER_PATH}`) errors.push('root verify:control-room-local script must invoke the bounded local runner');
+if (!String(rootPackage.scripts?.['test:control-room'] ?? '').includes('control-room-local-runner.test.mjs')) errors.push('root test:control-room must include local runner boundary tests');
 
 const ids = new Set();
 const observations = [];
