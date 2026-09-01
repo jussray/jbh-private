@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import {
   buildExecutionPlan,
@@ -25,6 +26,7 @@ test('parses only bounded repository-native commands without a shell', () => {
   assert.deepEqual(parseCatalogCommand('node scripts/verify-plugin-management-contract.mjs'), {file: 'node', args: ['scripts/verify-plugin-management-contract.mjs']});
   assert.throws(() => parseCatalogCommand('npm --prefix admin run check && echo nope'), /unsupported control-room command/);
   assert.throws(() => parseCatalogCommand('node --test ../escape.test.mjs'), /unsupported control-room command/);
+  assert.throws(() => parseCatalogCommand('npm --prefix admin run preflight:paid-order-migration'), /unsupported control-room command/);
 });
 
 test('plans active checks but never founder-gated production actions', () => {
@@ -65,4 +67,18 @@ test('local failures remain failures and cannot be promoted by other passing che
   assert.equal(receipt.checks.find((check) => check.id === 'admin-typecheck')?.status, 'failed');
   assert.equal(receipt.runner.authoritativeForMerge, false);
   assert.equal(receipt.runner.providerSignalSubstitution, false);
+});
+
+test('repository pins local runner to supplemental-only authority', () => {
+  const actualManifest = JSON.parse(readFileSync(new URL('../control-room.manifest.json', import.meta.url), 'utf8'));
+  const rootPackage = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.deepEqual(actualManifest.controlRoom.localRunner, {
+    script: 'scripts/control-room-local-runner.mjs',
+    mode: 'supplemental-local-evidence',
+    authoritativeForMerge: false,
+    providerSignalSubstitution: false,
+    founderGatedExecution: false,
+  });
+  assert.equal(rootPackage.scripts['verify:control-room-local'], 'node scripts/control-room-local-runner.mjs');
+  assert.match(rootPackage.scripts['test:control-room'], /control-room-local-runner\.test\.mjs/);
 });
