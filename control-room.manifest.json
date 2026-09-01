@@ -10,11 +10,19 @@
   },
   "controlRoom": {
     "localSurface": true,
+    "localRunner": {
+      "script": "scripts/control-room-local-runner.mjs",
+      "mode": "supplemental-local-evidence",
+      "authoritativeForMerge": false,
+      "providerSignalSubstitution": false,
+      "founderGatedExecution": false
+    },
     "surfaces": [
       "control-room.manifest.json",
       ".control-room/repository.manifest.json",
       ".control-room/plugin-management.json",
       "scripts/verify-plugin-management-contract.mjs",
+      "scripts/control-room-local-runner.mjs",
       ".github/workflows/paid-order-reconciliation-exact-head.yml",
       ".github/workflows/ai-skill-contract-exact-head.yml",
       "admin/package.json"
@@ -157,8 +165,9 @@
     "blockers": [
       "Production migration application remains a separate founder approval gate",
       "Private vendor, cost, margin, customer, and sourcing data must never enter portfolio packets",
-      "A catalog entry is not a pass until its exact-head runner produces evidence"
+      "Repo-local evidence is supplemental and must never satisfy a missing provider signal",
+      "A catalog entry is not a provider pass until its exact-head provider runner produces evidence"
     ]
   },
-  "nextGate": "Verify the complete local catalog on an exact head, publish only sanitized check summaries, and keep migration plus production actions behind separate founder approval."
+  "nextGate": "Run the complete local catalog for supplemental exact-head evidence, keep missing provider signals red, publish only sanitized summaries, and keep migration plus production actions behind separate founder approval."
 }

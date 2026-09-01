@@ -8,6 +8,7 @@ const clean = (value) => typeof value === 'string' ? value.trim() : '';
 const normalizeSha = (value) => clean(value).toLowerCase();
 const timestamp = (value) => Number.isFinite(Date.parse(value ?? '')) ? Date.parse(value ?? '') : 0;
 const checkKey = (run) => `${clean(run?.app?.slug) || clean(run?.app?.name) || 'unknown-app'}\u0000${clean(run?.name)}`;
+const REPOSITORY_MANIFEST_PATH = '.control-room/repository.manifest.json';
 
 export function mapCheckState(run) {
   const status = clean(run?.status);
@@ -46,7 +47,27 @@ export function selectLatestChecks(checkRuns, expectedSha, observerCheckName = '
   })).sort((left, right) => left.name.localeCompare(right.name) || left.app.localeCompare(right.app));
 }
 
-export function aggregateTestLedger(checks) {
+export function requiredSignalState(checks, requiredSignalNames, requiredApp = 'github-actions') {
+  const list = Array.isArray(checks) ? checks : [];
+  const names = [...new Set((Array.isArray(requiredSignalNames) ? requiredSignalNames : []).map(clean).filter(Boolean))];
+  if (names.length === 0) return 'passed';
+
+  let hasPending = false;
+  for (const name of names) {
+    const matches = list.filter((check) => clean(check?.name) === name && clean(check?.app) === requiredApp);
+    if (matches.length !== 1) return 'failed';
+    const state = clean(matches[0]?.state);
+    if (state === 'passed') continue;
+    if (state === 'queued' || state === 'running') {
+      hasPending = true;
+      continue;
+    }
+    return 'failed';
+  }
+  return hasPending ? 'pending' : 'passed';
+}
+
+export function aggregateTestLedger(checks, requiredSignalNames = []) {
   const list = Array.isArray(checks) ? checks : [];
   const counts = {
     total: list.length,
@@ -62,10 +83,14 @@ export function aggregateTestLedger(checks) {
   else if (counts.failed > 0) state = 'failed';
   else if (counts.queued > 0 || counts.running > 0) state = 'pending';
   else if (counts.skipped > 0 || counts.unknown > 0) state = 'warning';
+
+  const requiredState = requiredSignalState(list, requiredSignalNames);
+  if (requiredState === 'failed') state = 'failed';
+  else if (requiredState === 'pending' && state !== 'failed') state = 'pending';
   return {state, counts};
 }
 
-export function buildTestLedger({repository, sha, branch, runId, checks, observerState = 'observing', observedAt = new Date()}) {
+export function buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames = [], observerState = 'observing', observedAt = new Date()}) {
   return {
     schemaVersion: CONTROL_ROOM_TEST_LEDGER_SCHEMA_VERSION,
     repository,
@@ -74,7 +99,7 @@ export function buildTestLedger({repository, sha, branch, runId, checks, observe
     generatedAt: observedAt.toISOString(),
     source: {provider: 'github-check-runs', exactRef: 'commit-sha', dedupe: 'latest-by-app-and-name', includesAllDiscoveredChecks: true, excludesObserverCheck: true},
     runner: {provider: 'github-actions', runId: clean(runId) || null, observerState, authoritativeForMerge: false},
-    aggregate: aggregateTestLedger(checks),
+    aggregate: aggregateTestLedger(checks, requiredSignalNames),
     checks,
   };
 }
@@ -108,6 +133,14 @@ function writeLedger(outputPath, ledger) {
   fs.writeFileSync(outputPath, `${JSON.stringify(ledger, null, 2)}\n`, 'utf8');
 }
 
+function loadRequiredSignalNames(manifestPath = REPOSITORY_MANIFEST_PATH) {
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const requiredSignals = Array.isArray(manifest?.verification?.requiredSignals) ? manifest.verification.requiredSignals : [];
+  const names = requiredSignals.filter((signal) => signal?.required === true).map((signal) => clean(signal?.name)).filter(Boolean);
+  if (names.length === 0) throw new Error('Repository control-room manifest must declare at least one required verification signal.');
+  return names;
+}
+
 export async function observeExactHeadChecks(env = process.env) {
   const repository = clean(env.GITHUB_REPOSITORY);
   const sha = normalizeSha(env.EXPECTED_HEAD_SHA || env.GITHUB_SHA);
@@ -120,6 +153,7 @@ export async function observeExactHeadChecks(env = process.env) {
   const pollMs = Number(env.CONTROL_ROOM_LEDGER_POLL_MS || 10_000);
   const minimumObservationMs = Number(env.CONTROL_ROOM_LEDGER_MINIMUM_MS || 30_000);
   if (!repository || !sha || !token) throw new Error('GITHUB_REPOSITORY, EXPECTED_HEAD_SHA/GITHUB_SHA, and GITHUB_TOKEN are required.');
+  const requiredSignalNames = loadRequiredSignalNames();
 
   const startedAt = Date.now();
   let stableTerminalPolls = 0;
@@ -128,7 +162,7 @@ export async function observeExactHeadChecks(env = process.env) {
   let reachedStableTerminal = false;
   while (Date.now() - startedAt < timeoutMs) {
     checks = selectLatestChecks(await fetchAllCheckRuns({repository, sha, token}), sha, observerCheckName);
-    writeLedger(outputPath, buildTestLedger({repository, sha, branch, runId, checks}));
+    writeLedger(outputPath, buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames}));
     const fingerprint = JSON.stringify(checks.map((check) => [check.app, check.name, check.state]));
     const terminal = !checks.some((check) => check.state === 'queued' || check.state === 'running');
     const oldEnough = Date.now() - startedAt >= minimumObservationMs;
@@ -138,7 +172,7 @@ export async function observeExactHeadChecks(env = process.env) {
     await sleep(pollMs);
   }
 
-  const ledger = buildTestLedger({repository, sha, branch, runId, checks, observerState: reachedStableTerminal ? 'stable' : 'window-expired'});
+  const ledger = buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, observerState: reachedStableTerminal ? 'stable' : 'window-expired'});
   writeLedger(outputPath, ledger);
   if (ledger.aggregate.counts.total === 0) throw new Error(`No exact-head checks were discovered. Evidence: ${outputPath}`);
   console.log(JSON.stringify(ledger, null, 2));

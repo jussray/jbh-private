@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
-import {aggregateTestLedger, buildTestLedger, mapCheckState, selectLatestChecks} from '../scripts/control-room-test-ledger.mjs';
+import {aggregateTestLedger, buildTestLedger, mapCheckState, requiredSignalState, selectLatestChecks} from '../scripts/control-room-test-ledger.mjs';
 
 const SHA = '660325d3575fc81bdfa7fd7d6001016bad20cf21';
 const workflow = readFileSync(new URL('../.github/workflows/control-room-test-ledger.yml', import.meta.url), 'utf8');
@@ -33,6 +33,27 @@ test('preserves aggregate states', () => {
   assert.equal(aggregateTestLedger([{state: 'skipped'}]).state, 'warning');
   assert.equal(aggregateTestLedger([{state: 'running'}]).state, 'pending');
   assert.equal(aggregateTestLedger([{state: 'failed'}]).state, 'failed');
+});
+
+test('fails closed when the manifest-required GitHub Actions signal is missing', () => {
+  const checks = [{name: 'Unrelated Green Lane', app: 'github-actions', state: 'passed'}];
+  const required = ['Verify private paid-order reconciliation'];
+  assert.equal(requiredSignalState(checks, required), 'failed');
+  assert.equal(aggregateTestLedger(checks, required).state, 'failed');
+});
+
+test('does not accept a same-name required signal from another app', () => {
+  const required = ['Verify private paid-order reconciliation'];
+  const checks = [{name: required[0], app: 'cloudflare-workers', state: 'passed'}];
+  assert.equal(requiredSignalState(checks, required), 'failed');
+  assert.equal(aggregateTestLedger(checks, required).state, 'failed');
+});
+
+test('accepts the required signal only when the exact GitHub Actions lane passes', () => {
+  const required = ['Verify private paid-order reconciliation'];
+  const checks = [{name: required[0], app: 'github-actions', state: 'passed'}];
+  assert.equal(requiredSignalState(checks, required), 'passed');
+  assert.equal(aggregateTestLedger(checks, required).state, 'passed');
 });
 
 test('builds sanitized exact-SHA evidence', () => {
