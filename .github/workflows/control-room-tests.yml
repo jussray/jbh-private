@@ -5,7 +5,10 @@ on:
     paths:
       - "control-room.manifest.json"
       - ".control-room/repository.manifest.json"
+      - "package.json"
       - "scripts/verify-control-room-tests.mjs"
+      - "scripts/control-room-local-runner.mjs"
+      - "test/control-room-local-runner.test.mjs"
       - "admin/package.json"
       - "admin/tests/**"
       - "admin/scripts/**"
@@ -16,7 +19,10 @@ on:
     paths:
       - "control-room.manifest.json"
       - ".control-room/repository.manifest.json"
+      - "package.json"
       - "scripts/verify-control-room-tests.mjs"
+      - "scripts/control-room-local-runner.mjs"
+      - "test/control-room-local-runner.test.mjs"
       - "admin/package.json"
       - "admin/tests/**"
       - "admin/scripts/**"
@@ -54,6 +60,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24"
+
+      - name: Attack local runner authority boundaries
+        run: node --test test/control-room-local-runner.test.mjs
 
       - name: Validate local and federated control-room test contracts
         run: node scripts/verify-control-room-tests.mjs
