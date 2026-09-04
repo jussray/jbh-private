@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const source = readFileSync(
-  new URL("../migrations/010_fulfillment_orchestrator_state.sql", import.meta.url),
+  new URL("../migrations/011_fulfillment_orchestrator_state.sql", import.meta.url),
   "utf8",
 );
 
