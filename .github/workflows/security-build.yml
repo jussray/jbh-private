@@ -38,7 +38,7 @@ jobs:
       - name: Verify MCP config
         run: npm run verify:mcp
       - name: Verify Shopify supplier intake contracts
-        run: node --test tests/shopify-supplier-sku-alias-contract.test.mjs tests/fulfillment-orchestrator-state-contract.test.mjs
+        run: node --test tests/shopify-supplier-sku-alias-contract.test.mjs tests/fulfillment-orchestrator-state-contract.test.mjs tests/az-hair-sell-readiness-contract.test.mjs
       - name: Typecheck private admin
         run: npm run check
       - name: Build private admin
