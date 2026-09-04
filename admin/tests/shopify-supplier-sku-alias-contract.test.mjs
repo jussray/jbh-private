@@ -8,6 +8,8 @@ const source = readFileSync(
 );
 
 const approved = [
+  ["BRAZ-SEW-BW-10", "bundle-bodywave", "3799"],
+  ["BRAZ-SEW-BW-12", "bundle-bodywave", "4299"],
   ["BRAZ-SEW-BW-14", "bundle-bodywave", "7500"],
   ["BRAZ-SEW-BW-16", "bundle-bodywave", "8500"],
   ["BRAZ-SEW-BW-18", "bundle-bodywave", "9000"],
@@ -15,21 +17,47 @@ const approved = [
   ["BRAZ-SEW-BW-22", "bundle-bodywave", "11000"],
   ["BRAZ-SEW-BW-24", "bundle-bodywave", "12500"],
   ["BRAZ-SEW-BW-26", "bundle-bodywave", "14000"],
+  ["BRAZ-SEW-BW-28", "bundle-bodywave", "10999"],
+  ["BRAZ-SEW-BW-30", "bundle-bodywave", "12199"],
+  ["BRAZ-SEW-BW-32", "bundle-bodywave", "13199"],
+  ["BRAZ-SEW-DW-10", "bundle-deepwave", "4099"],
+  ["BRAZ-SEW-DW-12", "bundle-deepwave", "4499"],
   ["BRAZ-SEW-DW-14", "bundle-deepwave", "8000"],
+  ["BRAZ-SEW-DW-16", "bundle-deepwave", "5799"],
   ["BRAZ-SEW-DW-18", "bundle-deepwave", "9500"],
+  ["BRAZ-SEW-DW-20", "bundle-deepwave", "7499"],
   ["BRAZ-SEW-DW-22", "bundle-deepwave", "11500"],
+  ["BRAZ-SEW-DW-24", "bundle-deepwave", "8999"],
   ["BRAZ-SEW-DW-26", "bundle-deepwave", "14500"],
+  ["BRAZ-SEW-DW-28", "bundle-deepwave", "11299"],
+  ["BRAZ-SEW-DW-30", "bundle-deepwave", "12499"],
+  ["BRAZ-SEW-DW-32", "bundle-deepwave", "13499"],
+  ["BRAZ-SEW-LW-10", "bundle-loosewave", "4099"],
+  ["BRAZ-SEW-LW-12", "bundle-loosewave", "4499"],
   ["BRAZ-SEW-LW-14", "bundle-loosewave", "8000"],
+  ["BRAZ-SEW-LW-16", "bundle-loosewave", "5799"],
   ["BRAZ-SEW-LW-18", "bundle-loosewave", "9500"],
+  ["BRAZ-SEW-LW-20", "bundle-loosewave", "7499"],
   ["BRAZ-SEW-LW-22", "bundle-loosewave", "11500"],
+  ["BRAZ-SEW-LW-24", "bundle-loosewave", "8999"],
   ["BRAZ-SEW-LW-26", "bundle-loosewave", "14500"],
+  ["BRAZ-SEW-LW-28", "bundle-loosewave", "11299"],
+  ["BRAZ-SEW-LW-30", "bundle-loosewave", "12499"],
+  ["BRAZ-SEW-LW-32", "bundle-loosewave", "13499"],
   ["BRAZ-SEW-KS-14", "bundle-kinkystraight", "8500"],
+  ["BRAZ-SEW-KS-16", "bundle-kinkystraight", "6499"],
   ["BRAZ-SEW-KS-18", "bundle-kinkystraight", "10000"],
+  ["BRAZ-SEW-KS-20", "bundle-kinkystraight", "7799"],
   ["BRAZ-SEW-KS-22", "bundle-kinkystraight", "12000"],
+  ["BRAZ-SEW-KS-24", "bundle-kinkystraight", "9899"],
   ["BRAZ-SEW-KS-26", "bundle-kinkystraight", "15500"],
+  ["BRAZ-SEW-KS-28", "bundle-kinkystraight", "11999"],
 ];
 
-test("live supplier SKUs normalize to canonical JBH products and prices", () => {
+test("all live supplier SKUs normalize to canonical JBH products and prices", () => {
+  assert.equal(approved.length, 44);
+  assert.equal(new Set(approved.map(([sku]) => sku)).size, approved.length);
+
   for (const [sku, productCode, cents] of approved) {
     const escapedSku = sku.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const pattern = new RegExp(
@@ -39,15 +67,13 @@ test("live supplier SKUs normalize to canonical JBH products and prices", () => 
   }
 });
 
-test("unapproved supplier lengths stay fail-closed", () => {
+test("unknown supplier variants stay fail-closed", () => {
   for (const sku of [
-    "BRAZ-SEW-BW-10",
-    "BRAZ-SEW-BW-12",
-    "BRAZ-SEW-BW-28",
-    "BRAZ-SEW-DW-16",
-    "BRAZ-SEW-DW-20",
-    "BRAZ-SEW-LW-24",
-    "BRAZ-SEW-KS-28",
+    "BRAZ-SEW-BW-34",
+    "BRAZ-SEW-DW-34",
+    "BRAZ-SEW-LW-34",
+    "BRAZ-SEW-KS-30",
+    "BRAZ-SEW-ST-18",
   ]) {
     assert.doesNotMatch(source, new RegExp(`"${sku}"`), `${sku} must remain unsupported`);
   }
