@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 2,
-  "decidedAt": "2026-08-02",
+  "schemaVersion": 3,
+  "decidedAt": "2026-09-04",
   "business": "Juss Beautiful Hair",
   "selectionAuthority": "owner",
   "dispatchAuthority": false,
@@ -35,6 +35,17 @@
         {"productId":"edge-control","role":"primary"},
         {"productId":"lace-melt-spray","role":"primary"},
         {"productId":"hair-oil","role":"primary"}
+      ]
+    },
+    {
+      "code": "faire",
+      "displayName": "Faire",
+      "role": "manual-wholesale-marketplace",
+      "state": "selected-contacted",
+      "productAssignments": [
+        {"productId":"edge-control","role":"manual-sourcing-candidate"},
+        {"productId":"lace-melt-spray","role":"manual-sourcing-candidate"},
+        {"productId":"hair-oil","role":"manual-sourcing-candidate"}
       ]
     },
     {
