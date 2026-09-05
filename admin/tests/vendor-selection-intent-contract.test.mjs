@@ -7,6 +7,7 @@ const read = (path) => readFile(path, "utf8");
 const expectedVendors = new Set([
   "dropship-bundles",
   "dropship-beauty",
+  "faire",
   "apohair",
   "5s-hair",
   "az-hair-vietnam",
@@ -42,7 +43,7 @@ test("owner-selected stack covers the catalog without dispatch authority", async
 
   assert.equal(intent.dispatchAuthority, false);
   assert.equal(intent.selectionAuthority, "owner");
-  assert.equal(intent.vendors.length, 7);
+  assert.equal(intent.vendors.length, 8);
   assert.deepEqual(new Set(intent.vendors.map((vendor) => vendor.code)), expectedVendors);
   assert.ok(intent.vendors.every((vendor) => vendor.state === "selected-contacted"));
 
@@ -54,6 +55,19 @@ test("owner-selected stack covers the catalog without dispatch authority", async
     ),
   );
   assert.deepEqual(primaryProducts, expectedProducts);
+
+  const faire = intent.vendors.find((vendor) => vendor.code === "faire");
+  assert.ok(faire);
+  assert.equal(faire.role, "manual-wholesale-marketplace");
+  assert.deepEqual(
+    new Set(faire.productAssignments.map((assignment) => assignment.productId)),
+    new Set(["edge-control", "lace-melt-spray", "hair-oil"]),
+  );
+  assert.ok(
+    faire.productAssignments.every(
+      (assignment) => assignment.role === "manual-sourcing-candidate",
+    ),
+  );
 
   for (const productId of expectedProducts) {
     assert.match(catalog, new RegExp(`id: ["']${productId}["']`));
