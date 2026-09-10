@@ -65,6 +65,23 @@ requireText('AGENTS separation', files.agents, 'separate from Untold Stories');
 for (const command of ['/goalfix', '/ultrathink', '/truthmode', '/confess', '/redteam', '/lindymode', '/ooda', '/visualize']) {
   requireText('portable Juss OS command surface', files.founder, command);
 }
+const challengeStack = [
+  'ULTRATHINK',
+  'Red Team 1 — premise',
+  'Lindy mode',
+  'L99',
+  'Red Team 2 — implementation',
+  'OODA',
+  'Proof',
+  'Rollback / Next Gate',
+];
+let previousIndex = -1;
+for (const step of challengeStack) {
+  const index = files.founder.indexOf(step);
+  if (index < 0) failures.push(`Founder Intelligence missing challenge step: ${step}`);
+  if (index <= previousIndex) failures.push(`Founder Intelligence challenge stack out of order at: ${step}`);
+  if (index >= 0) previousIndex = index;
+}
 for (const phrase of [
   'Portable Juss OS command surface:',
   'These are reasoning/planning modes only.',
