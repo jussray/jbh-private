@@ -21,6 +21,29 @@ Required loop:
 → Repeat
 ```
 
+## Canonical challenge stack for nontrivial private-commerce work
+
+```text
+ULTRATHINK
+→ Red Team 1 — premise
+→ Lindy mode
+→ L99
+→ Red Team 2 — implementation
+→ OODA
+→ Proof
+→ Rollback / Next Gate
+```
+
+- **ULTRATHINK:** reconcile founder intent, private vendor/customer data, sourcing, product quality, catalog truth, pricing, checkout, fulfillment, deployment, and evidence before selecting a bounded path.
+- **Red Team 1:** challenge the premise, evidence, scope, economics, and whether the requested operational or commerce change should exist.
+- **Lindy mode:** prefer the smallest durable, reversible existing private-operation carrier and stable interfaces over novelty, duplicated state, or speculative automation.
+- **L99:** bind the selected path to current product/vendor/order fingerprints, provenance, scoped authority, private-data boundaries, evidence, rollback, continuity, and drift.
+- **Red Team 2:** attack the chosen implementation for private-data leakage, pricing or catalog mismatch, vendor/customer communication risk, checkout/fulfillment regressions, stale proof, hidden assumptions, overclaims, retry hazards, and missing recovery.
+- **OODA:** observe the exact current private-operation state, orient to repository-local commerce/privacy constraints, decide one bounded action, act only within existing authority, then re-observe and verify.
+- **Proof / Rollback / Next Gate:** separate repository, private-operation, provider, checkout, payment, fulfillment, and customer-outcome truth; preserve rollback and the smallest next gate.
+
+A failed pass narrows, changes, or stops the work. These modes coordinate one founder intent and never authorize vendor/customer contact, purchasing, pricing changes, discounts, refunds, publication, deployment, credentials, migrations, database writes, destructive actions, or merge by themselves.
+
 Portable Juss OS command surface:
 
 ```text
