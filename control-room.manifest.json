@@ -4,7 +4,7 @@
   "portfolioHub": "jussray/founder-control-room",
   "role": "runtime-control-room",
   "authority": {
-    "sourceOfTruth": "Private operations main, exact-head paid-order reconciliation, admin build evidence, and founder-approved migration gates",
+    "sourceOfTruth": "Private operations main, exact-head paid-order control, admin build evidence, and founder-approved migration gates",
     "portfolioMode": "sanitized-read-only-observer",
     "productionMutation": "separate-founder-gate"
   },
@@ -20,6 +20,7 @@
     "surfaces": [
       "control-room.manifest.json",
       ".control-room/repository.manifest.json",
+      ".control-room/commerce-seam.json",
       ".control-room/plugin-management.json",
       "scripts/verify-plugin-management-contract.mjs",
       "scripts/control-room-local-runner.mjs",
@@ -49,14 +50,17 @@
       },
       {
         "id": "paid-order-contracts",
-        "name": "Paid-order reconciliation contracts",
+        "name": "Paid-order control contracts",
         "kind": "contract",
-        "command": "node --test admin/tests/paid-order-reconciliation-contract.test.mjs admin/tests/paid-order-migration-preflight-contract.test.mjs",
+        "command": "node --test admin/tests/paid-order-reconciliation-contract.test.mjs admin/tests/paid-order-migration-preflight-contract.test.mjs admin/tests/private-order-worker-shopify-physical-contract.test.mjs",
         "required": true,
         "status": "active",
         "evidencePaths": [
+          ".control-room/commerce-seam.json",
           "admin/tests/paid-order-reconciliation-contract.test.mjs",
           "admin/tests/paid-order-migration-preflight-contract.test.mjs",
+          "admin/tests/private-order-worker-shopify-physical-contract.test.mjs",
+          "admin/migrations/008_shopify_physical_procurement.sql",
           ".github/workflows/paid-order-reconciliation-exact-head.yml"
         ]
       },
@@ -154,10 +158,12 @@
     "commit": "660325d3575fc81bdfa7fd7d6001016bad20cf21",
     "observedAt": "2026-08-04",
     "proofRefs": [
+      ".control-room/commerce-seam.json",
       ".github/workflows/paid-order-reconciliation-exact-head.yml",
       "admin/package.json",
       "admin/tests/paid-order-reconciliation-contract.test.mjs",
-      "admin/tests/paid-order-migration-preflight-contract.test.mjs"
+      "admin/tests/paid-order-migration-preflight-contract.test.mjs",
+      "admin/tests/private-order-worker-shopify-physical-contract.test.mjs"
     ]
   },
   "risk": {
@@ -166,8 +172,9 @@
       "Production migration application remains a separate founder approval gate",
       "Private vendor, cost, margin, customer, and sourcing data must never enter portfolio packets",
       "Repo-local evidence is supplemental and must never satisfy a missing provider signal",
-      "A catalog entry is not a provider pass until its exact-head provider runner produces evidence"
+      "A catalog entry is not a provider pass until its exact-head provider runner produces evidence",
+      "Stripe remains a retained rollback path and must not be reported as the active physical-product checkout"
     ]
   },
-  "nextGate": "Run the complete local catalog for supplemental exact-head evidence, keep missing provider signals red, publish only sanitized summaries, and keep migration plus production actions behind separate founder approval."
+  "nextGate": "Run the complete local catalog for supplemental exact-head evidence, keep missing provider signals red, preserve Shopify orders/paid as the active paid-order truth, publish only sanitized summaries, and keep migration plus production actions behind separate founder approval."
 }
