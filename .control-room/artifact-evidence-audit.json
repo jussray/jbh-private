@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "auditId": "jbh-artifact-evidence-audit@2026-09-12",
+  "source": {
+    "name": "artifacts-2of2.zip",
+    "sizeBytes": 15709940,
+    "sha256": "9549b7df0f4d10cece53e138b754346201175ea7fb81b583a9ce813da0e83bb9",
+    "artifactCount": 18,
+    "sourceAccess": "conversation-upload",
+    "driveMirrorStatus": "BLOCKED_SOURCE_ACCESS"
+  },
+  "truthBoundary": {
+    "archiveIsProductionProof": false,
+    "archiveIsMergeAuthority": false,
+    "archiveIsProviderAuthority": false,
+    "alternateSourceMayPreserveEvidence": true,
+    "continuityMarkersAreNonAuthorizing": true,
+    "rule": "A blocked provider copy does not erase independently available evidence. Imported artifacts preserve provenance, but current repository, provider, runtime, checkout, and outcome evidence outrank stale planning or deployment bundles."
+  },
+  "projectRouting": {
+    "jussray/jbh-private": {
+      "relationship": "owner",
+      "allowedUse": [
+        "historical brand and launch context",
+        "private vendor and sourcing provenance",
+        "legacy commerce migration provenance",
+        "creative asset recovery"
+      ]
+    },
+    "jussray/jussbeautifulhair-site": {
+      "relationship": "bounded-public-consumer",
+      "allowedUse": [
+        "approved creative assets only after current-source review"
+      ],
+      "forbiddenUse": [
+        "private admin code",
+        "vendor or sourcing records",
+        "database or order schemas",
+        "legacy Stripe checkout as active commerce",
+        "old static bundles as deployment authority"
+      ]
+    },
+    "jussray/founder-control-room": {
+      "relationship": "sanitized-observer",
+      "allowedUse": [
+        "classification, fingerprint, evidence status, and next-gate summary"
+      ],
+      "forbiddenUse": [
+        "private vendor identities or communications",
+        "supplier pricing or sourcing terms",
+        "customer or order data",
+        "raw private logs"
+      ]
+    },
+    "otherProjects": {
+      "relationship": "none",
+      "projects": [
+        "Se'kret Bip",
+        "Chief AI Machine / PromptOS",
+        "StoryEngine / L99",
+        "Untold Stories",
+        "SWEATS",
+        "Think Tank",
+        "Johnstown AI Center"
+      ],
+      "truthMutation": false,
+      "reason": "No artifact in this archive provides project-specific implementation, runtime, authority, or outcome evidence for these projects."
+    }
+  },
+  "artifactClasses": {
+    "historicalPlanningResearch": [
+      "juss_beauty_fb_audit.md",
+      "juss_beautiful_hair_launch_plan.md",
+      "jbh_execution_kit.md",
+      "jbh_vendor_sourcing.pdf",
+      "jbh_vendor_sourcing.md",
+      "jbh_vendor_emails.md"
+    ],
+    "legacyCommerceInputs": [
+      "jbh_stripe_links_TEMPLATE.md",
+      "jbh_vendor_intake.csv"
+    ],
+    "creativeAssets": [
+      "jbh_profile.png",
+      "jbh_cover.png",
+      "jbh_homepage_hero.png",
+      "jbh_launch_announcement.png",
+      "jbh_promo_10off.png",
+      "jbh_story_template.png"
+    ],
+    "uiFixtureNotProductionProof": [
+      "admin_orders.png"
+    ],
+    "historicalDeployableBundlesDoNotPromote": [
+      "jbh_static_for_cloudflare.zip",
+      "jbh_github_ready.zip",
+      "jbh_admin_local.zip"
+    ]
+  },
+  "knownNestedFingerprints": {
+    "jbh_github_ready.zip": "6dc426cae02bae379a50fb082829f16b6b162f9d59d767c96b5aa94c86ac16c4",
+    "jbh_static_for_cloudflare.zip": "fb2865dedc6f029447a9d059415d85e40793c1a7367363781b4e7ac2dafd6885",
+    "jbh_admin_local.zip": "de73e5f8d8fb47efea20e543d4b45b04681314ffa6ad08487a4ca09b49c629d1",
+    "admin_orders.png": "342e003e6f8327f8bd04ccfc8278b51a2673546cb419d5da8d8803678eb9dde6"
+  },
+  "currentCommercePrecedence": {
+    "activePhysicalCheckout": "Shopify Storefront Cart plus Shopify-hosted checkout",
+    "activePaidOrderTopic": "orders/paid",
+    "stripeRole": "retained rollback only",
+    "productionTruthRequiresExternalEvidence": true
+  },
+  "proofCookie": {
+    "value": "jbh-artifacts-9549b7df-20260912",
+    "authorizes": false,
+    "expiresOn": [
+      "source archive replacement",
+      "artifact fingerprint change",
+      "commerce authority change",
+      "stronger contradictory evidence"
+    ]
+  }
+}
