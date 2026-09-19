@@ -7,7 +7,7 @@ preview_urls = false
 keep_vars = true
 
 [build]
-command = "npm run verify:worker:cloudflare"
+command = "node scripts/verify-cloudflare-worker-identity.mjs"
 
 [observability]
 enabled = true
