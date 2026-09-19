@@ -80,6 +80,21 @@
         ]
       },
       {
+        "id": "migration-ledger-contract",
+        "name": "Migration ledger uniqueness contract",
+        "kind": "contract",
+        "command": "node --test admin/tests/migration-ledger-contract.test.mjs",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/migrations/010_fulfillment_orchestrator_state.sql",
+          "admin/migrations/010_wig_assortment_candidates.sql",
+          "admin/migrations/011_shopify_customer_contact.sql",
+          "admin/tests/migration-ledger-contract.test.mjs",
+          ".github/workflows/paid-order-reconciliation-exact-head.yml"
+        ]
+      },
+      {
         "id": "shopify-physical-schema-preflight-contract",
         "name": "Shopify physical schema preflight contract",
         "kind": "contract",
@@ -227,6 +242,7 @@
       "admin/tests/private-order-worker-shopify-physical-contract.test.mjs",
       "admin/migrations/011_shopify_customer_contact.sql",
       "admin/tests/shopify-customer-contact-contract.test.mjs",
+      "admin/tests/migration-ledger-contract.test.mjs",
       "admin/scripts/preflight-shopify-physical-order-schema.mjs",
       "admin/tests/shopify-physical-schema-preflight-contract.test.mjs",
       "admin/migrations/009_vendor_connection_state.sql",
@@ -238,7 +254,7 @@
     "blockers": [
       "Active Shopify production database schema proof remains a separate founder-gated provider check",
       "Production migration application remains a separate founder approval gate",
-      "Migration history contains two distinct 010-prefixed files; do not infer runtime migration order from numeric prefix alone until the intended database migration ledger is verified",
+      "Migration history has a frozen historical 010 collision; the exact-head ledger contract prevents new duplicate numbered migrations, but runtime application history remains unknown until the intended database ledger is verified",
       "Private vendor, cost, margin, customer, and sourcing data must never enter portfolio packets",
       "Repo-local evidence is supplemental and must never satisfy a missing provider signal",
       "A catalog entry is not a provider pass until its exact-head provider runner produces evidence",
