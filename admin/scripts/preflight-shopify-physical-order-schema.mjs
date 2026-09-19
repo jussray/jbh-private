@@ -26,7 +26,7 @@ try {
       to_regclass(current_schema() || '.failed_shopify_physical_events') IS NOT NULL
         AS failed_events_table_present,
       (
-        SELECT COUNT(*) = 10
+        SELECT COUNT(*) = 12
         FROM information_schema.columns
         WHERE table_schema = current_schema()
           AND table_name = 'shopify_physical_orders'
@@ -35,6 +35,8 @@ try {
             'shop_domain',
             'first_webhook_id',
             'topic',
+            'customer_email',
+            'customer_phone',
             'shipping_address_json',
             'items_json',
             'subtotal_cents',
@@ -55,6 +57,14 @@ try {
             (column_name = 'total_cents' AND udt_name = 'int4')
           )
       ) AS critical_order_types_present,
+      EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'shopify_physical_orders'
+          AND column_name = 'customer_email'
+          AND is_nullable = 'YES'
+      ) AS customer_email_nullable,
       EXISTS (
         SELECT 1
         FROM pg_indexes
@@ -119,7 +129,16 @@ try {
           AND pg_get_constraintdef(oid) ILIKE '%shipped%'
           AND pg_get_constraintdef(oid) ILIKE '%delivered%'
           AND pg_get_constraintdef(oid) ILIKE '%cancelled%'
-      ) AS procurement_status_constraint_present
+      ) AS procurement_status_constraint_present,
+      EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conrelid = to_regclass(current_schema() || '.shopify_physical_orders')
+          AND contype = 'c'
+          AND conname = 'shopify_physical_orders_customer_contact_present'
+          AND pg_get_constraintdef(oid) ILIKE '%customer_email%'
+          AND pg_get_constraintdef(oid) ILIKE '%customer_phone%'
+      ) AS customer_contact_constraint_present
   `;
 
   const report = {
@@ -128,6 +147,7 @@ try {
     failedEventsTablePresent: Boolean(state?.failed_events_table_present),
     requiredOrderColumnsPresent: Boolean(state?.required_order_columns_present),
     criticalOrderTypesPresent: Boolean(state?.critical_order_types_present),
+    customerEmailNullable: Boolean(state?.customer_email_nullable),
     orderIdUnique: Boolean(state?.order_id_unique),
     firstWebhookIdUnique: Boolean(state?.first_webhook_id_unique),
     processedWebhookIdUnique: Boolean(state?.processed_webhook_id_unique),
@@ -136,6 +156,7 @@ try {
     currencyConstraintPresent: Boolean(state?.currency_constraint_present),
     paymentStatusConstraintPresent: Boolean(state?.payment_status_constraint_present),
     procurementStatusConstraintPresent: Boolean(state?.procurement_status_constraint_present),
+    customerContactConstraintPresent: Boolean(state?.customer_contact_constraint_present),
   };
 
   console.log(JSON.stringify(report, null, 2));
@@ -184,11 +205,17 @@ try {
     process.exit(7);
   }
 
+  if (!report.customerEmailNullable || !report.customerContactConstraintPresent) {
+    publishResult("shopify-customer-contact-invariant-missing");
+    console.error("Shopify physical-order schema preflight blocked: email-or-phone customer contact invariant is missing or drifted.");
+    process.exit(8);
+  }
+
   publishResult("passed-shopify-physical-schema");
   console.log("Shopify physical-order schema preflight passed.");
 } catch (error) {
   publishResult("query-failed");
   const code = error instanceof Error ? error.name.slice(0, 80) : "UnknownError";
   console.error(`Shopify physical-order schema preflight failed: ${code}`);
-  process.exit(8);
+  process.exit(9);
 }
