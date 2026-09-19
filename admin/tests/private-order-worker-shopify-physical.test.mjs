@@ -61,6 +61,8 @@ test("canonical Shopify physical order becomes procurement-needed receipt", () =
   const result = normalizePaidShopifyPhysicalOrder(paidOrder());
   assert.equal(result.kind, "physical");
   assert.equal(result.order.shopifyOrderId, "1001");
+  assert.equal(result.order.customerEmail, "buyer@example.com");
+  assert.equal(result.order.customerPhone, "+15555550100");
   assert.equal(result.order.subtotalCents, 9000);
   assert.equal(result.order.totalCents, 10000);
 
@@ -70,6 +72,39 @@ test("canonical Shopify physical order becomes procurement-needed receipt", () =
   assert.equal(items[0].productCode, "bundle-bodywave");
   assert.equal(items[0].unitPriceCents, 9000);
   assert.equal(items[0].procurementStatus, "procurement_needed");
+});
+
+test("phone-only Shopify checkout remains a valid paid physical order", () => {
+  const result = normalizePaidShopifyPhysicalOrder(
+    paidOrder({
+      email: null,
+      contact_email: null,
+      customer: null,
+      phone: "+15555550100",
+    }),
+  );
+  assert.equal(result.kind, "physical");
+  assert.equal(result.order.customerEmail, null);
+  assert.equal(result.order.customerPhone, "+15555550100");
+});
+
+test("physical order fails closed when Shopify supplies neither email nor phone", () => {
+  const base = paidOrder();
+  expectModelError(
+    () =>
+      normalizePaidShopifyPhysicalOrder({
+        ...base,
+        email: null,
+        contact_email: null,
+        customer: null,
+        phone: null,
+        shipping_address: {
+          ...base.shipping_address,
+          phone: null,
+        },
+      }),
+    "missing_customer_contact",
+  );
 });
 
 test("catalog map covers 37 canonical SKUs plus 44 supplier aliases", () => {
