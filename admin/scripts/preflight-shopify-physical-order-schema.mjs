@@ -43,6 +43,18 @@ try {
             'procurement_status'
           ]::text[])
       ) AS required_order_columns_present,
+      (
+        SELECT COUNT(*) = 4
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'shopify_physical_orders'
+          AND (
+            (column_name = 'shipping_address_json' AND udt_name = 'jsonb') OR
+            (column_name = 'items_json' AND udt_name = 'jsonb') OR
+            (column_name = 'subtotal_cents' AND udt_name = 'int4') OR
+            (column_name = 'total_cents' AND udt_name = 'int4')
+          )
+      ) AS critical_order_types_present,
       EXISTS (
         SELECT 1
         FROM pg_indexes
@@ -74,7 +86,40 @@ try {
           AND tablename = 'failed_shopify_physical_events'
           AND indexdef ILIKE '%UNIQUE%'
           AND indexdef LIKE '%(webhook_id)%'
-      ) AS failed_webhook_id_unique
+      ) AS failed_webhook_id_unique,
+      EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conrelid = to_regclass(current_schema() || '.shopify_physical_orders')
+          AND contype = 'c'
+          AND pg_get_constraintdef(oid) ILIKE '%topic%orders/paid%'
+      ) AS topic_constraint_present,
+      EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conrelid = to_regclass(current_schema() || '.shopify_physical_orders')
+          AND contype = 'c'
+          AND pg_get_constraintdef(oid) ILIKE '%currency%USD%'
+      ) AS currency_constraint_present,
+      EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conrelid = to_regclass(current_schema() || '.shopify_physical_orders')
+          AND contype = 'c'
+          AND pg_get_constraintdef(oid) ILIKE '%payment_status%paid%'
+      ) AS payment_status_constraint_present,
+      EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conrelid = to_regclass(current_schema() || '.shopify_physical_orders')
+          AND contype = 'c'
+          AND pg_get_constraintdef(oid) ILIKE '%procurement_status%procurement_needed%'
+          AND pg_get_constraintdef(oid) ILIKE '%supplier_ordered%'
+          AND pg_get_constraintdef(oid) ILIKE '%supplier_confirmed%'
+          AND pg_get_constraintdef(oid) ILIKE '%shipped%'
+          AND pg_get_constraintdef(oid) ILIKE '%delivered%'
+          AND pg_get_constraintdef(oid) ILIKE '%cancelled%'
+      ) AS procurement_status_constraint_present
   `;
 
   const report = {
@@ -82,10 +127,15 @@ try {
     processedEventsTablePresent: Boolean(state?.processed_events_table_present),
     failedEventsTablePresent: Boolean(state?.failed_events_table_present),
     requiredOrderColumnsPresent: Boolean(state?.required_order_columns_present),
+    criticalOrderTypesPresent: Boolean(state?.critical_order_types_present),
     orderIdUnique: Boolean(state?.order_id_unique),
     firstWebhookIdUnique: Boolean(state?.first_webhook_id_unique),
     processedWebhookIdUnique: Boolean(state?.processed_webhook_id_unique),
     failedWebhookIdUnique: Boolean(state?.failed_webhook_id_unique),
+    topicConstraintPresent: Boolean(state?.topic_constraint_present),
+    currencyConstraintPresent: Boolean(state?.currency_constraint_present),
+    paymentStatusConstraintPresent: Boolean(state?.payment_status_constraint_present),
+    procurementStatusConstraintPresent: Boolean(state?.procurement_status_constraint_present),
   };
 
   console.log(JSON.stringify(report, null, 2));
@@ -106,6 +156,12 @@ try {
     process.exit(4);
   }
 
+  if (!report.criticalOrderTypesPresent) {
+    publishResult("shopify-physical-column-types-mismatch");
+    console.error("Shopify physical-order schema preflight blocked: critical order column types do not match the contract.");
+    process.exit(5);
+  }
+
   if (
     !report.orderIdUnique ||
     !report.firstWebhookIdUnique ||
@@ -114,7 +170,18 @@ try {
   ) {
     publishResult("shopify-idempotency-constraints-missing");
     console.error("Shopify physical-order schema preflight blocked: idempotency constraints are missing.");
-    process.exit(5);
+    process.exit(6);
+  }
+
+  if (
+    !report.topicConstraintPresent ||
+    !report.currencyConstraintPresent ||
+    !report.paymentStatusConstraintPresent ||
+    !report.procurementStatusConstraintPresent
+  ) {
+    publishResult("shopify-order-check-constraints-missing");
+    console.error("Shopify physical-order schema preflight blocked: required order CHECK constraints are missing or drifted.");
+    process.exit(7);
   }
 
   publishResult("passed-shopify-physical-schema");
@@ -123,5 +190,5 @@ try {
   publishResult("query-failed");
   const code = error instanceof Error ? error.name.slice(0, 80) : "UnknownError";
   console.error(`Shopify physical-order schema preflight failed: ${code}`);
-  process.exit(6);
+  process.exit(8);
 }
