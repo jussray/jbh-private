@@ -14,6 +14,7 @@ on:
       - "admin/tests/private-order-worker-shopify-physical.test.mjs"
       - "admin/tests/private-order-worker-shopify-physical-contract.test.mjs"
       - "admin/tests/shopify-customer-contact-contract.test.mjs"
+      - "admin/tests/migration-ledger-contract.test.mjs"
       - "admin/api/stripe/webhook.ts"
       - "admin/api/_lib/storage.ts"
       - "admin/shared/schema.ts"
@@ -93,6 +94,9 @@ jobs:
 
       - name: Verify Shopify customer contact compatibility contract
         run: node --test tests/shopify-customer-contact-contract.test.mjs
+
+      - name: Verify migration ledger uniqueness contract
+        run: node --test tests/migration-ledger-contract.test.mjs
 
       - name: Verify Shopify physical schema preflight contract
         run: node --test tests/shopify-physical-schema-preflight-contract.test.mjs
