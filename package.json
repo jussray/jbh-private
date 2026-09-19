@@ -9,6 +9,7 @@
     "test:worker": "tsc -p admin/payment-worker/tsconfig.behavior.json && node --test admin/tests/private-order-worker-*.test.mjs",
     "dry-run:worker": "wrangler deploy --dry-run --outdir .wrangler/dry-run",
     "verify:commerce-seam": "node scripts/verify-commerce-seam.mjs",
+    "verify:worker:cloudflare": "node scripts/verify-cloudflare-worker-identity.mjs && npm run verify:commerce-seam && npm run typecheck:worker && npm run test:worker",
     "verify:worker": "npm run verify:commerce-seam && npm run typecheck:worker && npm run test:worker && npm run dry-run:worker",
     "verify:control-room-local": "node scripts/control-room-local-runner.mjs",
     "test:control-room": "node --test test/control-room-test-ledger.test.mjs test/control-room-local-runner.test.mjs",
