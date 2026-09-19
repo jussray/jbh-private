@@ -6,6 +6,7 @@ on:
     paths:
       - "admin/migrations/008_shopify_physical_procurement.sql"
       - "admin/migrations/009_vendor_connection_state.sql"
+      - "admin/migrations/011_shopify_customer_contact.sql"
       - "admin/scripts/preflight-shopify-physical-order-schema.mjs"
       - "admin/package.json"
       - ".github/workflows/paid-order-production-preflight.yml"
