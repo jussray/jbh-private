@@ -43,6 +43,15 @@
         "workflow": ".github/workflows/paid-order-reconciliation-exact-head.yml"
       },
       {
+        "id": "migration-ledger-contract",
+        "name": "Migration ledger uniqueness contract",
+        "kind": "contract",
+        "signalId": "paid-order-exact-head",
+        "required": true,
+        "command": "node --test admin/tests/migration-ledger-contract.test.mjs",
+        "workflow": ".github/workflows/paid-order-reconciliation-exact-head.yml"
+      },
+      {
         "id": "shopify-physical-schema-preflight-contract",
         "name": "Shopify physical schema preflight contract",
         "kind": "contract",
@@ -85,6 +94,7 @@
         "admin/migrations/011_shopify_customer_contact.sql",
         "admin/scripts/preflight-shopify-physical-order-schema.mjs",
         "admin/tests/shopify-customer-contact-contract.test.mjs",
+        "admin/tests/migration-ledger-contract.test.mjs",
         "admin/tests/shopify-physical-schema-preflight-contract.test.mjs",
         "admin/tests/private-order-worker-shopify-physical-contract.test.mjs",
         "admin/tests/vendor-connection-state-contract.test.mjs",
@@ -119,6 +129,12 @@
           "path": ".github/workflows/paid-order-reconciliation-exact-head.yml",
           "marker": "shopify-customer-contact-contract.test.mjs",
           "description": "The same exact-head workflow separately verifies email-or-phone Shopify customer contact compatibility and migration 011 safety."
+        },
+        {
+          "id": "workflow-runs-migration-ledger-contract",
+          "path": ".github/workflows/paid-order-reconciliation-exact-head.yml",
+          "marker": "migration-ledger-contract.test.mjs",
+          "description": "The same exact-head workflow preserves the known historical 010 collision while rejecting any new duplicate numbered migration."
         },
         {
           "id": "workflow-runs-shopify-schema-preflight-contract",
