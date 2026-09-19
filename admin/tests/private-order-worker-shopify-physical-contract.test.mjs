@@ -25,10 +25,11 @@ test("Shopify webhook bindings are provider-held environment values", () => {
   assert.doesNotMatch(sharedSource, /shpss_|shpat_|shopify.*secret.*=/i);
 });
 
-test("physical catalog is exact-SKU and exact-price authoritative", () => {
+test("physical catalog is exact-SKU while signed Shopify paid price stays authoritative", () => {
   assert.match(modelSource, /PHYSICAL_CATALOG_BY_SKU/);
-  assert.match(modelSource, /shopify_line_price_mismatch/);
+  assert.match(modelSource, /unitPriceCents: linePriceCents/);
   assert.match(modelSource, /unsupported_physical_sku/);
+  assert.doesNotMatch(modelSource, /shopify_line_price_mismatch/);
   assert.match(modelSource, /mixed_service_and_physical_cart/);
   assert.match(modelSource, /missing_shipping_address/);
 });
