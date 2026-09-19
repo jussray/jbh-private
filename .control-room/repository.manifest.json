@@ -34,6 +34,15 @@
         "workflow": ".github/workflows/paid-order-reconciliation-exact-head.yml"
       },
       {
+        "id": "shopify-customer-contact-contract",
+        "name": "Shopify customer contact compatibility contract",
+        "kind": "contract",
+        "signalId": "paid-order-exact-head",
+        "required": true,
+        "command": "node --test admin/tests/shopify-customer-contact-contract.test.mjs",
+        "workflow": ".github/workflows/paid-order-reconciliation-exact-head.yml"
+      },
+      {
         "id": "shopify-physical-schema-preflight-contract",
         "name": "Shopify physical schema preflight contract",
         "kind": "contract",
@@ -73,7 +82,9 @@
         "admin/payment-worker/src/shopify-physical-order-model.ts",
         "admin/migrations/008_shopify_physical_procurement.sql",
         "admin/migrations/009_vendor_connection_state.sql",
+        "admin/migrations/011_shopify_customer_contact.sql",
         "admin/scripts/preflight-shopify-physical-order-schema.mjs",
+        "admin/tests/shopify-customer-contact-contract.test.mjs",
         "admin/tests/shopify-physical-schema-preflight-contract.test.mjs",
         "admin/tests/private-order-worker-shopify-physical-contract.test.mjs",
         "admin/tests/vendor-connection-state-contract.test.mjs",
@@ -102,6 +113,12 @@
           "path": ".github/workflows/paid-order-reconciliation-exact-head.yml",
           "marker": "private-order-worker-shopify-physical-contract.test.mjs",
           "description": "The same exact-head workflow executes the active Shopify paid-order contract."
+        },
+        {
+          "id": "workflow-runs-shopify-customer-contact-contract",
+          "path": ".github/workflows/paid-order-reconciliation-exact-head.yml",
+          "marker": "shopify-customer-contact-contract.test.mjs",
+          "description": "The same exact-head workflow separately verifies email-or-phone Shopify customer contact compatibility and migration 011 safety."
         },
         {
           "id": "workflow-runs-shopify-schema-preflight-contract",
