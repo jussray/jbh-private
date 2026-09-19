@@ -64,10 +64,10 @@ Calling the public/private seam active requires external provider evidence that:
 2. `/health` returns the expected service identity on that hostname;
 3. `SHOPIFY_SHOP_DOMAIN` matches `8qp1z2-az.myshopify.com` and the webhook secret is installed outside source;
 4. Shopify has an `orders/paid` subscription targeting the exact private `/webhooks/shopify/orders-paid` endpoint;
-5. `admin/migrations/008_shopify_physical_procurement.sql` is applied to the intended private database;
+5. the read-only Shopify physical-order schema preflight passes against the intended private database, proving the required migration-008 tables, critical types, idempotency constraints, and order CHECK constraints are present at runtime;
 6. a signed synthetic paid-order delivery is accepted once, duplicate delivery is idempotent, and invalid signature/shop/topic cases fail closed.
 
-Do not infer any of those facts from a successful merge, a provider badge, a repository secret name, or a deployment config file.
+Do not infer any of those facts from a successful merge, a migration filename, a provider badge, a repository secret name, or a deployment config file.
 
 ## Local verification
 
