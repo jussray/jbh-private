@@ -4,7 +4,9 @@
   "publicRepository": "jussray/jussbeautifulhair-site",
   "privateRepository": "jussray/jbh-private",
   "shopify": {
+    "shopGid": "gid://shopify/Shop/84576043251",
     "shopDomain": "8qp1z2-az.myshopify.com",
+    "primaryDomain": "jussbeautifulhair.com",
     "apiVersion": "2026-07",
     "publicVendor": "JBH",
     "catalogPath": "/api/shopify/catalog",
@@ -20,6 +22,7 @@
     "authority": "external-provider-evidence",
     "repoMergeAloneIsActivationProof": false,
     "requiredProof": [
+      "live Shopify shop.id matches shopGid and myshopifyDomain matches shopDomain before provider-affecting actions",
       "public /version returns the exact deployed release SHA",
       "public Shopify catalog and no-payment cart smoke test pass on the branded storefront",
       "private /health returns the expected service identity from the approved private hostname",
