@@ -15,11 +15,20 @@ test("Shopify physical schema preflight is read-only and bounded", () => {
   assert.match(preflight, /to_regclass/);
   assert.match(preflight, /information_schema\.columns/);
   assert.match(preflight, /pg_indexes/);
+  assert.match(preflight, /pg_constraint/);
   assert.match(preflight, /shopify_physical_orders/);
   assert.match(preflight, /processed_shopify_physical_events/);
   assert.match(preflight, /failed_shopify_physical_events/);
   assert.doesNotMatch(preflight, /\b(?:INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE)\b/);
   assert.doesNotMatch(preflight, /console\.log\([^)]*DATABASE_URL/);
+});
+
+test("Shopify physical schema preflight preserves storage type invariants", () => {
+  assert.match(preflight, /shipping_address_json[\s\S]*?udt_name = 'jsonb'/);
+  assert.match(preflight, /items_json[\s\S]*?udt_name = 'jsonb'/);
+  assert.match(preflight, /subtotal_cents[\s\S]*?udt_name = 'int4'/);
+  assert.match(preflight, /total_cents[\s\S]*?udt_name = 'int4'/);
+  assert.match(preflight, /shopify-physical-column-types-mismatch/);
 });
 
 test("Shopify physical schema preflight preserves idempotency invariants", () => {
@@ -30,18 +39,38 @@ test("Shopify physical schema preflight preserves idempotency invariants", () =>
   assert.match(preflight, /shopify-idempotency-constraints-missing/);
 });
 
+test("Shopify physical schema preflight preserves order CHECK constraints", () => {
+  assert.match(preflight, /pg_get_constraintdef/);
+  assert.match(preflight, /topic%orders\/paid/);
+  assert.match(preflight, /currency%USD/);
+  assert.match(preflight, /payment_status%paid/);
+  for (const status of [
+    "procurement_needed",
+    "supplier_ordered",
+    "supplier_confirmed",
+    "shipped",
+    "delivered",
+    "cancelled",
+  ]) {
+    assert.match(preflight, new RegExp(status));
+  }
+  assert.match(preflight, /shopify-order-check-constraints-missing/);
+});
+
 test("Shopify physical schema preflight publishes distinct bounded receipts", () => {
   for (const result of [
     "missing-database-url",
     "shopify-physical-tables-missing",
     "shopify-physical-columns-missing",
+    "shopify-physical-column-types-mismatch",
     "shopify-idempotency-constraints-missing",
+    "shopify-order-check-constraints-missing",
     "passed-shopify-physical-schema",
     "query-failed",
   ]) {
     assert.equal(preflight.includes(`"${result}"`), true);
   }
-  for (const exitCode of [2, 3, 4, 5, 6]) {
+  for (const exitCode of [2, 3, 4, 5, 6, 7, 8]) {
     assert.match(preflight, new RegExp(`process\\.exit\\(${exitCode}\\)`));
   }
 });
