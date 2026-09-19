@@ -57,6 +57,15 @@ test("Shopify physical schema preflight preserves order CHECK constraints", () =
   assert.match(preflight, /shopify-order-check-constraints-missing/);
 });
 
+test("Shopify physical schema preflight proves email-or-phone contact invariant", () => {
+  assert.match(preflight, /column_name = 'customer_email'/);
+  assert.match(preflight, /is_nullable = 'YES'/);
+  assert.match(preflight, /shopify_physical_orders_customer_contact_present/);
+  assert.match(preflight, /customer_email/);
+  assert.match(preflight, /customer_phone/);
+  assert.match(preflight, /shopify-customer-contact-invariant-missing/);
+});
+
 test("Shopify physical schema preflight publishes distinct bounded receipts", () => {
   for (const result of [
     "missing-database-url",
@@ -65,12 +74,13 @@ test("Shopify physical schema preflight publishes distinct bounded receipts", ()
     "shopify-physical-column-types-mismatch",
     "shopify-idempotency-constraints-missing",
     "shopify-order-check-constraints-missing",
+    "shopify-customer-contact-invariant-missing",
     "passed-shopify-physical-schema",
     "query-failed",
   ]) {
     assert.equal(preflight.includes(`"${result}"`), true);
   }
-  for (const exitCode of [2, 3, 4, 5, 6, 7, 8]) {
+  for (const exitCode of [2, 3, 4, 5, 6, 7, 8, 9]) {
     assert.match(preflight, new RegExp(`process\\.exit\\(${exitCode}\\)`));
   }
 });
