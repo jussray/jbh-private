@@ -21,7 +21,9 @@ requireTruth(contract.schemaVersion === 1, "schemaVersion must remain 1");
 requireTruth(contract.contractId === "jbh-shopify-private-orders@v1", "unexpected contract id");
 requireTruth(contract.publicRepository === "jussray/jussbeautifulhair-site", "public repository authority drifted");
 requireTruth(contract.privateRepository === "jussray/jbh-private", "private repository authority drifted");
+requireTruth(contract.shopify.shopGid === "gid://shopify/Shop/84576043251", "Shopify immutable shop id drifted");
 requireTruth(contract.shopify.shopDomain === "8qp1z2-az.myshopify.com", "Shopify shop domain drifted");
+requireTruth(contract.shopify.primaryDomain === "jussbeautifulhair.com", "Shopify primary domain drifted");
 requireTruth(contract.shopify.apiVersion === "2026-07", "Storefront API version drifted");
 requireTruth(contract.shopify.publicVendor === "JBH", "public Shopify vendor boundary drifted");
 requireTruth(contract.shopify.catalogPath === "/api/shopify/catalog", "catalog route drifted");
@@ -32,6 +34,7 @@ requireTruth(contract.privateOrderControl.healthPath === "/health", "private hea
 requireTruth(contract.privateOrderControl.paidWebhookPath === "/webhooks/shopify/orders-paid", "private paid webhook route drifted");
 requireTruth(contract.productionTruth.authority === "external-provider-evidence", "production truth must stay provider-backed");
 requireTruth(contract.productionTruth.repoMergeAloneIsActivationProof === false, "a repository merge must never count as activation proof");
+requireTruth(contract.productionTruth.requiredProof.includes("live Shopify shop.id matches shopGid and myshopifyDomain matches shopDomain before provider-affecting actions"), "provider identity preflight is missing from required production proof");
 
 requireTruth(index.includes(`pathname === "${contract.privateOrderControl.healthPath}"`), "private health route does not match the seam contract");
 requireTruth(index.includes('service: "jbh-private-order-control"'), "private health route no longer exposes the expected service identity");
