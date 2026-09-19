@@ -5,6 +5,7 @@ import test from "node:test";
 
 const scriptUrl = new URL("../../scripts/verify-cloudflare-worker-identity.mjs", import.meta.url);
 const wrangler = readFileSync(new URL("../../wrangler.toml", import.meta.url), "utf8");
+const pkg = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
 const seam = JSON.parse(
   readFileSync(new URL("../../.control-room/commerce-seam.json", import.meta.url), "utf8"),
 );
@@ -23,11 +24,18 @@ function runIdentityCheck(override) {
   });
 }
 
-test("runs the Worker identity guard before every Wrangler upload", () => {
+test("runs a non-recursive exact-head Worker proof before every Wrangler upload", () => {
   assert.match(
     wrangler,
-    /^\[build\]\ncommand = "node scripts\/verify-cloudflare-worker-identity\.mjs"$/m,
+    /^\[build\]\ncommand = "npm run verify:worker:cloudflare"$/m,
   );
+  const proof = pkg.scripts["verify:worker:cloudflare"];
+  assert.equal(typeof proof, "string");
+  assert.match(proof, /verify-cloudflare-worker-identity\.mjs/);
+  assert.match(proof, /npm run verify:commerce-seam/);
+  assert.match(proof, /npm run typecheck:worker/);
+  assert.match(proof, /npm run test:worker/);
+  assert.doesNotMatch(proof, /\bwrangler\b|\bdeploy\b|\bdry-run:worker\b/);
 });
 
 test("keeps canonical source identity separate from the verified provider alias", () => {
