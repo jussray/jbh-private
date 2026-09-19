@@ -65,6 +65,21 @@
         ]
       },
       {
+        "id": "shopify-customer-contact-contract",
+        "name": "Shopify customer contact compatibility contract",
+        "kind": "contract",
+        "command": "node --test admin/tests/shopify-customer-contact-contract.test.mjs",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/payment-worker/src/shopify-physical-order-model.ts",
+          "admin/payment-worker/src/shopify-physical-webhook.ts",
+          "admin/migrations/011_shopify_customer_contact.sql",
+          "admin/tests/shopify-customer-contact-contract.test.mjs",
+          ".github/workflows/paid-order-reconciliation-exact-head.yml"
+        ]
+      },
+      {
         "id": "shopify-physical-schema-preflight-contract",
         "name": "Shopify physical schema preflight contract",
         "kind": "contract",
@@ -72,6 +87,8 @@
         "required": true,
         "status": "active",
         "evidencePaths": [
+          "admin/migrations/008_shopify_physical_procurement.sql",
+          "admin/migrations/011_shopify_customer_contact.sql",
           "admin/scripts/preflight-shopify-physical-order-schema.mjs",
           "admin/tests/shopify-physical-schema-preflight-contract.test.mjs",
           ".github/workflows/paid-order-reconciliation-exact-head.yml",
@@ -112,6 +129,7 @@
         "status": "founder-gated",
         "evidencePaths": [
           "admin/migrations/008_shopify_physical_procurement.sql",
+          "admin/migrations/011_shopify_customer_contact.sql",
           "admin/scripts/preflight-shopify-physical-order-schema.mjs",
           ".github/workflows/paid-order-production-preflight.yml"
         ]
@@ -207,6 +225,8 @@
       "admin/tests/paid-order-reconciliation-contract.test.mjs",
       "admin/tests/paid-order-migration-preflight-contract.test.mjs",
       "admin/tests/private-order-worker-shopify-physical-contract.test.mjs",
+      "admin/migrations/011_shopify_customer_contact.sql",
+      "admin/tests/shopify-customer-contact-contract.test.mjs",
       "admin/scripts/preflight-shopify-physical-order-schema.mjs",
       "admin/tests/shopify-physical-schema-preflight-contract.test.mjs",
       "admin/migrations/009_vendor_connection_state.sql",
@@ -218,11 +238,12 @@
     "blockers": [
       "Active Shopify production database schema proof remains a separate founder-gated provider check",
       "Production migration application remains a separate founder approval gate",
+      "Migration history contains two distinct 010-prefixed files; do not infer runtime migration order from numeric prefix alone until the intended database migration ledger is verified",
       "Private vendor, cost, margin, customer, and sourcing data must never enter portfolio packets",
       "Repo-local evidence is supplemental and must never satisfy a missing provider signal",
       "A catalog entry is not a provider pass until its exact-head provider runner produces evidence",
       "Stripe remains a retained rollback path and must not be reported as the active physical-product checkout"
     ]
   },
-  "nextGate": "Run the complete local catalog for supplemental exact-head evidence, keep missing provider signals red, require the read-only Shopify physical-order schema preflight against the intended private database, preserve Shopify orders/paid as the active paid-order truth, publish only sanitized summaries, and keep migration plus production actions behind separate founder approval."
+  "nextGate": "Run the complete local catalog for supplemental exact-head evidence, keep missing provider signals red, require the read-only Shopify physical-order schema preflight against the intended private database including the email-or-phone customer contact invariant, preserve Shopify orders/paid as the active paid-order truth, publish only sanitized summaries, and keep migration plus production actions behind separate founder approval."
 }
