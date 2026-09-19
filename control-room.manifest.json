@@ -65,6 +65,19 @@
         ]
       },
       {
+        "id": "vendor-connection-state-contract",
+        "name": "Vendor connection state contract",
+        "kind": "contract",
+        "command": "node --test admin/tests/vendor-connection-state-contract.test.mjs",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/migrations/009_vendor_connection_state.sql",
+          "admin/tests/vendor-connection-state-contract.test.mjs",
+          ".github/workflows/paid-order-reconciliation-exact-head.yml"
+        ]
+      },
+      {
         "id": "admin-build",
         "name": "Private admin production build",
         "kind": "build",
@@ -163,7 +176,9 @@
       "admin/package.json",
       "admin/tests/paid-order-reconciliation-contract.test.mjs",
       "admin/tests/paid-order-migration-preflight-contract.test.mjs",
-      "admin/tests/private-order-worker-shopify-physical-contract.test.mjs"
+      "admin/tests/private-order-worker-shopify-physical-contract.test.mjs",
+      "admin/migrations/009_vendor_connection_state.sql",
+      "admin/tests/vendor-connection-state-contract.test.mjs"
     ]
   },
   "risk": {
