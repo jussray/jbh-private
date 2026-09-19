@@ -34,6 +34,15 @@
         "workflow": ".github/workflows/paid-order-reconciliation-exact-head.yml"
       },
       {
+        "id": "vendor-connection-state-contract",
+        "name": "Vendor connection state contract",
+        "kind": "contract",
+        "signalId": "paid-order-exact-head",
+        "required": true,
+        "command": "node --test admin/tests/vendor-connection-state-contract.test.mjs",
+        "workflow": ".github/workflows/paid-order-reconciliation-exact-head.yml"
+      },
+      {
         "id": "admin-build",
         "name": "Private admin production build",
         "kind": "build",
@@ -54,7 +63,9 @@
         "admin/payment-worker/src/shopify-physical-webhook.ts",
         "admin/payment-worker/src/shopify-physical-order-model.ts",
         "admin/migrations/008_shopify_physical_procurement.sql",
+        "admin/migrations/009_vendor_connection_state.sql",
         "admin/tests/private-order-worker-shopify-physical-contract.test.mjs",
+        "admin/tests/vendor-connection-state-contract.test.mjs",
         "admin/api/stripe/webhook.ts",
         "admin/api/_lib/storage.ts",
         "admin/shared/schema.ts",
@@ -79,6 +90,12 @@
           "path": ".github/workflows/paid-order-reconciliation-exact-head.yml",
           "marker": "private-order-worker-shopify-physical-contract.test.mjs",
           "description": "The same exact-head workflow executes the active Shopify paid-order contract."
+        },
+        {
+          "id": "workflow-runs-vendor-state-contract",
+          "path": ".github/workflows/paid-order-reconciliation-exact-head.yml",
+          "marker": "vendor-connection-state-contract.test.mjs",
+          "description": "The same exact-head workflow separately verifies supplier-connection state and migration 009 safety."
         },
         {
           "id": "workflow-runs-private-build",
