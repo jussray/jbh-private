@@ -85,7 +85,10 @@ jobs:
         run: npm run check
 
       - name: Run focused reconciliation contracts
-        run: node --test tests/paid-order-reconciliation-contract.test.mjs tests/paid-order-migration-preflight-contract.test.mjs tests/private-order-worker-shopify-physical-contract.test.mjs tests/vendor-connection-state-contract.test.mjs
+        run: node --test tests/paid-order-reconciliation-contract.test.mjs tests/paid-order-migration-preflight-contract.test.mjs tests/private-order-worker-shopify-physical-contract.test.mjs
+
+      - name: Verify vendor connection state contract
+        run: node --test tests/vendor-connection-state-contract.test.mjs
 
       - name: Build private admin
         run: npm run build
