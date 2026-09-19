@@ -179,7 +179,7 @@ export interface NormalizedPaidPhysicalOrder {
   shopifyOrderId: string;
   shopifyOrderGid: string | null;
   orderName: string | null;
-  customerEmail: string;
+  customerEmail: string | null;
   customerName: string | null;
   customerPhone: string | null;
   shippingAddressJson: string;
@@ -318,10 +318,7 @@ export function normalizePaidShopifyPhysicalOrder(
     order.email ?? order.contact_email ?? order.customer?.email ?? ""
   )
     .trim()
-    .toLowerCase();
-  if (!customerEmail) {
-    throw new ShopifyPhysicalOrderModelError("missing_customer_email");
-  }
+    .toLowerCase() || null;
 
   const address = order.shipping_address;
   const customerName =
@@ -336,6 +333,10 @@ export function normalizePaidShopifyPhysicalOrder(
   const customerPhone = (
     order.phone ?? order.customer?.phone ?? address.phone ?? ""
   ).trim() || null;
+
+  if (!customerEmail && !customerPhone) {
+    throw new ShopifyPhysicalOrderModelError("missing_customer_contact");
+  }
 
   return {
     kind: "physical",
