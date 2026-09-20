@@ -54,12 +54,16 @@ test("manual procurement ledger defaults to procurement_needed and is additive",
   assert.doesNotMatch(migrationSource, /DELETE FROM|DROP TABLE|TRUNCATE/i);
 });
 
-test("paid Shopify orders queue privacy-safe collected-value receipts", () => {
+test("Shopify physical outcomes queue privacy-safe paid and fulfillment receipts", () => {
   assert.match(receiptMigrationSource, /shopify_physical_control_room_receipt_outbox/);
-  assert.match(receiptMigrationSource, /AFTER INSERT ON shopify_physical_orders/);
+  assert.match(receiptMigrationSource, /AFTER INSERT OR UPDATE OF procurement_status ON shopify_physical_orders/);
   assert.match(receiptMigrationSource, /paid_order_recorded/);
+  assert.match(receiptMigrationSource, /tracking_received/);
+  assert.match(receiptMigrationSource, /completed/);
+  assert.match(receiptMigrationSource, /exception/);
   assert.match(receiptMigrationSource, /collected_value_cents/);
-  assert.match(receiptMigrationSource, /currency TEXT NOT NULL CHECK \(currency = 'USD'\)/);
+  assert.match(receiptMigrationSource, /currency = 'USD'/);
+  assert.match(receiptMigrationSource, /event_type <> 'paid_order_recorded'/);
   assert.match(receiptMigrationSource, /ON CONFLICT \(shopify_order_id, event_type\) DO NOTHING/);
   assert.doesNotMatch(
     receiptMigrationSource,
@@ -74,11 +78,18 @@ test("receipt dispatcher distinguishes Shopify physical orders and sends money p
   assert.match(receiptDispatcherSource, /collectedValueCents/);
   assert.match(receiptDispatcherSource, /currency/);
   assert.match(receiptDispatcherSource, /candidate\.event === "paid_order_recorded"/);
+  assert.match(receiptDispatcherSource, /tracking_received/);
+  assert.match(receiptDispatcherSource, /exception/);
   assert.match(receiptDispatcherSource, /x-jbh-receipt-token/);
   assert.doesNotMatch(
     receiptDispatcherSource,
     /customer_email|customer_name|customer_phone|shipping_address_json|supplier_code|tracking_number/,
   );
+});
+
+test("legacy paid receipts may continue without being mistaken for collected-value proof", () => {
+  assert.match(receiptDispatcherSource, /candidate\.source === "legacy" && hasNoMoneyEvidence/);
+  assert.match(receiptDispatcherSource, /paidCents === null \? undefined : paidCents/);
 });
 
 test("procurement lane cannot activate routing or dispatch suppliers", () => {
