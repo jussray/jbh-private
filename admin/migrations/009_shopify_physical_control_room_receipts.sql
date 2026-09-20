@@ -1,6 +1,6 @@
 -- Sanitized paid-order receipt outbox for Shopify physical commerce.
--- Additive only. The outbox contains no customer identity, shipping address,
--- vendor identity, supplier cost, margin, payment instrument, or item payload.
+-- Additive only. The outbox contains no customer identity, shipping details,
+-- private operational identities, payment instrument, or item payload.
 
 CREATE TABLE IF NOT EXISTS shopify_physical_control_room_receipt_outbox (
   id BIGSERIAL PRIMARY KEY,
