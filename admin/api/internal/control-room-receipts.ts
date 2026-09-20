@@ -9,7 +9,9 @@ const ALLOWED_EVENTS = new Set([
   "vendor_groups_ready",
   "owner_approved",
   "fulfillment_queued",
+  "tracking_received",
   "completed",
+  "exception",
 ]);
 
 type ReceiptSource = "legacy" | "shopify_physical";
@@ -77,6 +79,10 @@ function validCandidate(candidate: ReceiptCandidate): boolean {
   if (Number.isNaN(candidate.occurredAt.getTime())) return false;
 
   if (candidate.event === "paid_order_recorded") {
+    const hasNoMoneyEvidence =
+      candidate.collectedValueCents === undefined && candidate.currency === undefined;
+    if (candidate.source === "legacy" && hasNoMoneyEvidence) return true;
+
     return (
       Number.isSafeInteger(candidate.collectedValueCents) &&
       (candidate.collectedValueCents ?? 0) >= 1 &&
@@ -184,18 +190,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         currency: event === "paid_order_recorded" && paidCents !== null ? "USD" as const : undefined,
       };
     }),
-    ...physicalRows.map((row) => ({
-      source: "shopify_physical" as const,
-      id: Number(row.id),
-      receiptId: String(row.receipt_id ?? ""),
-      orderRef: String(row.shopify_order_id ?? ""),
-      event: String(row.event_type ?? ""),
-      groupCount: 0,
-      unresolvedCount: 0,
-      occurredAt: new Date(String(row.created_at ?? "")),
-      collectedValueCents: Number(row.collected_value_cents),
-      currency: row.currency === "USD" ? "USD" as const : undefined,
-    })),
+    ...physicalRows.map((row) => {
+      const event = String(row.event_type ?? "");
+      const paidCents = event === "paid_order_recorded"
+        ? Number(row.collected_value_cents)
+        : undefined;
+      return {
+        source: "shopify_physical" as const,
+        id: Number(row.id),
+        receiptId: String(row.receipt_id ?? ""),
+        orderRef: String(row.shopify_order_id ?? ""),
+        event,
+        groupCount: 0,
+        unresolvedCount: 0,
+        occurredAt: new Date(String(row.created_at ?? "")),
+        collectedValueCents: paidCents,
+        currency: event === "paid_order_recorded" && row.currency === "USD"
+          ? "USD" as const
+          : undefined,
+      };
+    }),
   ];
 
   let sent = 0;
