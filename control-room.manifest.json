@@ -60,7 +60,9 @@
           "admin/tests/paid-order-reconciliation-contract.test.mjs",
           "admin/tests/paid-order-migration-preflight-contract.test.mjs",
           "admin/tests/private-order-worker-shopify-physical-contract.test.mjs",
+          "admin/api/internal/control-room-receipts.ts",
           "admin/migrations/008_shopify_physical_procurement.sql",
+          "admin/migrations/009_shopify_physical_control_room_receipts.sql",
           ".github/workflows/paid-order-reconciliation-exact-head.yml"
         ]
       },
