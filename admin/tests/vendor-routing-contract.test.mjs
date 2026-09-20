@@ -68,9 +68,10 @@ test("dispatch remains an auditable queue, not a fabricated vendor contact", asy
   assert.doesNotMatch(storage, /status: \"sent\"|status: \"accepted\"/);
 });
 
-test("control room receives hashes and state counts, never private commerce data", async () => {
-  const [migration, dispatcher] = await Promise.all([
+test("control room receives hashes, state counts, and collected value without private commerce data", async () => {
+  const [migration, physicalReceiptMigration, dispatcher] = await Promise.all([
     read("migrations/003_private_vendor_routing.sql"),
+    read("migrations/009_shopify_physical_control_room_receipts.sql"),
     read("api/internal/control-room-receipts.ts"),
   ]);
 
@@ -82,8 +83,15 @@ test("control room receives hashes and state counts, never private commerce data
   assert.match(migration, /fulfillment_queued/);
   assert.match(migration, /UNIQUE \(order_id, event_type\)/);
 
+  assert.match(physicalReceiptMigration, /shopify_physical_control_room_receipt_outbox/);
+  assert.match(physicalReceiptMigration, /collected_value_cents/);
+  assert.match(physicalReceiptMigration, /paid_order_recorded/);
+
   assert.match(dispatcher, /createHmac\(\"sha256\", hashSalt\)/);
-  assert.match(dispatcher, /jbh-order:\$\{orderId\}/);
+  assert.match(dispatcher, /jbh-order:\$\{candidate\.orderRef\}/);
+  assert.match(dispatcher, /jbh-shopify-order:\$\{candidate\.orderRef\}/);
+  assert.match(dispatcher, /collectedValueCents/);
+  assert.match(dispatcher, /currency/);
   assert.match(dispatcher, /x-jbh-receipt-token/);
   assert.match(dispatcher, /exactCommitSha/);
   assert.match(dispatcher, /sourceRepo: \"jussray\/jbh-private\"/);
