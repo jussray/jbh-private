@@ -11,6 +11,8 @@ const modelSource = read("payment-worker/src/shopify-physical-order-model.ts");
 const webhookSource = read("payment-worker/src/shopify-physical-webhook.ts");
 const adminSource = read("payment-worker/src/shopify-procurement-admin.ts");
 const migrationSource = read("migrations/008_shopify_physical_procurement.sql");
+const receiptMigrationSource = read("migrations/009_shopify_physical_control_room_receipts.sql");
+const receiptDispatcherSource = read("api/internal/control-room-receipts.ts");
 
 test("Worker exposes a dedicated Shopify paid-order webhook and owner queue", () => {
   assert.match(indexSource, /\/webhooks\/shopify\/orders-paid/);
@@ -52,8 +54,35 @@ test("manual procurement ledger defaults to procurement_needed and is additive",
   assert.doesNotMatch(migrationSource, /DELETE FROM|DROP TABLE|TRUNCATE/i);
 });
 
+test("paid Shopify orders queue privacy-safe collected-value receipts", () => {
+  assert.match(receiptMigrationSource, /shopify_physical_control_room_receipt_outbox/);
+  assert.match(receiptMigrationSource, /AFTER INSERT ON shopify_physical_orders/);
+  assert.match(receiptMigrationSource, /paid_order_recorded/);
+  assert.match(receiptMigrationSource, /collected_value_cents/);
+  assert.match(receiptMigrationSource, /currency TEXT NOT NULL CHECK \(currency = 'USD'\)/);
+  assert.match(receiptMigrationSource, /ON CONFLICT \(shopify_order_id, event_type\) DO NOTHING/);
+  assert.doesNotMatch(
+    receiptMigrationSource,
+    /customer_email|customer_name|customer_phone|shipping_address|supplier_code|margin|cost/i,
+  );
+  assert.doesNotMatch(receiptMigrationSource, /DELETE FROM|DROP TABLE|TRUNCATE/i);
+});
+
+test("receipt dispatcher distinguishes Shopify physical orders and sends money proof only for paid events", () => {
+  assert.match(receiptDispatcherSource, /shopify_physical_control_room_receipt_outbox/);
+  assert.match(receiptDispatcherSource, /jbh-shopify-order:/);
+  assert.match(receiptDispatcherSource, /collectedValueCents/);
+  assert.match(receiptDispatcherSource, /currency/);
+  assert.match(receiptDispatcherSource, /candidate\.event === "paid_order_recorded"/);
+  assert.match(receiptDispatcherSource, /x-jbh-receipt-token/);
+  assert.doesNotMatch(
+    receiptDispatcherSource,
+    /customer_email|customer_name|customer_phone|shipping_address_json|supplier_code|tracking_number/,
+  );
+});
+
 test("procurement lane cannot activate routing or dispatch suppliers", () => {
-  const combined = `${webhookSource}\n${adminSource}\n${migrationSource}`;
+  const combined = `${webhookSource}\n${adminSource}\n${migrationSource}\n${receiptMigrationSource}`;
   assert.doesNotMatch(combined, /INSERT INTO vendor_product_mappings/i);
   assert.doesNotMatch(combined, /INSERT INTO vendor_dispatch_jobs/i);
   assert.doesNotMatch(combined, /queueFulfillmentDispatch|upsertVendorMapping/);
