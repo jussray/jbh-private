@@ -47,13 +47,15 @@
   "capabilities": [
     {
       "id": "private-paid-order-reconciliation",
-      "description": "Validates active Shopify orders/paid intake and procurement readiness, retained Stripe rollback reconciliation, exact-head TypeScript, focused contracts, and the private admin build without exposing private commerce data.",
+      "description": "Validates active Shopify orders/paid intake, privacy-safe collected-value receipt reconciliation, procurement readiness, retained Stripe rollback reconciliation, exact-head TypeScript, focused contracts, and the private admin build without exposing private commerce data.",
       "status": "active",
       "evidencePaths": [
         ".control-room/commerce-seam.json",
         "admin/payment-worker/src/shopify-physical-webhook.ts",
         "admin/payment-worker/src/shopify-physical-order-model.ts",
+        "admin/api/internal/control-room-receipts.ts",
         "admin/migrations/008_shopify_physical_procurement.sql",
+        "admin/migrations/009_shopify_physical_control_room_receipts.sql",
         "admin/tests/private-order-worker-shopify-physical-contract.test.mjs",
         "admin/api/stripe/webhook.ts",
         "admin/api/_lib/storage.ts",
@@ -78,7 +80,7 @@
           "id": "workflow-runs-shopify-paid-order-contract",
           "path": ".github/workflows/paid-order-reconciliation-exact-head.yml",
           "marker": "private-order-worker-shopify-physical-contract.test.mjs",
-          "description": "The same exact-head workflow executes the active Shopify paid-order contract."
+          "description": "The same exact-head workflow executes the active Shopify paid-order and collected-value receipt contract."
         },
         {
           "id": "workflow-runs-private-build",
