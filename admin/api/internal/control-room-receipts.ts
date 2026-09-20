@@ -12,6 +12,20 @@ const ALLOWED_EVENTS = new Set([
   "completed",
 ]);
 
+type ReceiptSource = "legacy" | "shopify_physical";
+type ReceiptCandidate = {
+  source: ReceiptSource;
+  id: number;
+  receiptId: string;
+  orderRef: string;
+  event: string;
+  groupCount: number;
+  unresolvedCount: number;
+  occurredAt: Date;
+  collectedValueCents?: number;
+  currency?: "USD";
+};
+
 function bearerToken(req: VercelRequest): string | null {
   const raw = req.headers.authorization;
   const value = Array.isArray(raw) ? raw[0] : raw;
@@ -43,6 +57,35 @@ function receiptEndpoint(raw: string): string | null {
 function safeFailure(error: unknown): string {
   if (error instanceof Error) return error.name.slice(0, 80) || "Error";
   return "UnknownError";
+}
+
+function collectedCentsFromLegacyTotal(value: unknown): number | null {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const cents = Math.round(amount * 100);
+  return Number.isSafeInteger(cents) && cents >= 1 && cents <= 100_000_000
+    ? cents
+    : null;
+}
+
+function validCandidate(candidate: ReceiptCandidate): boolean {
+  if (!Number.isSafeInteger(candidate.id) || candidate.id <= 0) return false;
+  if (!candidate.receiptId || !candidate.orderRef) return false;
+  if (!ALLOWED_EVENTS.has(candidate.event)) return false;
+  if (!Number.isSafeInteger(candidate.groupCount) || candidate.groupCount < 0) return false;
+  if (!Number.isSafeInteger(candidate.unresolvedCount) || candidate.unresolvedCount < 0) return false;
+  if (Number.isNaN(candidate.occurredAt.getTime())) return false;
+
+  if (candidate.event === "paid_order_recorded") {
+    return (
+      Number.isSafeInteger(candidate.collectedValueCents) &&
+      (candidate.collectedValueCents ?? 0) >= 1 &&
+      (candidate.collectedValueCents ?? 0) <= 100_000_000 &&
+      candidate.currency === "USD"
+    );
+  }
+
+  return candidate.collectedValueCents === undefined && candidate.currency === undefined;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -82,18 +125,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const sql = neon(databaseUrl);
-  let rows: Array<Record<string, unknown>>;
+  let legacyRows: Array<Record<string, unknown>>;
+  let physicalRows: Array<Record<string, unknown>>;
   try {
-    rows = (await sql`
+    legacyRows = (await sql`
+      SELECT
+        outbox.id,
+        outbox.receipt_id::text AS receipt_id,
+        outbox.order_id,
+        outbox.event_type,
+        outbox.group_count,
+        outbox.unresolved_count,
+        outbox.created_at,
+        orders.total
+      FROM control_room_receipt_outbox AS outbox
+      JOIN orders ON orders.id = outbox.order_id
+      WHERE outbox.sent_at IS NULL
+        AND outbox.attempt_count < 20
+      ORDER BY outbox.id
+      LIMIT 25
+    `) as Array<Record<string, unknown>>;
+
+    physicalRows = (await sql`
       SELECT
         id,
         receipt_id::text AS receipt_id,
-        order_id,
+        shopify_order_id,
         event_type,
-        group_count,
-        unresolved_count,
+        collected_value_cents,
+        currency,
         created_at
-      FROM control_room_receipt_outbox
+      FROM shopify_physical_control_room_receipt_outbox
       WHERE sent_at IS NULL
         AND attempt_count < 20
       ORDER BY id
@@ -103,40 +165,105 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(503).json({ error: "Receipt outbox unavailable" });
   }
 
+  const candidates: ReceiptCandidate[] = [
+    ...legacyRows.map((row) => {
+      const event = String(row.event_type ?? "");
+      const paidCents = event === "paid_order_recorded"
+        ? collectedCentsFromLegacyTotal(row.total)
+        : undefined;
+      return {
+        source: "legacy" as const,
+        id: Number(row.id),
+        receiptId: String(row.receipt_id ?? ""),
+        orderRef: String(row.order_id ?? ""),
+        event,
+        groupCount: Number(row.group_count),
+        unresolvedCount: Number(row.unresolved_count),
+        occurredAt: new Date(String(row.created_at ?? "")),
+        collectedValueCents: paidCents === null ? undefined : paidCents,
+        currency: event === "paid_order_recorded" && paidCents !== null ? "USD" as const : undefined,
+      };
+    }),
+    ...physicalRows.map((row) => ({
+      source: "shopify_physical" as const,
+      id: Number(row.id),
+      receiptId: String(row.receipt_id ?? ""),
+      orderRef: String(row.shopify_order_id ?? ""),
+      event: String(row.event_type ?? ""),
+      groupCount: 0,
+      unresolvedCount: 0,
+      occurredAt: new Date(String(row.created_at ?? "")),
+      collectedValueCents: Number(row.collected_value_cents),
+      currency: row.currency === "USD" ? "USD" as const : undefined,
+    })),
+  ];
+
   let sent = 0;
   let failed = 0;
 
-  for (const row of rows) {
-    const id = Number(row.id);
-    const orderId = Number(row.order_id);
-    const receiptId = String(row.receipt_id ?? "");
-    const event = String(row.event_type ?? "");
-    const groupCount = Number(row.group_count);
-    const unresolvedCount = Number(row.unresolved_count);
-    const occurredAt = new Date(String(row.created_at ?? ""));
-
-    if (
-      !Number.isSafeInteger(id) ||
-      !Number.isSafeInteger(orderId) ||
-      !ALLOWED_EVENTS.has(event) ||
-      !Number.isSafeInteger(groupCount) ||
-      !Number.isSafeInteger(unresolvedCount) ||
-      Number.isNaN(occurredAt.getTime())
-    ) {
-      failed += 1;
+  const markFailure = async (candidate: ReceiptCandidate, reason: string) => {
+    if (candidate.source === "legacy") {
       await sql`
         UPDATE control_room_receipt_outbox
         SET attempt_count = attempt_count + 1,
-            last_error = 'invalid_outbox_row'
-        WHERE id = ${id}
+            last_error = ${reason}
+        WHERE id = ${candidate.id}
           AND sent_at IS NULL
       `;
+      return;
+    }
+
+    await sql`
+      UPDATE shopify_physical_control_room_receipt_outbox
+      SET attempt_count = attempt_count + 1,
+          last_error = ${reason}
+      WHERE id = ${candidate.id}
+        AND sent_at IS NULL
+    `;
+  };
+
+  const markSent = async (candidate: ReceiptCandidate) => {
+    if (candidate.source === "legacy") {
+      await sql`
+        UPDATE control_room_receipt_outbox
+        SET sent_at = NOW(),
+            last_error = NULL
+        WHERE id = ${candidate.id}
+          AND sent_at IS NULL
+      `;
+      return;
+    }
+
+    await sql`
+      UPDATE shopify_physical_control_room_receipt_outbox
+      SET sent_at = NOW(),
+          last_error = NULL
+      WHERE id = ${candidate.id}
+        AND sent_at IS NULL
+    `;
+  };
+
+  for (const candidate of candidates) {
+    if (!validCandidate(candidate)) {
+      failed += 1;
+      await markFailure(candidate, "invalid_outbox_row");
       continue;
     }
 
     const orderRefHash = createHmac("sha256", hashSalt)
-      .update(`jbh-order:${orderId}`)
+      .update(
+        candidate.source === "shopify_physical"
+          ? `jbh-shopify-order:${candidate.orderRef}`
+          : `jbh-order:${candidate.orderRef}`,
+      )
       .digest("hex");
+
+    const moneyFields = candidate.event === "paid_order_recorded"
+      ? {
+          collectedValueCents: candidate.collectedValueCents,
+          currency: candidate.currency,
+        }
+      : {};
 
     try {
       const response = await fetch(endpoint, {
@@ -146,49 +273,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           "x-jbh-receipt-token": targetToken,
         },
         body: JSON.stringify({
-          receiptId,
+          receiptId: candidate.receiptId,
           sourceRepo: "jussray/jbh-private",
           orderRefHash,
-          event,
-          groupCount,
-          unresolvedCount,
-          occurredAt: occurredAt.toISOString(),
+          event: candidate.event,
+          groupCount: candidate.groupCount,
+          unresolvedCount: candidate.unresolvedCount,
+          occurredAt: candidate.occurredAt.toISOString(),
           exactCommitSha: exactCommitSha.toLowerCase(),
+          ...moneyFields,
         }),
       });
 
       if (!response.ok) {
         failed += 1;
-        await sql`
-          UPDATE control_room_receipt_outbox
-          SET attempt_count = attempt_count + 1,
-              last_error = ${`http_${response.status}`},
-              created_at = created_at
-          WHERE id = ${id}
-            AND sent_at IS NULL
-        `;
+        await markFailure(candidate, `http_${response.status}`);
         continue;
       }
 
-      await sql`
-        UPDATE control_room_receipt_outbox
-        SET sent_at = NOW(),
-            last_error = NULL
-        WHERE id = ${id}
-          AND sent_at IS NULL
-      `;
+      await markSent(candidate);
       sent += 1;
     } catch (error) {
       failed += 1;
-      await sql`
-        UPDATE control_room_receipt_outbox
-        SET attempt_count = attempt_count + 1,
-            last_error = ${safeFailure(error)}
-        WHERE id = ${id}
-          AND sent_at IS NULL
-      `;
+      await markFailure(candidate, safeFailure(error));
     }
   }
 
-  return res.status(200).json({ processed: rows.length, sent, failed });
+  return res.status(200).json({
+    processed: candidates.length,
+    sent,
+    failed,
+    sources: {
+      legacy: legacyRows.length,
+      shopifyPhysical: physicalRows.length,
+    },
+  });
 }
