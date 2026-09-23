@@ -3,7 +3,7 @@
 - Timestamp: 2026-09-23 (UTC)
 - Agent session: https://claude.ai/code/session_013zvvpW2dxmJ5UxNJyLdK3r
 - Storefront repo: `jussray/jussbeautifulhair-site`, branch `claude/dropship-beauty-images-qqlu53`
-  - base `a2166f686b19e082ddb5033d1e38eb62c01e4e00` → fix commit `ff55a13`
+  - base `a2166f686b19e082ddb5033d1e38eb62c01e4e00` → fix `ff55a13` → visual-parity proof `66dfd67`
 - Private repo: `jussray/jbh-private`, branch `claude/dropship-beauty-images-qqlu53`, base `3bd480437dc40ea700717d58b6112be6beeb8ad6`
 - Shopify authority: `8qp1z2-az.myshopify.com` (Storefront API `2026-07`, vendor filter `JBH`) per `worker/index.ts`
 - Dropship Beauty integration: none in code. The supplier lane is recorded in
@@ -57,6 +57,19 @@ BLOCKED
 - JBH Shopify admin: no connector to shop `8qp1z2-az`.
 - Deploy: a merge to `main` requires exact founder approval (repo policy `20088f8`).
 
+## Visual consistency lock (founder directive, 2026-09-23)
+Dropship Beauty is the supply source, not the customer-facing identity. No JBH layout,
+CSS, or component code changed; only the image source per handle changed. Playwright (`66dfd67`)
+interleaves 4 healthy JBH bundles with the 3 repaired products and asserts identical
+card styling, square media, typography, same-row height, hover lift, and PDP structure
+on desktop 1440 and mobile 390. Details and screenshots are in the public receipt and
+`artifacts/beauty-essentials-images/`.
+- VERIFIED: geometry, typography, and purchase flow are native JBH.
+- VERIFIED (gap): the placeholder tile does not visually match satin product photography.
+  Only an approved real photo closes this.
+- CONFESSION: the healthy bundle photos carry "LUXE CROWNS" ribbons on "Lawless" products.
+  This is the same kind of brand-text mismatch. It was not changed (out of scope); the founder decides.
+
 ## Root cause
 The presentation allowlist bound concept imagery with mismatched brand text to three
 live products. No approval or provenance gate existed for per-handle image assets.
@@ -87,7 +100,7 @@ payload shape and off-host requests aborted. It is not live proof.
 - `shared/catalog.ts` (legacy, rollback-only static catalog) still references `img("edge-control")` etc. It is not rendered on customer surfaces (guarded by `shopify-physical-contract.test.mjs`).
 
 ## Rollback
-`git revert ff55a13` on the site repo restores the three prior CDN URLs. No data was deleted,
+`git revert 66dfd67 ff55a13` on the site repo restores the three prior CDN URLs. No data was deleted,
 and the Shopify Files and `client/public/products/*.jpg` remain.
 
 ## Next founder gate
