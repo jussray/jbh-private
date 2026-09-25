@@ -65,6 +65,65 @@
         ]
       },
       {
+        "id": "shopify-customer-contact-contract",
+        "name": "Shopify customer contact compatibility contract",
+        "kind": "contract",
+        "command": "node --test admin/tests/shopify-customer-contact-contract.test.mjs",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/payment-worker/src/shopify-physical-order-model.ts",
+          "admin/payment-worker/src/shopify-physical-webhook.ts",
+          "admin/migrations/011_shopify_customer_contact.sql",
+          "admin/tests/shopify-customer-contact-contract.test.mjs",
+          ".github/workflows/paid-order-reconciliation-exact-head.yml"
+        ]
+      },
+      {
+        "id": "migration-ledger-contract",
+        "name": "Migration ledger uniqueness contract",
+        "kind": "contract",
+        "command": "node --test admin/tests/migration-ledger-contract.test.mjs",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/migrations/010_fulfillment_orchestrator_state.sql",
+          "admin/migrations/010_wig_assortment_candidates.sql",
+          "admin/migrations/011_shopify_customer_contact.sql",
+          "admin/tests/migration-ledger-contract.test.mjs",
+          ".github/workflows/paid-order-reconciliation-exact-head.yml"
+        ]
+      },
+      {
+        "id": "shopify-physical-schema-preflight-contract",
+        "name": "Shopify physical schema preflight contract",
+        "kind": "contract",
+        "command": "node --test admin/tests/shopify-physical-schema-preflight-contract.test.mjs",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/migrations/008_shopify_physical_procurement.sql",
+          "admin/migrations/011_shopify_customer_contact.sql",
+          "admin/scripts/preflight-shopify-physical-order-schema.mjs",
+          "admin/tests/shopify-physical-schema-preflight-contract.test.mjs",
+          ".github/workflows/paid-order-reconciliation-exact-head.yml",
+          ".github/workflows/paid-order-production-preflight.yml"
+        ]
+      },
+      {
+        "id": "vendor-connection-state-contract",
+        "name": "Vendor connection state contract",
+        "kind": "contract",
+        "command": "node --test admin/tests/vendor-connection-state-contract.test.mjs",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/migrations/009_vendor_connection_state.sql",
+          "admin/tests/vendor-connection-state-contract.test.mjs",
+          ".github/workflows/paid-order-reconciliation-exact-head.yml"
+        ]
+      },
+      {
         "id": "admin-build",
         "name": "Private admin production build",
         "kind": "build",
@@ -77,15 +136,31 @@
         ]
       },
       {
-        "id": "paid-order-migration-preflight",
-        "name": "Paid-order migration preflight",
+        "id": "shopify-physical-schema-preflight",
+        "name": "Shopify physical-order production schema preflight",
         "kind": "deployment",
-        "command": "npm --prefix admin run preflight:paid-order-migration",
+        "command": "npm --prefix admin run preflight:shopify-physical-schema",
         "required": true,
         "status": "founder-gated",
         "evidencePaths": [
-          "admin/scripts/preflight-paid-order-migration.mjs",
+          "admin/migrations/008_shopify_physical_procurement.sql",
+          "admin/migrations/011_shopify_customer_contact.sql",
+          "admin/scripts/preflight-shopify-physical-order-schema.mjs",
           ".github/workflows/paid-order-production-preflight.yml"
+        ]
+      },
+      {
+        "id": "paid-order-migration-preflight",
+        "name": "Legacy Stripe uniqueness migration preflight",
+        "kind": "deployment",
+        "command": "npm --prefix admin run preflight:paid-order-migration",
+        "required": false,
+        "status": "founder-gated",
+        "evidencePaths": [
+          "admin/migrations/002_unique_stripe_session.sql",
+          "admin/scripts/preflight-paid-order-migration.mjs",
+          "admin/tests/paid-order-migration-preflight-contract.test.mjs",
+          ".github/workflows/apply-paid-order-migration.yml"
         ]
       },
       {
@@ -160,21 +235,31 @@
     "proofRefs": [
       ".control-room/commerce-seam.json",
       ".github/workflows/paid-order-reconciliation-exact-head.yml",
+      ".github/workflows/paid-order-production-preflight.yml",
       "admin/package.json",
       "admin/tests/paid-order-reconciliation-contract.test.mjs",
       "admin/tests/paid-order-migration-preflight-contract.test.mjs",
-      "admin/tests/private-order-worker-shopify-physical-contract.test.mjs"
+      "admin/tests/private-order-worker-shopify-physical-contract.test.mjs",
+      "admin/migrations/011_shopify_customer_contact.sql",
+      "admin/tests/shopify-customer-contact-contract.test.mjs",
+      "admin/tests/migration-ledger-contract.test.mjs",
+      "admin/scripts/preflight-shopify-physical-order-schema.mjs",
+      "admin/tests/shopify-physical-schema-preflight-contract.test.mjs",
+      "admin/migrations/009_vendor_connection_state.sql",
+      "admin/tests/vendor-connection-state-contract.test.mjs"
     ]
   },
   "risk": {
     "level": "high",
     "blockers": [
+      "Active Shopify production database schema proof remains a separate founder-gated provider check",
       "Production migration application remains a separate founder approval gate",
+      "Migration history has a frozen historical 010 collision; the exact-head ledger contract prevents new duplicate numbered migrations, but runtime application history remains unknown until the intended database ledger is verified",
       "Private vendor, cost, margin, customer, and sourcing data must never enter portfolio packets",
       "Repo-local evidence is supplemental and must never satisfy a missing provider signal",
       "A catalog entry is not a provider pass until its exact-head provider runner produces evidence",
       "Stripe remains a retained rollback path and must not be reported as the active physical-product checkout"
     ]
   },
-  "nextGate": "Run the complete local catalog for supplemental exact-head evidence, keep missing provider signals red, preserve Shopify orders/paid as the active paid-order truth, publish only sanitized summaries, and keep migration plus production actions behind separate founder approval."
+  "nextGate": "Run the complete local catalog for supplemental exact-head evidence, keep missing provider signals red, require the read-only Shopify physical-order schema preflight against the intended private database including the email-or-phone customer contact invariant, preserve Shopify orders/paid as the active paid-order truth, publish only sanitized summaries, and keep migration plus production actions behind separate founder approval."
 }
