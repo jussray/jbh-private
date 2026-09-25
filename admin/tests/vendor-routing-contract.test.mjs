@@ -52,7 +52,8 @@ test("vendor routing stays private, deterministic, and owner-gated", async () =>
   assert.match(api, /override_group/);
   assert.match(api, /queue_dispatch/);
   assert.match(api, /resolve_exception/);
-  assert.doesNotMatch(api, /Access-Control-Allow-Origin|\*/);
+  // No CORS header and no quoted wildcard origin; regex quantifiers are allowed.
+  assert.doesNotMatch(api, /Access-Control-Allow-Origin|["'`]\*["'`]/);
 });
 
 test("dispatch remains an auditable queue, not a fabricated vendor contact", async () => {
