@@ -229,9 +229,8 @@
     ]
   },
   "evidence": {
-    "status": "integrated",
-    "commit": "660325d3575fc81bdfa7fd7d6001016bad20cf21",
-    "observedAt": "2026-08-04",
+    "status": "candidate-rebound",
+    "observedAt": "2026-09-25",
     "proofRefs": [
       ".control-room/commerce-seam.json",
       ".github/workflows/paid-order-reconciliation-exact-head.yml",
