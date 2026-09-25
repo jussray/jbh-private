@@ -71,8 +71,22 @@ test("canonical Shopify physical order becomes procurement-needed receipt", () =
   assert.equal(items[0].procurementStatus, "procurement_needed");
 });
 
-test("catalog map covers the full 37-SKU canonical physical catalog", () => {
-  assert.equal(Object.keys(PHYSICAL_CATALOG_BY_SKU).length, 37);
+test("catalog map covers the 37-SKU canonical catalog plus 44 supplier aliases", () => {
+  const skus = Object.keys(PHYSICAL_CATALOG_BY_SKU);
+  const canonical = skus.filter((sku) => sku.startsWith("JBH-"));
+  const supplierAliases = skus.filter((sku) => sku.startsWith("BRAZ-SEW-"));
+  assert.equal(canonical.length, 37);
+  assert.equal(supplierAliases.length, 44);
+  assert.equal(skus.length, canonical.length + supplierAliases.length);
+  const canonicalProducts = new Set(
+    canonical.map((sku) => PHYSICAL_CATALOG_BY_SKU[sku].productCode),
+  );
+  for (const sku of supplierAliases) {
+    assert.ok(
+      canonicalProducts.has(PHYSICAL_CATALOG_BY_SKU[sku].productCode),
+      `${sku} must alias a canonical JBH product`,
+    );
+  }
   assert.equal(PHYSICAL_CATALOG_BY_SKU["JBH-WG-ST-22"].unitPriceCents, 21500);
   assert.equal(PHYSICAL_CATALOG_BY_SKU["JBH-OIL-2OZ"].unitPriceCents, 1800);
 });
