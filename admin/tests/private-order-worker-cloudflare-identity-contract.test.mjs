@@ -38,8 +38,8 @@ test("runs a non-recursive exact-head Worker proof before every Wrangler upload"
   assert.doesNotMatch(proof, /\bwrangler\b|\bdeploy\b|\bdry-run:worker\b/);
 });
 
-test("uses the deployed Cloudflare Worker as the one canonical service identity", () => {
-  assert.equal(seam.privateOrderControl.serviceName, "jbh-private");
+test("uses the canonical private payment-control Worker as the one source service identity", () => {
+  assert.equal(seam.privateOrderControl.serviceName, "jbh-private-payment-control");
   assert.equal(seam.privateOrderControl.providerServiceAliases, undefined);
 });
 
@@ -48,16 +48,15 @@ test("allows local or ordinary dry runs when Cloudflare supplies no override", (
   assert.equal(result.status, 0, result.stderr);
 });
 
-test("allows the exact connected Cloudflare Worker identity", () => {
-  const result = runIdentityCheck("jbh-private");
+test("allows the exact canonical Cloudflare Worker identity", () => {
+  const result = runIdentityCheck("jbh-private-payment-control");
   assert.equal(result.status, 0, result.stderr);
 });
 
-test("rejects the retired source-only Worker label without logging it", () => {
-  const result = runIdentityCheck("jbh-private-payment-control");
+test("rejects the stale provider Worker label without logging it", () => {
+  const result = runIdentityCheck("jbh-private");
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /cloudflare_worker_identity_mismatch/);
-  assert.doesNotMatch(result.stderr, /jbh-private-payment-control/);
   assert.doesNotMatch(result.stderr, /WRANGLER_CI_OVERRIDE_NAME=/);
 });
 
