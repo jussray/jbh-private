@@ -106,6 +106,73 @@ export const PHYSICAL_CATALOG_BY_SKU: Record<string, CatalogEntry> = {
   "BRAZ-SEW-KS-28": { productCode: "bundle-kinkystraight", variant: '28"', unitPriceCents: 16500 },
 };
 
+// Fresh Shopify fulfillment-location proof on 2026-09-25 showed that Dropship
+// Beauty currently owns 158 active JBH supplier SKUs. Keep this allowlist exact
+// and finite: unknown SKU families and out-of-range variants still fail closed.
+function addSupplierLengthAliases(
+  prefix: string,
+  productCode: string,
+  lengths: readonly number[],
+): void {
+  for (const length of lengths) {
+    const sku = `${prefix}-${length}`;
+    if (PHYSICAL_CATALOG_BY_SKU[sku]) continue;
+    PHYSICAL_CATALOG_BY_SKU[sku] = {
+      productCode,
+      variant: `${length}\"`,
+      unitPriceCents: 0,
+    };
+  }
+}
+
+function addSupplierDealAliases(
+  prefix: string,
+  productCode: string,
+  starts: readonly number[],
+): void {
+  for (const start of starts) {
+    const middle = start + 2;
+    const end = start + 4;
+    const sku = `${prefix}-${start}-${middle}-${end}`;
+    if (PHYSICAL_CATALOG_BY_SKU[sku]) continue;
+    PHYSICAL_CATALOG_BY_SKU[sku] = {
+      productCode,
+      variant: `${start}\"/${middle}\"/${end}\"`,
+      unitPriceCents: 0,
+    };
+  }
+}
+
+const EVEN_LENGTHS_10_32 = [10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32] as const;
+const EVEN_LENGTHS_12_30 = [12, 14, 16, 18, 20, 22, 24, 26, 28, 30] as const;
+const EVEN_LENGTHS_12_26 = [12, 14, 16, 18, 20, 22, 24, 26] as const;
+const KINKY_STRAIGHT_LENGTHS = [14, 16, 18, 20, 22, 24, 26, 28] as const;
+const AFRO_KINKY_LENGTHS = [12, 14, 16, 18, 20, 22] as const;
+const DEAL_STARTS_10_28 = [10, 12, 14, 16, 18, 20, 22, 24, 26, 28] as const;
+
+addSupplierLengthAliases("BRAZ-SEW-BW", "bundle-bodywave", EVEN_LENGTHS_10_32);
+addSupplierLengthAliases("BRAZ-SEW-DW", "bundle-deepwave", EVEN_LENGTHS_10_32);
+addSupplierLengthAliases("BRAZ-SEW-LW", "bundle-loosewave", EVEN_LENGTHS_10_32);
+addSupplierLengthAliases("BRAZ-SEW-ST", "bundle-straight", EVEN_LENGTHS_10_32);
+addSupplierLengthAliases("BRAZ-SEW-KS", "bundle-kinkystraight", KINKY_STRAIGHT_LENGTHS);
+addSupplierLengthAliases("BRAZ-SEW-KC", "bundle-kinkycurly", EVEN_LENGTHS_10_32);
+addSupplierLengthAliases("BRAZ-SEW-AK", "bundle-afrokinky", AFRO_KINKY_LENGTHS);
+addSupplierLengthAliases("BRAZ-SEW-SW", "bundle-spanishwave", EVEN_LENGTHS_12_30);
+addSupplierLengthAliases("613-BRAZ-SEW-BW", "bundle-blonde-bodywave", EVEN_LENGTHS_12_26);
+
+addSupplierDealAliases("BRAZ-SEW-BW", "bundle-deal-bodywave", DEAL_STARTS_10_28);
+addSupplierDealAliases("BRAZ-SEW-DW", "bundle-deal-deepwave", DEAL_STARTS_10_28);
+addSupplierDealAliases("BRAZ-SEW-LW", "bundle-deal-loosewave", DEAL_STARTS_10_28);
+addSupplierDealAliases("BRAZ-SEW-ST", "bundle-deal-straight", DEAL_STARTS_10_28);
+addSupplierDealAliases("BRAZ-SEW-AK", "bundle-deal-afrokinky", [12, 14, 16]);
+
+addSupplierLengthAliases("BRAZ-TRANS-CLO-DW", "closure-deepwave-4x4-transparent", [12, 14, 16, 18]);
+addSupplierLengthAliases("BRAZ-TRANS-CLO-ST", "closure-straight-4x4-transparent", [12, 14, 16, 18]);
+addSupplierLengthAliases("BRAZ-TRANS-CLO-LW", "closure-loosewave-4x4-transparent", [14, 16, 18]);
+addSupplierLengthAliases("BRAZ-TRANS-CLO-BW", "closure-bodywave-4x4-transparent", [12, 14, 16, 18]);
+addSupplierLengthAliases("BRAZ-TRANS-FRO-ST", "frontal-straight-13x4-transparent", [14, 16, 18, 20]);
+addSupplierLengthAliases("BRAZ-TRANS-FRO-LW", "frontal-loosewave-13x4-transparent", [14, 16, 18, 20]);
+
 const moneyString = z.string().regex(/^\d{1,10}(?:\.\d{1,2})?$/);
 const identifier = z.union([
   z.number().int().positive().transform(String),
