@@ -27,7 +27,7 @@ requireTruth(contract.shopify.publicVendor === "JBH", "public Shopify vendor bou
 requireTruth(contract.shopify.catalogPath === "/api/shopify/catalog", "catalog route drifted");
 requireTruth(contract.shopify.cartPath === "/api/shopify/cart", "cart route drifted");
 requireTruth(contract.shopify.paidTopic === "orders/paid", "paid-order topic drifted");
-requireTruth(contract.privateOrderControl.serviceName === "jbh-private-payment-control", "private Worker identity drifted");
+requireTruth(contract.privateOrderControl.serviceName === "jbh-private", "private Worker identity drifted");
 requireTruth(contract.privateOrderControl.healthPath === "/health", "private health route drifted");
 requireTruth(contract.privateOrderControl.paidWebhookPath === "/webhooks/shopify/orders-paid", "private paid webhook route drifted");
 requireTruth(contract.productionTruth.authority === "external-provider-evidence", "production truth must stay provider-backed");
