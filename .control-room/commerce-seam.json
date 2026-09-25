@@ -14,7 +14,7 @@
     "paidTopic": "orders/paid"
   },
   "privateOrderControl": {
-    "serviceName": "jbh-private",
+    "serviceName": "jbh-private-payment-control",
     "healthPath": "/health",
     "paidWebhookPath": "/webhooks/shopify/orders-paid"
   },
