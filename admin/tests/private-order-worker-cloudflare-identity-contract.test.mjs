@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 const scriptUrl = new URL("../../scripts/verify-cloudflare-worker-identity.mjs", import.meta.url);
 const wrangler = readFileSync(new URL("../../wrangler.toml", import.meta.url), "utf8");
@@ -18,7 +19,7 @@ function runIdentityCheck(override) {
     env.WRANGLER_CI_OVERRIDE_NAME = override;
   }
 
-  return spawnSync(process.execPath, [scriptUrl], {
+  return spawnSync(process.execPath, [fileURLToPath(scriptUrl)], {
     env,
     encoding: "utf8",
   });
