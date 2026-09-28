@@ -128,7 +128,7 @@ async function storePaidPhysicalOrder(
       AND shop_domain = ${shopDomain}
       AND topic = ${topic}
       AND order_name IS NOT DISTINCT FROM ${order.orderName}
-      AND customer_email = ${order.customerEmail}
+      AND customer_email IS NOT DISTINCT FROM ${order.customerEmail}
       AND customer_name IS NOT DISTINCT FROM ${order.customerName}
       AND customer_phone IS NOT DISTINCT FROM ${order.customerPhone}
       AND shipping_address_json = ${order.shippingAddressJson}::jsonb

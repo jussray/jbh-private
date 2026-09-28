@@ -61,6 +61,8 @@ test("canonical Shopify physical order becomes procurement-needed receipt", () =
   const result = normalizePaidShopifyPhysicalOrder(paidOrder());
   assert.equal(result.kind, "physical");
   assert.equal(result.order.shopifyOrderId, "1001");
+  assert.equal(result.order.customerEmail, "buyer@example.com");
+  assert.equal(result.order.customerPhone, "+15555550100");
   assert.equal(result.order.subtotalCents, 9000);
   assert.equal(result.order.totalCents, 10000);
 
@@ -68,10 +70,44 @@ test("canonical Shopify physical order becomes procurement-needed receipt", () =
   assert.equal(items.length, 1);
   assert.equal(items[0].sku, "JBH-BW-18");
   assert.equal(items[0].productCode, "bundle-bodywave");
+  assert.equal(items[0].unitPriceCents, 9000);
   assert.equal(items[0].procurementStatus, "procurement_needed");
 });
 
-test("catalog map covers the 37-SKU canonical catalog plus 44 supplier aliases", () => {
+test("phone-only Shopify checkout remains a valid paid physical order", () => {
+  const result = normalizePaidShopifyPhysicalOrder(
+    paidOrder({
+      email: null,
+      contact_email: null,
+      customer: null,
+      phone: "+15555550100",
+    }),
+  );
+  assert.equal(result.kind, "physical");
+  assert.equal(result.order.customerEmail, null);
+  assert.equal(result.order.customerPhone, "+15555550100");
+});
+
+test("physical order fails closed when Shopify supplies neither email nor phone", () => {
+  const base = paidOrder();
+  expectModelError(
+    () =>
+      normalizePaidShopifyPhysicalOrder({
+        ...base,
+        email: null,
+        contact_email: null,
+        customer: null,
+        phone: null,
+        shipping_address: {
+          ...base.shipping_address,
+          phone: null,
+        },
+      }),
+    "missing_customer_contact",
+  );
+});
+
+test("catalog map covers 37 canonical SKUs plus 44 supplier aliases", () => {
   const skus = Object.keys(PHYSICAL_CATALOG_BY_SKU);
   const canonical = skus.filter((sku) => sku.startsWith("JBH-"));
   const supplierAliases = skus.filter((sku) => sku.startsWith("BRAZ-SEW-"));
@@ -101,13 +137,30 @@ test("unknown SKU fails closed", () => {
   );
 });
 
-test("altered Shopify unit price fails closed", () => {
+test("signed Shopify paid line price is preserved instead of rejected by stale local price", () => {
+  const result = normalizePaidShopifyPhysicalOrder(
+    paidOrder({
+      subtotal_price: "95.00",
+      total_price: "105.00",
+      line_items: [physicalLine({ price: "95.00" })],
+    }),
+  );
+  assert.equal(result.kind, "physical");
+  const items = JSON.parse(result.order.itemsJson);
+  assert.equal(items[0].unitPriceCents, 9500);
+});
+
+test("provider subtotal cannot exceed signed line-price gross", () => {
   expectModelError(
     () =>
       normalizePaidShopifyPhysicalOrder(
-        paidOrder({ line_items: [physicalLine({ price: "9.00" })] }),
+        paidOrder({
+          subtotal_price: "90.00",
+          total_price: "100.00",
+          line_items: [physicalLine({ price: "9.00" })],
+        }),
       ),
-    "shopify_line_price_mismatch",
+    "shopify_subtotal_mismatch",
   );
 });
 
