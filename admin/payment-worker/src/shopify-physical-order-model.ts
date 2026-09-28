@@ -56,54 +56,122 @@ export const PHYSICAL_CATALOG_BY_SKU: Record<string, CatalogEntry> = {
   "JBH-OIL-2OZ": { productCode: "hair-oil", variant: "2 oz", unitPriceCents: 1800 },
 
   // Supplier-connected Shopify SKUs are aliases only. They preserve provider
-  // identity while normalizing paid orders back to JBH product codes. Every
-  // currently live supplier-backed length is accepted at its observed JBH
-  // retail price; inventory availability remains Shopify's responsibility.
-  "BRAZ-SEW-BW-10": { productCode: "bundle-bodywave", variant: '10"', unitPriceCents: 3799 },
-  "BRAZ-SEW-BW-12": { productCode: "bundle-bodywave", variant: '12"', unitPriceCents: 4299 },
+  // identity while normalizing paid orders back to JBH product codes. The
+  // prices below are non-authorizing continuity references to the live Shopify
+  // catalog observed on 2026-09-19. Signed Shopify paid-order line prices are
+  // the payment truth; these references must never reject an already-paid order.
+  "BRAZ-SEW-BW-10": { productCode: "bundle-bodywave", variant: '10"', unitPriceCents: 6000 },
+  "BRAZ-SEW-BW-12": { productCode: "bundle-bodywave", variant: '12"', unitPriceCents: 7000 },
   "BRAZ-SEW-BW-14": { productCode: "bundle-bodywave", variant: '14"', unitPriceCents: 7500 },
   "BRAZ-SEW-BW-16": { productCode: "bundle-bodywave", variant: '16"', unitPriceCents: 8500 },
   "BRAZ-SEW-BW-18": { productCode: "bundle-bodywave", variant: '18"', unitPriceCents: 9000 },
-  "BRAZ-SEW-BW-20": { productCode: "bundle-bodywave", variant: '20"', unitPriceCents: 10000 },
-  "BRAZ-SEW-BW-22": { productCode: "bundle-bodywave", variant: '22"', unitPriceCents: 11000 },
+  "BRAZ-SEW-BW-20": { productCode: "bundle-bodywave", variant: '20"', unitPriceCents: 10500 },
+  "BRAZ-SEW-BW-22": { productCode: "bundle-bodywave", variant: '22"', unitPriceCents: 11500 },
   "BRAZ-SEW-BW-24": { productCode: "bundle-bodywave", variant: '24"', unitPriceCents: 12500 },
-  "BRAZ-SEW-BW-26": { productCode: "bundle-bodywave", variant: '26"', unitPriceCents: 14000 },
-  "BRAZ-SEW-BW-28": { productCode: "bundle-bodywave", variant: '28"', unitPriceCents: 10999 },
-  "BRAZ-SEW-BW-30": { productCode: "bundle-bodywave", variant: '30"', unitPriceCents: 12199 },
-  "BRAZ-SEW-BW-32": { productCode: "bundle-bodywave", variant: '32"', unitPriceCents: 13199 },
-  "BRAZ-SEW-DW-10": { productCode: "bundle-deepwave", variant: '10"', unitPriceCents: 4099 },
-  "BRAZ-SEW-DW-12": { productCode: "bundle-deepwave", variant: '12"', unitPriceCents: 4499 },
+  "BRAZ-SEW-BW-26": { productCode: "bundle-bodywave", variant: '26"', unitPriceCents: 14500 },
+  "BRAZ-SEW-BW-28": { productCode: "bundle-bodywave", variant: '28"', unitPriceCents: 15000 },
+  "BRAZ-SEW-BW-30": { productCode: "bundle-bodywave", variant: '30"', unitPriceCents: 17000 },
+  "BRAZ-SEW-BW-32": { productCode: "bundle-bodywave", variant: '32"', unitPriceCents: 18000 },
+  "BRAZ-SEW-DW-10": { productCode: "bundle-deepwave", variant: '10"', unitPriceCents: 6500 },
+  "BRAZ-SEW-DW-12": { productCode: "bundle-deepwave", variant: '12"', unitPriceCents: 7000 },
   "BRAZ-SEW-DW-14": { productCode: "bundle-deepwave", variant: '14"', unitPriceCents: 8000 },
-  "BRAZ-SEW-DW-16": { productCode: "bundle-deepwave", variant: '16"', unitPriceCents: 5799 },
+  "BRAZ-SEW-DW-16": { productCode: "bundle-deepwave", variant: '16"', unitPriceCents: 8500 },
   "BRAZ-SEW-DW-18": { productCode: "bundle-deepwave", variant: '18"', unitPriceCents: 9500 },
-  "BRAZ-SEW-DW-20": { productCode: "bundle-deepwave", variant: '20"', unitPriceCents: 7499 },
+  "BRAZ-SEW-DW-20": { productCode: "bundle-deepwave", variant: '20"', unitPriceCents: 11000 },
   "BRAZ-SEW-DW-22": { productCode: "bundle-deepwave", variant: '22"', unitPriceCents: 11500 },
-  "BRAZ-SEW-DW-24": { productCode: "bundle-deepwave", variant: '24"', unitPriceCents: 8999 },
+  "BRAZ-SEW-DW-24": { productCode: "bundle-deepwave", variant: '24"', unitPriceCents: 12500 },
   "BRAZ-SEW-DW-26": { productCode: "bundle-deepwave", variant: '26"', unitPriceCents: 14500 },
-  "BRAZ-SEW-DW-28": { productCode: "bundle-deepwave", variant: '28"', unitPriceCents: 11299 },
-  "BRAZ-SEW-DW-30": { productCode: "bundle-deepwave", variant: '30"', unitPriceCents: 12499 },
-  "BRAZ-SEW-DW-32": { productCode: "bundle-deepwave", variant: '32"', unitPriceCents: 13499 },
-  "BRAZ-SEW-LW-10": { productCode: "bundle-loosewave", variant: '10"', unitPriceCents: 4099 },
-  "BRAZ-SEW-LW-12": { productCode: "bundle-loosewave", variant: '12"', unitPriceCents: 4499 },
+  "BRAZ-SEW-DW-28": { productCode: "bundle-deepwave", variant: '28"', unitPriceCents: 15500 },
+  "BRAZ-SEW-DW-30": { productCode: "bundle-deepwave", variant: '30"', unitPriceCents: 17000 },
+  "BRAZ-SEW-DW-32": { productCode: "bundle-deepwave", variant: '32"', unitPriceCents: 18500 },
+  "BRAZ-SEW-LW-10": { productCode: "bundle-loosewave", variant: '10"', unitPriceCents: 6500 },
+  "BRAZ-SEW-LW-12": { productCode: "bundle-loosewave", variant: '12"', unitPriceCents: 7000 },
   "BRAZ-SEW-LW-14": { productCode: "bundle-loosewave", variant: '14"', unitPriceCents: 8000 },
-  "BRAZ-SEW-LW-16": { productCode: "bundle-loosewave", variant: '16"', unitPriceCents: 5799 },
+  "BRAZ-SEW-LW-16": { productCode: "bundle-loosewave", variant: '16"', unitPriceCents: 8500 },
   "BRAZ-SEW-LW-18": { productCode: "bundle-loosewave", variant: '18"', unitPriceCents: 9500 },
-  "BRAZ-SEW-LW-20": { productCode: "bundle-loosewave", variant: '20"', unitPriceCents: 7499 },
+  "BRAZ-SEW-LW-20": { productCode: "bundle-loosewave", variant: '20"', unitPriceCents: 11000 },
   "BRAZ-SEW-LW-22": { productCode: "bundle-loosewave", variant: '22"', unitPriceCents: 11500 },
-  "BRAZ-SEW-LW-24": { productCode: "bundle-loosewave", variant: '24"', unitPriceCents: 8999 },
+  "BRAZ-SEW-LW-24": { productCode: "bundle-loosewave", variant: '24"', unitPriceCents: 12500 },
   "BRAZ-SEW-LW-26": { productCode: "bundle-loosewave", variant: '26"', unitPriceCents: 14500 },
-  "BRAZ-SEW-LW-28": { productCode: "bundle-loosewave", variant: '28"', unitPriceCents: 11299 },
-  "BRAZ-SEW-LW-30": { productCode: "bundle-loosewave", variant: '30"', unitPriceCents: 12499 },
-  "BRAZ-SEW-LW-32": { productCode: "bundle-loosewave", variant: '32"', unitPriceCents: 13499 },
+  "BRAZ-SEW-LW-28": { productCode: "bundle-loosewave", variant: '28"', unitPriceCents: 15500 },
+  "BRAZ-SEW-LW-30": { productCode: "bundle-loosewave", variant: '30"', unitPriceCents: 17000 },
+  "BRAZ-SEW-LW-32": { productCode: "bundle-loosewave", variant: '32"', unitPriceCents: 18500 },
   "BRAZ-SEW-KS-14": { productCode: "bundle-kinkystraight", variant: '14"', unitPriceCents: 8500 },
-  "BRAZ-SEW-KS-16": { productCode: "bundle-kinkystraight", variant: '16"', unitPriceCents: 6499 },
-  "BRAZ-SEW-KS-18": { productCode: "bundle-kinkystraight", variant: '18"', unitPriceCents: 10000 },
-  "BRAZ-SEW-KS-20": { productCode: "bundle-kinkystraight", variant: '20"', unitPriceCents: 7799 },
+  "BRAZ-SEW-KS-16": { productCode: "bundle-kinkystraight", variant: '16"', unitPriceCents: 9500 },
+  "BRAZ-SEW-KS-18": { productCode: "bundle-kinkystraight", variant: '18"', unitPriceCents: 10500 },
+  "BRAZ-SEW-KS-20": { productCode: "bundle-kinkystraight", variant: '20"', unitPriceCents: 11000 },
   "BRAZ-SEW-KS-22": { productCode: "bundle-kinkystraight", variant: '22"', unitPriceCents: 12000 },
-  "BRAZ-SEW-KS-24": { productCode: "bundle-kinkystraight", variant: '24"', unitPriceCents: 9899 },
+  "BRAZ-SEW-KS-24": { productCode: "bundle-kinkystraight", variant: '24"', unitPriceCents: 14000 },
   "BRAZ-SEW-KS-26": { productCode: "bundle-kinkystraight", variant: '26"', unitPriceCents: 15500 },
-  "BRAZ-SEW-KS-28": { productCode: "bundle-kinkystraight", variant: '28"', unitPriceCents: 11999 },
+  "BRAZ-SEW-KS-28": { productCode: "bundle-kinkystraight", variant: '28"', unitPriceCents: 16500 },
 };
+
+// Fresh Shopify fulfillment-location proof on 2026-09-25 showed that Dropship
+// Beauty currently owns 158 active JBH supplier SKUs. Keep this allowlist exact
+// and finite: unknown SKU families and out-of-range variants still fail closed.
+function addSupplierLengthAliases(
+  prefix: string,
+  productCode: string,
+  lengths: readonly number[],
+): void {
+  for (const length of lengths) {
+    const sku = `${prefix}-${length}`;
+    if (PHYSICAL_CATALOG_BY_SKU[sku]) continue;
+    PHYSICAL_CATALOG_BY_SKU[sku] = {
+      productCode,
+      variant: `${length}\"`,
+      unitPriceCents: 0,
+    };
+  }
+}
+
+function addSupplierDealAliases(
+  prefix: string,
+  productCode: string,
+  starts: readonly number[],
+): void {
+  for (const start of starts) {
+    const middle = start + 2;
+    const end = start + 4;
+    const sku = `${prefix}-${start}-${middle}-${end}`;
+    if (PHYSICAL_CATALOG_BY_SKU[sku]) continue;
+    PHYSICAL_CATALOG_BY_SKU[sku] = {
+      productCode,
+      variant: `${start}\"/${middle}\"/${end}\"`,
+      unitPriceCents: 0,
+    };
+  }
+}
+
+const EVEN_LENGTHS_10_32 = [10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32] as const;
+const EVEN_LENGTHS_12_30 = [12, 14, 16, 18, 20, 22, 24, 26, 28, 30] as const;
+const EVEN_LENGTHS_12_26 = [12, 14, 16, 18, 20, 22, 24, 26] as const;
+const KINKY_STRAIGHT_LENGTHS = [14, 16, 18, 20, 22, 24, 26, 28] as const;
+const AFRO_KINKY_LENGTHS = [12, 14, 16, 18, 20, 22] as const;
+const DEAL_STARTS_10_28 = [10, 12, 14, 16, 18, 20, 22, 24, 26, 28] as const;
+
+addSupplierLengthAliases("BRAZ-SEW-BW", "bundle-bodywave", EVEN_LENGTHS_10_32);
+addSupplierLengthAliases("BRAZ-SEW-DW", "bundle-deepwave", EVEN_LENGTHS_10_32);
+addSupplierLengthAliases("BRAZ-SEW-LW", "bundle-loosewave", EVEN_LENGTHS_10_32);
+addSupplierLengthAliases("BRAZ-SEW-ST", "bundle-straight", EVEN_LENGTHS_10_32);
+addSupplierLengthAliases("BRAZ-SEW-KS", "bundle-kinkystraight", KINKY_STRAIGHT_LENGTHS);
+addSupplierLengthAliases("BRAZ-SEW-KC", "bundle-kinkycurly", EVEN_LENGTHS_10_32);
+addSupplierLengthAliases("BRAZ-SEW-AK", "bundle-afrokinky", AFRO_KINKY_LENGTHS);
+addSupplierLengthAliases("BRAZ-SEW-SW", "bundle-spanishwave", EVEN_LENGTHS_12_30);
+addSupplierLengthAliases("613-BRAZ-SEW-BW", "bundle-blonde-bodywave", EVEN_LENGTHS_12_26);
+
+addSupplierDealAliases("BRAZ-SEW-BW", "bundle-deal-bodywave", DEAL_STARTS_10_28);
+addSupplierDealAliases("BRAZ-SEW-DW", "bundle-deal-deepwave", DEAL_STARTS_10_28);
+addSupplierDealAliases("BRAZ-SEW-LW", "bundle-deal-loosewave", DEAL_STARTS_10_28);
+addSupplierDealAliases("BRAZ-SEW-ST", "bundle-deal-straight", DEAL_STARTS_10_28);
+addSupplierDealAliases("BRAZ-SEW-AK", "bundle-deal-afrokinky", [12, 14, 16]);
+
+addSupplierLengthAliases("BRAZ-TRANS-CLO-DW", "closure-deepwave-4x4-transparent", [12, 14, 16, 18]);
+addSupplierLengthAliases("BRAZ-TRANS-CLO-ST", "closure-straight-4x4-transparent", [12, 14, 16, 18]);
+addSupplierLengthAliases("BRAZ-TRANS-CLO-LW", "closure-loosewave-4x4-transparent", [14, 16, 18]);
+addSupplierLengthAliases("BRAZ-TRANS-CLO-BW", "closure-bodywave-4x4-transparent", [12, 14, 16, 18]);
+addSupplierLengthAliases("BRAZ-TRANS-FRO-ST", "frontal-straight-13x4-transparent", [14, 16, 18, 20]);
+addSupplierLengthAliases("BRAZ-TRANS-FRO-LW", "frontal-loosewave-13x4-transparent", [14, 16, 18, 20]);
 
 const moneyString = z.string().regex(/^\d{1,10}(?:\.\d{1,2})?$/);
 const identifier = z.union([
@@ -178,7 +246,7 @@ export interface NormalizedPaidPhysicalOrder {
   shopifyOrderId: string;
   shopifyOrderGid: string | null;
   orderName: string | null;
-  customerEmail: string;
+  customerEmail: string | null;
   customerName: string | null;
   customerPhone: string | null;
   shippingAddressJson: string;
@@ -280,9 +348,6 @@ export function normalizePaidShopifyPhysicalOrder(
       throw new ShopifyPhysicalOrderModelError("unsupported_physical_sku");
     }
     const linePriceCents = cents(line.price);
-    if (linePriceCents !== catalog.unitPriceCents) {
-      throw new ShopifyPhysicalOrderModelError("shopify_line_price_mismatch");
-    }
     return {
       lineItemId: line.id,
       productId: line.product_id ?? null,
@@ -293,7 +358,7 @@ export function normalizePaidShopifyPhysicalOrder(
       title: line.title,
       variantTitle: line.variant_title ?? null,
       quantity: line.quantity,
-      unitPriceCents: catalog.unitPriceCents,
+      unitPriceCents: linePriceCents,
       procurementStatus: "procurement_needed",
     };
   });
@@ -305,11 +370,11 @@ export function normalizePaidShopifyPhysicalOrder(
   }
   const subtotalCents = cents(subtotalValue);
   const totalCents = cents(totalValue);
-  const canonicalGrossCents = normalizedItems.reduce(
+  const providerGrossCents = normalizedItems.reduce(
     (sum, item) => sum + item.unitPriceCents * item.quantity,
     0,
   );
-  if (subtotalCents < 0 || subtotalCents > canonicalGrossCents) {
+  if (subtotalCents < 0 || subtotalCents > providerGrossCents) {
     throw new ShopifyPhysicalOrderModelError("shopify_subtotal_mismatch");
   }
   if (totalCents < 1 || totalCents < subtotalCents) {
@@ -320,10 +385,7 @@ export function normalizePaidShopifyPhysicalOrder(
     order.email ?? order.contact_email ?? order.customer?.email ?? ""
   )
     .trim()
-    .toLowerCase();
-  if (!customerEmail) {
-    throw new ShopifyPhysicalOrderModelError("missing_customer_email");
-  }
+    .toLowerCase() || null;
 
   const address = order.shipping_address;
   const customerName =
@@ -338,6 +400,10 @@ export function normalizePaidShopifyPhysicalOrder(
   const customerPhone = (
     order.phone ?? order.customer?.phone ?? address.phone ?? ""
   ).trim() || null;
+
+  if (!customerEmail && !customerPhone) {
+    throw new ShopifyPhysicalOrderModelError("missing_customer_contact");
+  }
 
   return {
     kind: "physical",

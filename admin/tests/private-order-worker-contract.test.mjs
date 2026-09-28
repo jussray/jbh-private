@@ -26,7 +26,7 @@ const [
 const packageContract = JSON.parse(packageJson);
 
 test("root Cloudflare deploy resolves the API-only private Worker", () => {
-  assert.match(wrangler, /name = "jbh-private-payment-control"/);
+  assert.match(wrangler, /^name = "jbh-private-payment-control"$/m);
   assert.match(wrangler, /main = "admin\/payment-worker\/src\/index\.ts"/);
   assert.match(wrangler, /workers_dev = false/);
   assert.match(wrangler, /preview_urls = false/);

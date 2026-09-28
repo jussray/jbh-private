@@ -19,7 +19,7 @@ The active public physical checkout is Shopify-backed.
 canonical shop domain: 8qp1z2-az.myshopify.com
 paid topic: orders/paid
 private webhook path: /webhooks/shopify/orders-paid
-private Worker service: jbh-private-payment-control
+private Worker service: jbh-private
 initial physical procurement state: procurement_needed
 ```
 
@@ -31,9 +31,10 @@ The private handler:
 - requires the exact `orders/paid` topic;
 - requires the exact configured canonical Shopify shop domain;
 - verifies `X-Shopify-Hmac-SHA256` against the unmodified raw request body;
-- validates bounded payloads and supported physical SKUs/prices;
+- validates bounded payloads and supported physical SKUs while treating signed Shopify paid-order line prices as payment truth;
+- accepts a genuine Shopify email or phone contact and fails closed if both are absent;
 - rejects mixed/unsupported carts fail-closed;
-- deduplicates by Shopify webhook ID and order identity;
+- deduplicates by Shopify webhook ID and order identity with NULL-safe contact comparison;
 - stores private order/customer/shipping/item evidence in Neon;
 - initializes physical orders as `procurement_needed`;
 - records bounded failure codes without logging customer payloads.
@@ -76,16 +77,16 @@ Provider webhooks must not be placed behind an interactive Cloudflare Access log
 
 Code presence is not production proof. Before calling the Shopify paid-order seam active, separately verify:
 
-1. `jbh-private-payment-control` is deployed on one approved custom hostname;
+1. `jbh-private` is deployed on one approved custom hostname;
 2. `/health` returns `jbh-private-order-control` on that hostname;
 3. `SHOPIFY_SHOP_DOMAIN` and `SHOPIFY_WEBHOOK_SECRET` are installed in that runtime without exposing values;
 4. Shopify has an `orders/paid` webhook subscription targeting the exact `/webhooks/shopify/orders-paid` URL on that host;
-5. `migrations/008_shopify_physical_procurement.sql` is applied to the intended database;
+5. the read-only Shopify physical-order schema preflight passes against the intended database, proving the required tables, critical types, idempotency constraints, order CHECK constraints, and customer email-or-phone invariant exist at runtime;
 6. a signed synthetic paid-order event produces exactly one expected private order receipt;
 7. replaying the same webhook is idempotent;
-8. invalid signature, wrong shop, wrong topic, unsupported SKU, and altered-price cases fail closed.
+8. invalid signature, wrong shop, wrong topic, unsupported SKU, and impossible signed-price/subtotal cases fail closed.
 
-A merge, config file, secret name, or deployment badge alone is not enough.
+A merge, migration filename, config file, secret name, or deployment badge alone is not enough.
 
 ## Legacy Stripe reliability
 
