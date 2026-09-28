@@ -1,0 +1,1057 @@
+{
+ "source": "Shopify Admin 8qp1z2-az, vendor:JBH, status:ACTIVE, ProductVariant.price and InventoryItem.unitCost",
+ "capturedAt": "2026-09-28",
+ "currency": "USD",
+ "products": [
+  {
+   "handle": "juss-hair-match-session-25-purchase-credit",
+   "kind": "service",
+   "variants": [
+    {
+     "option": "Hair Match Session",
+     "retail": 25.0,
+     "unitCost": null
+    }
+   ]
+  },
+  {
+   "handle": "lawless-bone-straight-bundle-raw-vietnamese",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "14\"",
+     "retail": 75,
+     "unitCost": null
+    },
+    {
+     "option": "18\"",
+     "retail": 90,
+     "unitCost": null
+    },
+    {
+     "option": "22\"",
+     "retail": 110,
+     "unitCost": null
+    },
+    {
+     "option": "26\"",
+     "retail": 140,
+     "unitCost": null
+    }
+   ]
+  },
+  {
+   "handle": "royal-raw-indian-temple-bundle",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "14\"",
+     "retail": 110,
+     "unitCost": null
+    },
+    {
+     "option": "18\"",
+     "retail": 135,
+     "unitCost": null
+    },
+    {
+     "option": "22\"",
+     "retail": 160,
+     "unitCost": null
+    },
+    {
+     "option": "26\"",
+     "retail": 195,
+     "unitCost": null
+    }
+   ]
+  },
+  {
+   "handle": "lawless-4-4-hd-lace-closure",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "16\"",
+     "retail": 65,
+     "unitCost": null
+    }
+   ]
+  },
+  {
+   "handle": "lawless-5-5-hd-lace-closure",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "16\"",
+     "retail": 85,
+     "unitCost": null
+    }
+   ]
+  },
+  {
+   "handle": "lawless-13-4-hd-lace-frontal",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "18\"",
+     "retail": 125,
+     "unitCost": null
+    }
+   ]
+  },
+  {
+   "handle": "flawless-glueless-4-4-closure-wig-body-wave",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "18\"",
+     "retail": 165,
+     "unitCost": null
+    }
+   ]
+  },
+  {
+   "handle": "flawless-13-4-lace-frontal-wig-straight",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "22\"",
+     "retail": 215,
+     "unitCost": null
+    }
+   ]
+  },
+  {
+   "handle": "flawless-deep-wave-u-part-wig",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "20\"",
+     "retail": 145,
+     "unitCost": null
+    }
+   ]
+  },
+  {
+   "handle": "flawless-13-6-body-wave-bob-wig",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "10\" bob",
+     "retail": 135,
+     "unitCost": null
+    }
+   ]
+  },
+  {
+   "handle": "deep-wave-4x4-transparent-lace-closure",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "12\"",
+     "retail": 39.99,
+     "unitCost": 28
+    },
+    {
+     "option": "14\"",
+     "retail": 43.99,
+     "unitCost": 31
+    },
+    {
+     "option": "16\"",
+     "retail": 46.99,
+     "unitCost": 33
+    },
+    {
+     "option": "18\"",
+     "retail": 53.99,
+     "unitCost": 38
+    }
+   ]
+  },
+  {
+   "handle": "body-wave-human-hair-bundle-deal",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "10\"/12\"/14\"",
+     "retail": 127.99,
+     "unitCost": 91
+    },
+    {
+     "option": "12\"/14\"/16\"",
+     "retail": 144.99,
+     "unitCost": 103
+    },
+    {
+     "option": "14\"/16\"/18\"",
+     "retail": 163.99,
+     "unitCost": 117
+    },
+    {
+     "option": "16\"/18\"/20\"",
+     "retail": 187.99,
+     "unitCost": 134
+    },
+    {
+     "option": "18\"/20\"/22\"",
+     "retail": 211.99,
+     "unitCost": 151
+    },
+    {
+     "option": "20\"/22\"/24\"",
+     "retail": 236.99,
+     "unitCost": 169
+    },
+    {
+     "option": "22\"/24\"/26\"",
+     "retail": 267.99,
+     "unitCost": 191
+    },
+    {
+     "option": "24\"/26\"/28\"",
+     "retail": 298.99,
+     "unitCost": 213
+    },
+    {
+     "option": "26\"/28\"/30\"",
+     "retail": 333.99,
+     "unitCost": 238
+    },
+    {
+     "option": "28\"/30\"/32\"",
+     "retail": 362.99,
+     "unitCost": 259
+    }
+   ]
+  },
+  {
+   "handle": "afro-kinky-human-hair-bundle-deal",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "12\"/14\"/16\"",
+     "retail": 161.99,
+     "unitCost": 115
+    },
+    {
+     "option": "14\"/16\"/18\"",
+     "retail": 180.99,
+     "unitCost": 129
+    },
+    {
+     "option": "16\"/18\"/20\"",
+     "retail": 204.99,
+     "unitCost": 146
+    }
+   ]
+  },
+  {
+   "handle": "straight-13x4-transparent-lace-frontal",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "14\"",
+     "retail": 63.99,
+     "unitCost": 45
+    },
+    {
+     "option": "16\"",
+     "retail": 75.99,
+     "unitCost": 54
+    },
+    {
+     "option": "18\"",
+     "retail": 85.99,
+     "unitCost": 61
+    },
+    {
+     "option": "20\"",
+     "retail": 96.99,
+     "unitCost": 69
+    }
+   ]
+  },
+  {
+   "handle": "loose-wave-13x4-transparent-lace-frontal",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "14\"",
+     "retail": 68.99,
+     "unitCost": 49
+    },
+    {
+     "option": "16\"",
+     "retail": 81.99,
+     "unitCost": 58
+    },
+    {
+     "option": "18\"",
+     "retail": 91.99,
+     "unitCost": 65
+    },
+    {
+     "option": "20\"",
+     "retail": 100.99,
+     "unitCost": 72
+    }
+   ]
+  },
+  {
+   "handle": "straight-4x4-transparent-lace-closure",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "12\"",
+     "retail": 36.99,
+     "unitCost": 26
+    },
+    {
+     "option": "14\"",
+     "retail": 42.99,
+     "unitCost": 30
+    },
+    {
+     "option": "16\"",
+     "retail": 43.99,
+     "unitCost": 31
+    },
+    {
+     "option": "18\"",
+     "retail": 50.99,
+     "unitCost": 36
+    }
+   ]
+  },
+  {
+   "handle": "loose-wave-4x4-transparent-lace-closure",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "14\"",
+     "retail": 43.99,
+     "unitCost": 31
+    },
+    {
+     "option": "16\"",
+     "retail": 46.99,
+     "unitCost": 33
+    },
+    {
+     "option": "18\"",
+     "retail": 53.99,
+     "unitCost": 38
+    }
+   ]
+  },
+  {
+   "handle": "body-wave-4x4-transparent-lace-closure",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "12\"",
+     "retail": 39.99,
+     "unitCost": 28
+    },
+    {
+     "option": "14\"",
+     "retail": 43.99,
+     "unitCost": 31
+    },
+    {
+     "option": "16\"",
+     "retail": 46.99,
+     "unitCost": 33
+    },
+    {
+     "option": "18\"",
+     "retail": 53.99,
+     "unitCost": 38
+    }
+   ]
+  },
+  {
+   "handle": "loose-wave-human-hair-bundle-deal",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "10\"/12\"/14\"",
+     "retail": 135.99,
+     "unitCost": 97
+    },
+    {
+     "option": "12\"/14\"/16\"",
+     "retail": 152.99,
+     "unitCost": 109
+    },
+    {
+     "option": "14\"/16\"/18\"",
+     "retail": 172.99,
+     "unitCost": 123
+    },
+    {
+     "option": "16\"/18\"/20\"",
+     "retail": 196.99,
+     "unitCost": 140
+    },
+    {
+     "option": "18\"/20\"/22\"",
+     "retail": 218.99,
+     "unitCost": 156
+    },
+    {
+     "option": "20\"/22\"/24\"",
+     "retail": 243.99,
+     "unitCost": 174
+    },
+    {
+     "option": "22\"/24\"/26\"",
+     "retail": 274.99,
+     "unitCost": 196
+    },
+    {
+     "option": "24\"/26\"/28\"",
+     "retail": 306.99,
+     "unitCost": 219
+    },
+    {
+     "option": "26\"/28\"/30\"",
+     "retail": 341.99,
+     "unitCost": 244
+    },
+    {
+     "option": "28\"/30\"/32\"",
+     "retail": 371.99,
+     "unitCost": 265
+    }
+   ]
+  },
+  {
+   "handle": "straight-human-hair-bundle-deal",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "10\"/12\"/14\"",
+     "retail": 127.99,
+     "unitCost": 91
+    },
+    {
+     "option": "12\"/14\"/16\"",
+     "retail": 144.99,
+     "unitCost": 103
+    },
+    {
+     "option": "14\"/16\"/18\"",
+     "retail": 163.99,
+     "unitCost": 117
+    },
+    {
+     "option": "16\"/18\"/20\"",
+     "retail": 187.99,
+     "unitCost": 134
+    },
+    {
+     "option": "18\"/20\"/22\"",
+     "retail": 211.99,
+     "unitCost": 151
+    },
+    {
+     "option": "20\"/22\"/24\"",
+     "retail": 236.99,
+     "unitCost": 169
+    },
+    {
+     "option": "22\"/24\"/26\"",
+     "retail": 267.99,
+     "unitCost": 191
+    },
+    {
+     "option": "24\"/26\"/28\"",
+     "retail": 298.99,
+     "unitCost": 213
+    },
+    {
+     "option": "26\"/28\"/30\"",
+     "retail": 333.99,
+     "unitCost": 238
+    },
+    {
+     "option": "28\"/30\"/32\"",
+     "retail": 362.99,
+     "unitCost": 259
+    }
+   ]
+  },
+  {
+   "handle": "deep-wave-human-hair-bundle-deal",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "10\"/12\"/14\"",
+     "retail": 135.99,
+     "unitCost": 97
+    },
+    {
+     "option": "12\"/14\"/16\"",
+     "retail": 152.99,
+     "unitCost": 109
+    },
+    {
+     "option": "14\"/16\"/18\"",
+     "retail": 172.99,
+     "unitCost": 123
+    },
+    {
+     "option": "16\"/18\"/20\"",
+     "retail": 196.99,
+     "unitCost": 140
+    },
+    {
+     "option": "18\"/20\"/22\"",
+     "retail": 218.99,
+     "unitCost": 156
+    },
+    {
+     "option": "20\"/22\"/24\"",
+     "retail": 243.99,
+     "unitCost": 174
+    },
+    {
+     "option": "22\"/24\"/26\"",
+     "retail": 274.99,
+     "unitCost": 196
+    },
+    {
+     "option": "24\"/26\"/28\"",
+     "retail": 306.99,
+     "unitCost": 219
+    },
+    {
+     "option": "26\"/28\"/30\"",
+     "retail": 341.99,
+     "unitCost": 244
+    },
+    {
+     "option": "28\"/30\"/32\"",
+     "retail": 371.99,
+     "unitCost": 265
+    }
+   ]
+  },
+  {
+   "handle": "straight-human-hair-bundles",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "10\"",
+     "retail": 37.99,
+     "unitCost": 27
+    },
+    {
+     "option": "12\"",
+     "retail": 42.99,
+     "unitCost": 30
+    },
+    {
+     "option": "14\"",
+     "retail": 47.99,
+     "unitCost": 34
+    },
+    {
+     "option": "16\"",
+     "retail": 54.99,
+     "unitCost": 39
+    },
+    {
+     "option": "18\"",
+     "retail": 61.99,
+     "unitCost": 44
+    },
+    {
+     "option": "20\"",
+     "retail": 71.99,
+     "unitCost": 51
+    },
+    {
+     "option": "22\"",
+     "retail": 78.99,
+     "unitCost": 56
+    },
+    {
+     "option": "24\"",
+     "retail": 86.99,
+     "unitCost": 62
+    },
+    {
+     "option": "26\"",
+     "retail": 102.99,
+     "unitCost": 73
+    },
+    {
+     "option": "28\"",
+     "retail": 109.99,
+     "unitCost": 78
+    },
+    {
+     "option": "30\"",
+     "retail": 121.99,
+     "unitCost": 87
+    },
+    {
+     "option": "32\"",
+     "retail": 131.99,
+     "unitCost": 94
+    }
+   ]
+  },
+  {
+   "handle": "loose-wave-human-hair-bundles",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "10\"",
+     "retail": 65,
+     "unitCost": 29
+    },
+    {
+     "option": "12\"",
+     "retail": 70,
+     "unitCost": 32
+    },
+    {
+     "option": "14\"",
+     "retail": 80,
+     "unitCost": 36
+    },
+    {
+     "option": "16\"",
+     "retail": 85,
+     "unitCost": 41
+    },
+    {
+     "option": "18\"",
+     "retail": 95,
+     "unitCost": 46
+    },
+    {
+     "option": "20\"",
+     "retail": 110,
+     "unitCost": 53
+    },
+    {
+     "option": "22\"",
+     "retail": 115,
+     "unitCost": 57
+    },
+    {
+     "option": "24\"",
+     "retail": 125,
+     "unitCost": 64
+    },
+    {
+     "option": "26\"",
+     "retail": 145,
+     "unitCost": 75
+    },
+    {
+     "option": "28\"",
+     "retail": 155,
+     "unitCost": 80
+    },
+    {
+     "option": "30\"",
+     "retail": 170,
+     "unitCost": 89
+    },
+    {
+     "option": "32\"",
+     "retail": 185,
+     "unitCost": 96
+    }
+   ]
+  },
+  {
+   "handle": "blonde-body-wave-human-hair-bundles",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "12\"",
+     "retail": 46.99,
+     "unitCost": 33
+    },
+    {
+     "option": "14\"",
+     "retail": 49.99,
+     "unitCost": 35
+    },
+    {
+     "option": "16\"",
+     "retail": 58.99,
+     "unitCost": 42
+    },
+    {
+     "option": "18\"",
+     "retail": 72.99,
+     "unitCost": 52
+    },
+    {
+     "option": "20\"",
+     "retail": 82.99,
+     "unitCost": 59
+    },
+    {
+     "option": "22\"",
+     "retail": 91.99,
+     "unitCost": 65
+    },
+    {
+     "option": "24\"",
+     "retail": 107.99,
+     "unitCost": 77
+    },
+    {
+     "option": "26\"",
+     "retail": 114.99,
+     "unitCost": 82
+    }
+   ]
+  },
+  {
+   "handle": "spanish-wave-human-hair-bundles",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "12\"",
+     "retail": 51.99,
+     "unitCost": 37
+    },
+    {
+     "option": "14\"",
+     "retail": 57.99,
+     "unitCost": 41
+    },
+    {
+     "option": "16\"",
+     "retail": 64.99,
+     "unitCost": 46
+    },
+    {
+     "option": "18\"",
+     "retail": 70.99,
+     "unitCost": 50
+    },
+    {
+     "option": "20\"",
+     "retail": 77.99,
+     "unitCost": 55
+    },
+    {
+     "option": "22\"",
+     "retail": 85.99,
+     "unitCost": 61
+    },
+    {
+     "option": "24\"",
+     "retail": 98.99,
+     "unitCost": 70
+    },
+    {
+     "option": "26\"",
+     "retail": 106.99,
+     "unitCost": 76
+    },
+    {
+     "option": "28\"",
+     "retail": 119.99,
+     "unitCost": 85
+    },
+    {
+     "option": "30\"",
+     "retail": 127.99,
+     "unitCost": 91
+    }
+   ]
+  },
+  {
+   "handle": "afro-kinky-human-hair-bundles",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "12\"",
+     "retail": 47.99,
+     "unitCost": 34
+    },
+    {
+     "option": "14\"",
+     "retail": 53.99,
+     "unitCost": 38
+    },
+    {
+     "option": "16\"",
+     "retail": 60.99,
+     "unitCost": 43
+    },
+    {
+     "option": "18\"",
+     "retail": 67.99,
+     "unitCost": 48
+    },
+    {
+     "option": "20\"",
+     "retail": 77.99,
+     "unitCost": 55
+    },
+    {
+     "option": "22\"",
+     "retail": 82.99,
+     "unitCost": 59
+    }
+   ]
+  },
+  {
+   "handle": "kinky-curly-human-hair-bundles",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "10\"",
+     "retail": 43.99,
+     "unitCost": 31
+    },
+    {
+     "option": "12\"",
+     "retail": 51.99,
+     "unitCost": 37
+    },
+    {
+     "option": "14\"",
+     "retail": 57.99,
+     "unitCost": 41
+    },
+    {
+     "option": "16\"",
+     "retail": 64.99,
+     "unitCost": 46
+    },
+    {
+     "option": "18\"",
+     "retail": 70.99,
+     "unitCost": 50
+    },
+    {
+     "option": "20\"",
+     "retail": 77.99,
+     "unitCost": 55
+    },
+    {
+     "option": "22\"",
+     "retail": 85.99,
+     "unitCost": 61
+    },
+    {
+     "option": "24\"",
+     "retail": 98.99,
+     "unitCost": 70
+    },
+    {
+     "option": "26\"",
+     "retail": 106.99,
+     "unitCost": 76
+    },
+    {
+     "option": "28\"",
+     "retail": 119.99,
+     "unitCost": 85
+    },
+    {
+     "option": "30\"",
+     "retail": 127.99,
+     "unitCost": 91
+    },
+    {
+     "option": "32\"",
+     "retail": 144.99,
+     "unitCost": 103
+    }
+   ]
+  },
+  {
+   "handle": "deep-wave-human-hair-bundles",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "10\"",
+     "retail": 65,
+     "unitCost": 29
+    },
+    {
+     "option": "12\"",
+     "retail": 70,
+     "unitCost": 32
+    },
+    {
+     "option": "14\"",
+     "retail": 80,
+     "unitCost": 36
+    },
+    {
+     "option": "16\"",
+     "retail": 85,
+     "unitCost": 41
+    },
+    {
+     "option": "18\"",
+     "retail": 95,
+     "unitCost": 46
+    },
+    {
+     "option": "20\"",
+     "retail": 110,
+     "unitCost": 53
+    },
+    {
+     "option": "22\"",
+     "retail": 115,
+     "unitCost": 57
+    },
+    {
+     "option": "24\"",
+     "retail": 125,
+     "unitCost": 64
+    },
+    {
+     "option": "26\"",
+     "retail": 145,
+     "unitCost": 75
+    },
+    {
+     "option": "28\"",
+     "retail": 155,
+     "unitCost": 80
+    },
+    {
+     "option": "30\"",
+     "retail": 170,
+     "unitCost": 89
+    },
+    {
+     "option": "32\"",
+     "retail": 185,
+     "unitCost": 96
+    }
+   ]
+  },
+  {
+   "handle": "body-wave-human-hair-bundles",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "10\"",
+     "retail": 60,
+     "unitCost": 27
+    },
+    {
+     "option": "12\"",
+     "retail": 70,
+     "unitCost": 30
+    },
+    {
+     "option": "14\"",
+     "retail": 75,
+     "unitCost": 34
+    },
+    {
+     "option": "16\"",
+     "retail": 85,
+     "unitCost": 39
+    },
+    {
+     "option": "18\"",
+     "retail": 90,
+     "unitCost": 44
+    },
+    {
+     "option": "20\"",
+     "retail": 105,
+     "unitCost": 51
+    },
+    {
+     "option": "22\"",
+     "retail": 115,
+     "unitCost": 56
+    },
+    {
+     "option": "24\"",
+     "retail": 125,
+     "unitCost": 62
+    },
+    {
+     "option": "26\"",
+     "retail": 145,
+     "unitCost": 73
+    },
+    {
+     "option": "28\"",
+     "retail": 150,
+     "unitCost": 78
+    },
+    {
+     "option": "30\"",
+     "retail": 170,
+     "unitCost": 87
+    },
+    {
+     "option": "32\"",
+     "retail": 180,
+     "unitCost": 94
+    }
+   ]
+  },
+  {
+   "handle": "kinky-straight-human-hair-bundles",
+   "kind": "physical",
+   "variants": [
+    {
+     "option": "14\"",
+     "retail": 85,
+     "unitCost": 41
+    },
+    {
+     "option": "16\"",
+     "retail": 95,
+     "unitCost": 46
+    },
+    {
+     "option": "18\"",
+     "retail": 105,
+     "unitCost": 50
+    },
+    {
+     "option": "20\"",
+     "retail": 110,
+     "unitCost": 55
+    },
+    {
+     "option": "22\"",
+     "retail": 120,
+     "unitCost": 61
+    },
+    {
+     "option": "24\"",
+     "retail": 140,
+     "unitCost": 70
+    },
+    {
+     "option": "26\"",
+     "retail": 155,
+     "unitCost": 76
+    },
+    {
+     "option": "28\"",
+     "retail": 165,
+     "unitCost": 85
+    }
+   ]
+  }
+ ]
+}
