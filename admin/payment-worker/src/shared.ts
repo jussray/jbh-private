@@ -10,6 +10,12 @@ export interface Env {
   CF_ACCESS_TEAM_DOMAIN: string;
   CF_ACCESS_AUD: string;
   CF_ACCESS_ALLOWED_EMAILS: string;
+  OPENAI_API_KEY?: string;
+  ANTHROPIC_API_KEY?: string;
+  MODEL_API_KEY?: string;
+  JBH_PRIVATE_OPENAI_MODEL?: string;
+  JBH_PRIVATE_ANTHROPIC_MODEL?: string;
+  JBH_PRIVATE_MUSE_MODEL?: string;
 }
 
 export class SafeProcessingError extends Error {

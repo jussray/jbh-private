@@ -79,7 +79,10 @@ function privateHeaders(): Record<string, string> {
   };
 }
 
-async function parseBody<T>(request: Request, schema: z.ZodType<T>): Promise<T> {
+async function parseBody<S extends z.ZodTypeAny>(
+  request: Request,
+  schema: S,
+): Promise<z.output<S>> {
   const raw = await readBoundedText(request, MAX_ADMIN_BODY_BYTES);
   const parsed = schema.safeParse(JSON.parse(raw));
   if (!parsed.success) throw new SafeProcessingError("invalid_request");

@@ -81,5 +81,11 @@ jobs:
       - name: Build private admin
         run: npm run build
 
+      - name: Install pinned Playwright verifier
+        run: npm install --no-save --package-lock=false --ignore-scripts playwright@1.61.1
+
+      - name: Install Chromium
+        run: npm exec -- playwright install --with-deps chromium
+
       - name: Verify owner UI desktop and mobile
         run: npm run verify:playwright
