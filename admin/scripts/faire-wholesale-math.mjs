@@ -7,8 +7,9 @@
 // Fee assumptions (North America, 2026) must be confirmed in the Faire brand
 // dashboard before any wholesale price is set:
 //   - 15% commission on Faire-sourced first orders and reorders
-//   - $10 flat fee on a new retailer's first order, spread over the brand's
-//     first-order minimum (FIRST_ORDER_MIN_UNITS, set the same minimum in Faire)
+//   - $10 flat fee on a new retailer's first order. Faire order minimums are
+//     set in dollars, so the fee is charged as a rate of fee / minimum: the
+//     worst case is a first order exactly at the minimum (FIRST_ORDER_MIN_DOLLARS)
 //   - 0% commission on Faire Direct (retailers the brand invites)
 //   - 1.9%-3.5% payment processing; the worst case (3.5%) is used
 //   - shipping per unit is unknown for dropshipped goods; set SHIPPING_PER_UNIT
@@ -20,8 +21,8 @@ export const ASSUMPTIONS = Object.freeze({
   directCommission: 0,
   processingFee: 0.035,
   newRetailerFee: 10,
-  // Smallest first order a new Faire retailer may place (set in Faire).
-  firstOrderMinUnits: 3,
+  // Brand's first-order minimum in Faire, in wholesale dollars.
+  firstOrderMinDollars: 100,
   // Profit JBH keeps per unit on Faire Direct, as a share of wholesale.
   targetProfitShare: 0.15,
   // Keystone: retailers expect to sell at 2x wholesale.
@@ -43,35 +44,38 @@ const cents = (value) => Math.round(value * 100) / 100;
 const ceilDollar = (value) => Math.ceil(value - 1e-9);
 const pct = (share) => `${Number((share * 100).toFixed(2))}%`;
 
-/** Net JBH keeps on one unit at wholesale `w`; `perUnitFee` spreads a per-order fee. */
-export function netPerUnit(w, cost, commission, a = ASSUMPTIONS, perUnitFee = 0) {
-  return w * (1 - commission - a.processingFee) - cost - a.shippingPerUnit - perUnitFee;
+/** Share of wholesale the new-retailer fee costs on a first order at the minimum. */
+export const firstOrderFeeRate = (a = ASSUMPTIONS) => a.newRetailerFee / a.firstOrderMinDollars;
+
+/** Net JBH keeps on one unit at wholesale `w`; `extraRate` adds a per-order fee as a share. */
+export function netPerUnit(w, cost, commission, a = ASSUMPTIONS, extraRate = 0) {
+  return w * (1 - commission - a.processingFee - extraRate) - cost - a.shippingPerUnit;
 }
 
 /** Wholesale price at which a sale nets exactly `profitShare` of wholesale. */
-export function wholesaleFor(cost, commission, profitShare, a = ASSUMPTIONS, perUnitFee = 0) {
-  const keep = 1 - commission - a.processingFee - profitShare;
+export function wholesaleFor(cost, commission, profitShare, a = ASSUMPTIONS, extraRate = 0) {
+  const keep = 1 - commission - a.processingFee - profitShare - extraRate;
   if (keep <= 0) throw new Error("fees and target profit exceed 100% of wholesale");
-  return (cost + a.shippingPerUnit + perUnitFee) / keep;
+  return (cost + a.shippingPerUnit) / keep;
 }
 
 export function priceVariant({ retail, unitCost }, kind = "physical", a = ASSUMPTIONS) {
   if (kind !== "physical") return { verdict: VERDICT.service };
   if (unitCost == null) return { verdict: VERDICT.unknown };
 
-  const firstOrderFeePerUnit = a.newRetailerFee / a.firstOrderMinUnits;
+  const firstOrderRate = firstOrderFeeRate(a);
   const market = a.marketplaceCommission;
   const direct = a.directCommission;
 
   // Floor: the lowest whole-dollar price at which every channel is safe on its
   // own terms. Direct keeps the target profit; a marketplace first order at the
-  // minimum size (the worst marketplace case) does not lose money.
+  // dollar minimum (the worst marketplace case) does not lose money.
   const floor = ceilDollar(Math.max(
     wholesaleFor(unitCost, direct, a.targetProfitShare, a),
-    wholesaleFor(unitCost, market, 0, a, firstOrderFeePerUnit),
+    wholesaleFor(unitCost, market, 0, a, firstOrderRate),
   ));
   // Marketplace at the target profit, including the first-order fee.
-  const targetMarket = wholesaleFor(unitCost, market, a.targetProfitShare, a, firstOrderFeePerUnit);
+  const targetMarket = wholesaleFor(unitCost, market, a.targetProfitShare, a, firstOrderRate);
   const defaultWholesale = cents(retail / a.keystoneMarkup);
 
   const base = {
@@ -80,7 +84,7 @@ export function priceVariant({ retail, unitCost }, kind = "physical", a = ASSUMP
     floorWholesale: floor,
     netDirectAtFloor: cents(netPerUnit(floor, unitCost, direct, a)),
     netReorderAtFloor: cents(netPerUnit(floor, unitCost, market, a)),
-    netFirstOrderAtFloor: cents(netPerUnit(floor, unitCost, market, a, firstOrderFeePerUnit)),
+    netFirstOrderAtFloor: cents(netPerUnit(floor, unitCost, market, a, firstOrderRate)),
     // Retail price at which Faire's default 50% wholesale hits the target on
     // every channel, the marketplace first order included.
     keystoneRetailNeeded: cents(Math.max(floor, targetMarket) * a.keystoneMarkup),
@@ -119,17 +123,20 @@ function founderAnswer(snapshot, ledger, a) {
   const costed = ledger.filter((r) => r.unitCost != null);
   const listable = ledger.filter((r) => r.verdict === VERDICT.floor || r.verdict === VERDICT.keystone);
   const losses = costed.map((r) => r.netAtDefault);
+  const defaultLine = costed.length
+    ? `- Faire's default price (retail ÷ 2) nets between ${money(Math.min(...losses))} and ${money(Math.max(...losses))} per unit on the ${costed.length} costed variants. Never publish to Faire before setting wholesale prices.`
+    : "- No variant in this snapshot has a unit cost, so no Faire price can be checked. Add costs in Shopify first.";
   const counts = summarize(ledger);
-  const sensitivity = [3, 6, 10].map((units) => {
-    const n = buildLedger(snapshot, { ...a, firstOrderMinUnits: units })
+  const sensitivity = [100, 150, 250].map((dollars) => {
+    const n = buildLedger(snapshot, { ...a, firstOrderMinDollars: dollars })
       .filter((r) => r.verdict === VERDICT.floor || r.verdict === VERDICT.keystone).length;
-    return `| ${units} | ${n} |`;
+    return `| $${dollars} | ${n} |`;
   });
   return [
     "## Founder answer",
     "",
-    `- Faire's default price (retail ÷ 2) nets between ${money(Math.min(...losses))} and ${money(Math.max(...losses))} per unit on the ${costed.length} costed variants. Never publish to Faire before setting wholesale prices.`,
-    `- Setting a variant at or above its **Floor wholesale** means no Faire channel loses money: Faire Direct keeps ${pct(a.targetProfitShare)}, reorders stay positive, and a new retailer's first order at the ${a.firstOrderMinUnits}-unit minimum breaks even or better. This holds only if the Faire first-order minimum is set to ${a.firstOrderMinUnits} units or more and shipping is covered as stated below.`,
+    defaultLine,
+    `- Setting a variant at or above its **Floor wholesale** means no Faire channel loses money: Faire Direct keeps ${pct(a.targetProfitShare)}, reorders stay positive, and a new retailer's first order at the $${a.firstOrderMinDollars} minimum breaks even or better. This holds only if the Faire first-order minimum is set to $${a.firstOrderMinDollars} or more and shipping is covered as stated below.`,
     `- **Worth listing at the floor (${listable.length}):** ${listable.map((r) => `${r.handle} ${r.option} → ${money(r.wholesale)}`).join("; ") || "none"}.`,
     `- **Not viable at current retail (${counts[VERDICT.loss] ?? 0}):** the floor leaves retailers less than ${a.minRetailerMarkup}× markup. Making them work means raising retail to the "Retail needed for keystone" column, a founder decision that also changes jussbeautifulhair.com prices.`,
     `- **Hold (${counts[VERDICT.unknown] ?? 0}):** no unit cost in Shopify. Add the cost, then rerun this script.`,
@@ -137,7 +144,7 @@ function founderAnswer(snapshot, ledger, a) {
     "",
     "Listable variants by first-order minimum:",
     "",
-    "| First-order minimum (units) | Listable variants |",
+    "| First-order minimum (wholesale $) | Listable variants |",
     "|---|---|",
     ...sensitivity,
     "",
@@ -153,8 +160,9 @@ export function renderReport(snapshot, ledger, a = ASSUMPTIONS) {
     ...founderAnswer(snapshot, ledger, a),
     "## Formula",
     "",
-    "- Net per unit = wholesale × (1 − commission − processing) − unit cost − shipping per unit − per-order fee ÷ units",
-    "- Wholesale for a profit share s = (unit cost + shipping + per-order fee ÷ units) ÷ (1 − commission − processing − s)",
+    "- First-order fee rate f = new-retailer fee ÷ first-order minimum (worst case: an order exactly at the minimum)",
+    "- Net per unit = wholesale × (1 − commission − processing − f on first orders) − unit cost − shipping per unit",
+    "- Wholesale for a profit share s = (unit cost + shipping) ÷ (1 − commission − processing − f − s)",
     "- Floor wholesale = ceil(max(Faire Direct at the target profit, marketplace first order at break-even)); at the floor no Faire channel loses money",
     "- Faire default wholesale = retail ÷ 2 (keystone)",
     "- Keystone retail needed = 2 × max(floor, marketplace first order at the target profit)",
@@ -162,7 +170,7 @@ export function renderReport(snapshot, ledger, a = ASSUMPTIONS) {
     "## Assumptions (confirm in the Faire brand dashboard)",
     "",
     `- Marketplace commission ${pct(a.marketplaceCommission)}, Faire Direct ${pct(a.directCommission)}, processing ${pct(a.processingFee)} (worst case)`,
-    `- $${a.newRetailerFee} new-retailer fee spread over a ${a.firstOrderMinUnits}-unit first-order minimum; **set that minimum in Faire** or the floor no longer covers the fee`,
+    `- $${a.newRetailerFee} new-retailer fee against a $${a.firstOrderMinDollars} first-order minimum (${pct(firstOrderFeeRate(a))} of a minimum order); **set that minimum in Faire** or the floor no longer covers the fee`,
     `- Target profit ${pct(a.targetProfitShare)} of wholesale; retailer markup floor ${a.minRetailerMarkup}×`,
     `- Shipping per unit $${a.shippingPerUnit.toFixed(2)}. Unknown for dropshipped goods; if JBH pays shipping on Faire orders, rerun with SHIPPING_PER_UNIT or the floor does not cover it`,
     "",
@@ -187,9 +195,9 @@ export function renderReport(snapshot, ledger, a = ASSUMPTIONS) {
 function assumptionsFromEnv(env = process.env) {
   const overrides = {};
   if (env.SHIPPING_PER_UNIT) overrides.shippingPerUnit = Number(env.SHIPPING_PER_UNIT);
-  if (env.FIRST_ORDER_MIN_UNITS) overrides.firstOrderMinUnits = Number(env.FIRST_ORDER_MIN_UNITS);
+  if (env.FIRST_ORDER_MIN_DOLLARS) overrides.firstOrderMinDollars = Number(env.FIRST_ORDER_MIN_DOLLARS);
   for (const [key, value] of Object.entries(overrides)) {
-    if (!Number.isFinite(value) || value < 0 || (key === "firstOrderMinUnits" && value < 1)) {
+    if (!Number.isFinite(value) || value < 0 || (key === "firstOrderMinDollars" && value <= 0)) {
       throw new Error(`invalid ${key}: ${value}`);
     }
   }
