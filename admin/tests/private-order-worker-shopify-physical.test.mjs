@@ -107,20 +107,23 @@ test("physical order fails closed when Shopify supplies neither email nor phone"
   );
 });
 
-test("catalog map covers 37 canonical SKUs plus 44 supplier aliases", () => {
+test("catalog map covers 37 canonical SKUs plus 158 proven supplier SKUs", () => {
   const skus = Object.keys(PHYSICAL_CATALOG_BY_SKU);
   const canonical = skus.filter((sku) => sku.startsWith("JBH-"));
-  const supplierAliases = skus.filter((sku) => sku.startsWith("BRAZ-SEW-"));
+  const supplier = skus.filter((sku) => /^(?:613-)?BRAZ-(?:SEW|TRANS)-/.test(sku));
   assert.equal(canonical.length, 37);
-  assert.equal(supplierAliases.length, 44);
-  assert.equal(skus.length, canonical.length + supplierAliases.length);
-  const canonicalProducts = new Set(
-    canonical.map((sku) => PHYSICAL_CATALOG_BY_SKU[sku].productCode),
-  );
-  for (const sku of supplierAliases) {
+  // Exact supplier surface is pinned in shopify-supplier-sku-alias-contract.
+  assert.equal(supplier.length, 158);
+  assert.equal(skus.length, canonical.length + supplier.length);
+  for (const sku of skus) {
+    const entry = PHYSICAL_CATALOG_BY_SKU[sku];
+    assert.match(entry.productCode, /^[a-z0-9-]+$/, `${sku} needs a product code`);
+    // Canonical SKUs carry a retail price; supplier prices are non-authorizing
+    // references (signed Shopify line prices are payment truth).
+    const minimum = sku.startsWith("JBH-") ? 1 : 0;
     assert.ok(
-      canonicalProducts.has(PHYSICAL_CATALOG_BY_SKU[sku].productCode),
-      `${sku} must alias a canonical JBH product`,
+      Number.isInteger(entry.unitPriceCents) && entry.unitPriceCents >= minimum,
+      `${sku} has an invalid reference price`,
     );
   }
   assert.equal(PHYSICAL_CATALOG_BY_SKU["JBH-WG-ST-22"].unitPriceCents, 21500);
