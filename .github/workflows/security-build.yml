@@ -39,6 +39,8 @@ jobs:
         run: npm run verify:mcp
       - name: Verify Shopify supplier intake contracts
         run: node --test tests/shopify-supplier-sku-alias-contract.test.mjs tests/fulfillment-orchestrator-state-contract.test.mjs
+      - name: Verify Faire wholesale math
+        run: node --test tests/faire-wholesale-math-contract.test.mjs
       - name: Typecheck private admin
         run: npm run check
       - name: Build private admin
