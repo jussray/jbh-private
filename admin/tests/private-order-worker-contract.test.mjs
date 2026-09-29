@@ -105,5 +105,5 @@ test("root scripts verify and deploy the exact Worker contract", () => {
   );
   assert.match(packageContract.scripts["verify:worker"], /dry-run:worker/);
   assert.equal(packageContract.scripts.deploy, "wrangler deploy");
-  assert.equal(packageContract.devDependencies.wrangler, "4.118.0");
+  assert.equal(packageContract.devDependencies.wrangler, "4.143.1");
 });
