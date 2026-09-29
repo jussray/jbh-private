@@ -19,7 +19,7 @@ The active public physical checkout is Shopify-backed.
 canonical shop domain: 8qp1z2-az.myshopify.com
 paid topic: orders/paid
 private webhook path: /webhooks/shopify/orders-paid
-private Worker service: jbh-private
+private Worker service: jbh-private-payment-control
 initial physical procurement state: procurement_needed
 ```
 
@@ -77,7 +77,7 @@ Provider webhooks must not be placed behind an interactive Cloudflare Access log
 
 Code presence is not production proof. Before calling the Shopify paid-order seam active, separately verify:
 
-1. `jbh-private` is deployed on one approved custom hostname;
+1. `jbh-private-payment-control` is deployed on one approved custom hostname;
 2. `/health` returns `jbh-private-order-control` on that hostname;
 3. `SHOPIFY_SHOP_DOMAIN` and `SHOPIFY_WEBHOOK_SECRET` are installed in that runtime without exposing values;
 4. Shopify has an `orders/paid` webhook subscription targeting the exact `/webhooks/shopify/orders-paid` URL on that host;
