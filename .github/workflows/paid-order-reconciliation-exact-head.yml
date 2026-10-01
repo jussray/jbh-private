@@ -35,7 +35,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 defaults:
@@ -48,25 +47,28 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
-      - name: Check out exact requested head
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.EXPECTED_HEAD_SHA }}
-
-      - name: Record and verify exact head
+      - name: Fetch exact requested head without reusable actions
         shell: bash
-        working-directory: .
+        working-directory: ${{ github.workspace }}
         run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
+          git checkout --detach FETCH_HEAD
           actual="$(git rev-parse HEAD)"
           printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: admin/package-lock.json
+      - name: Select hosted Node 24 without setup-node
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          node24_root="$(find /opt/hostedtoolcache/node -maxdepth 1 -mindepth 1 -type d -name '24.*' | sort -V | tail -1)"
+          test -x "$node24_root/x64/bin/node"
+          printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
+          "$node24_root/x64/bin/node" --version | grep -E '^v24\.'
 
       - name: Install private admin dependencies
         run: npm ci
