@@ -10,14 +10,29 @@ permissions:
 
 jobs:
   probe:
-    name: Prove checkout action can start
+    name: Prove shell bootstrap path
     runs-on: ubuntu-22.04
-    timeout-minutes: 2
+    timeout-minutes: 3
+    env:
+      TARGET_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Prove runner after checkout
+      - name: Inspect native toolchain
         shell: bash
         run: |
-          printf 'runner_name=%s\n' "$RUNNER_NAME"
-          git rev-parse HEAD
+          set -euo pipefail
+          node --version
+          npm --version
+          git --version
+          printf '%s\n' '--- node toolcache ---'
+          find /opt/hostedtoolcache/node -maxdepth 2 -mindepth 1 -type d 2>/dev/null | sort | tail -40 || true
+      - name: Fetch exact PR head without reusable actions
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$TARGET_SHA"
+          git checkout --detach FETCH_HEAD
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$TARGET_SHA" "$actual"
+          test "$actual" = "$TARGET_SHA"
