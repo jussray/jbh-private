@@ -5,17 +5,19 @@ on:
     paths:
       - ".github/workflows/runner-health-probe.yml"
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   probe:
-    name: Prove hosted runner can start
+    name: Prove checkout action can start
     runs-on: ubuntu-22.04
     timeout-minutes: 2
     steps:
-      - name: Prove runner startup
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Prove runner after checkout
         shell: bash
         run: |
           printf 'runner_name=%s\n' "$RUNNER_NAME"
-          uname -a
-          node --version || true
+          git rev-parse HEAD
