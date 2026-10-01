@@ -47,6 +47,33 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Classify admin dependency advisories
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm audit --json > admin-audit.json || true
+          node --input-type=commonjs <<'NODE'
+          const fs = require('node:fs');
+          const audit = JSON.parse(fs.readFileSync('admin-audit.json', 'utf8'));
+          const vulns = audit.vulnerabilities || {};
+          const rows = Object.entries(vulns).map(([name, v]) => ({
+            name,
+            severity: v.severity,
+            direct: Boolean(v.isDirect),
+            range: v.range || '',
+            fixAvailable: v.fixAvailable === true ? 'yes' : v.fixAvailable ? JSON.stringify(v.fixAvailable) : 'no',
+            via: (v.via || []).map(x => typeof x === 'string' ? x : `${x.source}:${x.title}`).join(' | '),
+            effects: (v.effects || []).join(', '),
+          })).sort((a, b) => a.name.localeCompare(b.name));
+          console.log(JSON.stringify({metadata: audit.metadata, vulnerabilities: rows}, null, 2));
+          const lines = ['### Admin dependency audit', '', '| Package | Severity | Direct | Range | Fix | Via | Effects |', '|---|---|---:|---|---|---|---|'];
+          for (const row of rows) lines.push(`| ${row.name} | ${row.severity} | ${row.direct ? 'yes' : 'no'} | ${String(row.range).replace(/\|/g,'\\|')} | ${String(row.fixAvailable).replace(/\|/g,'\\|')} | ${String(row.via).replace(/\|/g,'\\|')} | ${String(row.effects).replace(/\|/g,'\\|')} |`);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+          const blocking = rows.filter(row => ['high', 'critical'].includes(row.severity));
+          if (blocking.length) process.exit(1);
+          NODE
+
       - name: Verify MCP config
         run: npm run verify:mcp
       - name: Verify Shopify supplier intake contracts
