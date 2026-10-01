@@ -21,6 +21,7 @@ concurrency:
 
 env:
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  EXPECTED_NPM_VERSION: "10.9.2"
 
 jobs:
   verify:
@@ -49,7 +50,16 @@ jobs:
           test -x "$node24_root/x64/bin/node"
           printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
           "$node24_root/x64/bin/node" --version | grep -E '^v24\.'
-          "$node24_root/x64/bin/npm" --version
+
+      - name: Verify declared npm toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          declared="$(node -p "require('./package.json').packageManager")"
+          test "$declared" = "npm@${EXPECTED_NPM_VERSION}"
+          actual="$(npx --yes "npm@${EXPECTED_NPM_VERSION}" --version)"
+          printf 'declared=%s\nresolved=npm@%s\n' "$declared" "$actual"
+          test "$actual" = "$EXPECTED_NPM_VERSION"
 
       - name: Require root lockfile
         shell: bash
@@ -59,7 +69,7 @@ jobs:
           node -e "const p=require('./package-lock.json'); if (p.lockfileVersion !== 3) process.exit(1); console.log('lockfileVersion='+p.lockfileVersion)"
 
       - name: Install locked repository dependencies
-        run: npm ci
+        run: npx --yes "npm@${EXPECTED_NPM_VERSION}" ci
 
       - name: Typecheck private ingress
         run: npm run typecheck:contact
