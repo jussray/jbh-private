@@ -7,32 +7,44 @@ on:
   workflow_dispatch:
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  NODE_VERSION: '24'
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-  
+
+permissions:
+  contents: read
+
 jobs:
   verify:
     name: Typecheck, build, and Playwright private control layer
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     defaults:
       run:
         working-directory: admin
     steps:
-      - name: Check out immutable target head
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.EXPECTED_HEAD_SHA }}
-      - name: Record and verify immutable head
+      - name: Fetch immutable target head without reusable actions
+        shell: bash
+        working-directory: ${{ github.workspace }}
         run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
+          git checkout --detach FETCH_HEAD
           actual="$(git rev-parse HEAD)"
           printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: admin/package-lock.json
+
+      - name: Select hosted Node 24 without setup-node
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          node24_root="$(find /opt/hostedtoolcache/node -maxdepth 1 -mindepth 1 -type d -name '24.*' | sort -V | tail -1)"
+          test -n "$node24_root"
+          test -x "$node24_root/x64/bin/node"
+          printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
+          "$node24_root/x64/bin/node" --version | grep -E '^v24\.'
+          "$node24_root/x64/bin/npm" --version
+
       - name: Install dependencies
         run: npm ci
       - name: Verify MCP config
