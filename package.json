@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "0.10.4",
-    "apify-client": "2.24.0",
+    "apify-client": "2.20.0",
     "stripe": "17.7.0",
     "zod": "3.24.2"
   },
