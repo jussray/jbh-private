@@ -15,7 +15,12 @@
     "build:x-engagement": "node -e \"require('node:fs').rmSync('.cache/x-engagement-build',{recursive:true,force:true})\" && tsc -p automation/social/tsconfig.json",
     "verify:x-engagement": "npm run build:x-engagement && node --test automation/social/x-engagement-adapter.test.mjs",
     "query:x-engagement": "npm run build:x-engagement && node .cache/x-engagement-build/x-engagement-cli.js",
-    "deploy": "wrangler deploy"
+    "typecheck:contact": "tsc -p contact-worker/tsconfig.json --noEmit",
+    "test:contact": "node --test contact-worker/tests/contact-ingress-contract.test.mjs",
+    "dry-run:contact": "wrangler deploy --dry-run --config contact-worker/wrangler.jsonc --outdir .wrangler/contact-dry-run",
+    "verify:contact-ingress": "npm run typecheck:contact && npm run test:contact && npm run dry-run:contact",
+    "deploy": "wrangler deploy",
+    "deploy:contact": "wrangler deploy --config contact-worker/wrangler.jsonc"
   },
   "dependencies": {
     "@neondatabase/serverless": "0.10.4",
