@@ -48,7 +48,7 @@ export function inspectSecurityAudit(source) {
   const text = String(source || '');
   for (const marker of [
     'Classify admin dependency advisories',
-    "['high', 'critical'].includes(row.severity)",
+    "['moderate', 'high', 'critical'].includes(row.severity)",
     'if (blocking.length) process.exit(1);',
   ]) {
     if (!text.includes(marker)) failures.push(`security-build: missing dependency attack marker ${JSON.stringify(marker)}`);
@@ -79,7 +79,7 @@ async function main() {
       reusableBootstrapForbidden: true,
       hostedNode24Required: true,
       readOnlyContentsRequired: true,
-      highCriticalDependencyGateRequired: true,
+      moderateHighCriticalDependencyGateRequired: true,
     },
     status: failures.length ? 'failed' : 'passed',
     failures,
