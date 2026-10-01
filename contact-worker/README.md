@@ -26,7 +26,7 @@ Deploy only after:
 2. Cloudflare secrets `DATABASE_URL` and `TURNSTILE_SECRET_KEY` are configured on `jbh-contact-ingress`;
 3. variables `ALLOWED_CONTACT_ORIGINS` and `ALLOWED_CONTACT_HOSTNAMES` exactly match approved storefront hosts;
 4. the public storefront has `VITE_CONTACT_API_URL` and `VITE_TURNSTILE_SITE_KEY` configured;
-5. exact-head typecheck, contract tests, and Wrangler dry-run pass on the current candidate;
+5. exact-head typecheck, contract tests, migration checks, and Wrangler dry-run pass on the current candidate;
 6. a real browser submission returns a receipt and creates exactly one database row;
 7. duplicate, invalid-origin, invalid-hostname, invalid-consent, honeypot, oversized-body, and invalid-Turnstile cases fail closed;
 8. the duplicate-repository deployment authority remains retired;
@@ -49,13 +49,18 @@ The historical contact candidate was hardened correctly but was merged into an o
 - no committed route, DNS record, secret, or live hostname;
 - generic public errors that do not expose provider or database details;
 - manual, exact-main-head deployment only after explicit approval;
-- Make remains downstream and disabled until OAuth, destinations, mappings, and sanitized payload handling are proven.
+- exact-head CI uses shell Git bootstrap and the hosted Node 24 toolcache because reusable `uses:` actions currently trigger pre-job `startup_failure` in this repository;
+- root `package-lock.json` is required so `npm ci` is genuinely reproducible;
+- Make remains downstream and disabled until OAuth, destinations, mappings, sanitized payload handling, and controlled end-to-end proof are complete.
 
 ## Known
 
 - Current private main at the start of this port was `8008767433418a26fe0378a4c90071e16ea76737`.
 - Current main already owns `007_vendor_sample_readiness.sql`, so the historical contact migration was renumbered to `011_contact_ingress_safety.sql` to avoid a migration collision.
-- Current exact-main GitHub Actions still exhibits provider-side `startup_failure` with zero jobs; repository-code changes cannot truthfully repair that execution-plane failure.
+- The repository-level Actions failure class was isolated on 2026-10-01: a shell-only hosted runner starts and executes, while adding reusable `uses:` actions causes pre-job `startup_failure`.
+- The root lockfile was missing historically. A branch-only bootstrap generated `package-lock.json` with lockfileVersion 3 using the repository-declared npm 10.9.2, then the temporary write-capable bootstrap workflow was removed.
+- On exact candidate SHA `2b01ff418313ebf3d5221350efaa1ce18710cf99`, the repaired Private Contact Ingress Exact-Head Gate passed exact-SHA fetch, hosted Node 24 selection, root lock verification, `npm ci`, strict TypeScript, both contact contract tests, additive migration validation, Wrangler 4.143.1 dry-run, and deterministic bundle receipt generation.
+- The deterministic dry-run receipt for that exact run included SHA-256 `9d7acea75fe337cf1217b59210b30823b67e138d9f2ff7486503d2b5a020513e` for `.wrangler/contact-dry-run/README.md`.
 - `admin/migrations/001_init.sql` defines `contact_messages`.
 - The public storefront already implements consent, honeypot, Turnstile, HTTPS endpoint validation, duplicate handling, and persistence receipts.
 
@@ -67,15 +72,20 @@ The historical contact candidate was hardened correctly but was merged into an o
 - The intended contact-message retention period.
 - Who reviews the inquiry queue and at what cadence.
 - The final approved downstream automation destinations after Make OAuth completes.
+- The exact source and exploitability of the five high-severity dependency advisories reported by npm during the 2026-10-01 exact-head install. They need separate dependency-audit evidence before production activation.
 
 ## Blocked
 
-This code port does not authorize migration execution, route attachment, secret mutation, Worker deployment, live customer submission, automated reply, CRM write, marketing use, data deletion, or bypassing the current GitHub Actions startup-failure truth.
+The contact source proof is no longer blocked by GitHub Actions. Production activation remains blocked because source proof does not authorize migration execution, route attachment, secret mutation, Worker deployment, live customer submission, automated reply, CRM write, marketing use, or data deletion.
+
+Repository-wide workflow health is not fully repaired yet. Other private workflow families that still depend on reusable `uses:` actions continue to terminate with `startup_failure` before jobs are created and must be migrated or independently proven without weakening their test commands.
 
 ## Rollback
 
 Delete or revert the current-main contact-port commits. If the private ingress is later activated, remove public `VITE_CONTACT_API_URL`, disable the `jbh-contact-ingress` route, redeploy the prior known-good private backend, and preserve stored contact records unless a separate explicit deletion decision authorizes removal.
 
+Before production activation, rollback of this candidate is simply closing PR #82 and deleting its branch because no migration, route, secret, deployment, or customer-data side effect has occurred.
+
 ## Next owner
 
-First prove this current-main port locally and through executable CI when the provider plane permits it. Production activation remains a separate gate. Make may consume only an approved sanitized downstream event after its OAuth connections, destinations, mappings, privacy boundary, and controlled test are proven.
+Clear the remaining dependency-audit and repository-wide execution proof. Production activation remains a separate gate. Make may consume only an approved sanitized downstream event after its OAuth connections, destinations, mappings, privacy boundary, and controlled test are proven.
