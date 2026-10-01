@@ -70,7 +70,7 @@ jobs:
           const lines = ['### Admin dependency audit', '', '| Package | Severity | Direct | Range | Fix | Via | Effects |', '|---|---|---:|---|---|---|---|'];
           for (const row of rows) lines.push(`| ${row.name} | ${row.severity} | ${row.direct ? 'yes' : 'no'} | ${String(row.range).replace(/\|/g,'\\|')} | ${String(row.fixAvailable).replace(/\|/g,'\\|')} | ${String(row.via).replace(/\|/g,'\\|')} | ${String(row.effects).replace(/\|/g,'\\|')} |`);
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
-          const blocking = rows.filter(row => ['high', 'critical'].includes(row.severity));
+          const blocking = rows.filter(row => ['moderate', 'high', 'critical'].includes(row.severity));
           if (blocking.length) process.exit(1);
           NODE
 
