@@ -100,6 +100,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         env:
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           git add admin/package-lock.json
