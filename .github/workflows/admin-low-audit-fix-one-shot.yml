@@ -1,0 +1,73 @@
+name: Admin Low Audit Fix One-Shot
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'admin/package.json'
+      - 'admin/package-lock.json'
+      - '.github/workflows/admin-low-audit-fix-one-shot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  HEAD_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+  GITHUB_TOKEN: ${{ github.token }}
+
+jobs:
+  fix-low:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
+          git checkout -B "$HEAD_BRANCH" FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"
+
+      - name: Select hosted Node 24
+        shell: bash
+        run: |
+          set -euo pipefail
+          node24_root="$(find /opt/hostedtoolcache/node -maxdepth 1 -mindepth 1 -type d -name '24.*' | sort -V | tail -1)"
+          test -x "$node24_root/x64/bin/node"
+          printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
+          "$node24_root/x64/bin/node" --version | grep -E '^v24\.'
+          "$node24_root/x64/bin/npm" --version
+
+      - name: Apply lock-only audit fix
+        working-directory: admin
+        run: npm audit fix --package-lock-only --ignore-scripts
+
+      - name: Prove zero known audit findings and unchanged manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- admin/package.json
+          cd admin
+          npm ci
+          npm audit --audit-level=low
+          npm run check
+          npm run build
+
+      - name: Commit lockfile only when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add admin/package-lock.json
+          if git diff --cached --quiet; then
+            echo 'admin lockfile already clean'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(security): clear remaining low admin audit finding'
+          git push origin "HEAD:${HEAD_BRANCH}"
