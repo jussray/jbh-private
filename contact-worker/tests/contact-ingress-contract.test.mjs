@@ -56,11 +56,12 @@ test("private contact ingress preserves customer-data and abuse boundaries", asy
   assert.match(handoff, /startup_failure/);
 });
 
-test("production contact deployment is manual, exact-head, and fail-closed", async () => {
-  const [workflow, exactHeadWorkflow, packageManifest] = await Promise.all([
+test("production contact deployment is manual, exact-head, locked, and fail-closed", async () => {
+  const [workflow, exactHeadWorkflow, packageManifest, packageLockManifest] = await Promise.all([
     read(".github/workflows/deploy-contact-ingress.yml"),
     read(".github/workflows/contact-ingress-exact-head.yml"),
     read("package.json"),
+    read("package-lock.json"),
   ]);
 
   assert.match(workflow, /workflow_dispatch:/);
@@ -83,15 +84,22 @@ test("production contact deployment is manual, exact-head, and fail-closed", asy
   assert.doesNotMatch(workflow, /echo .*DATABASE_URL|echo .*TURNSTILE_SECRET_KEY/);
 
   assert.match(exactHeadWorkflow, /admin\/migrations\/011_contact_ingress_safety\.sql/);
+  assert.match(exactHeadWorkflow, /package-lock\.json/);
   assert.match(exactHeadWorkflow, /git fetch --depth=1 origin \"\$EXPECTED_HEAD_SHA\"/);
   assert.match(exactHeadWorkflow, /\/opt\/hostedtoolcache\/node/);
   assert.match(exactHeadWorkflow, /grep -E '\^v24\\\.'/);
+  assert.match(exactHeadWorkflow, /npm ci/);
+  assert.match(exactHeadWorkflow, /lockfileVersion !== 3/);
   assert.match(exactHeadWorkflow, /deploy --dry-run --config contact-worker\/wrangler\.jsonc/);
   assert.match(exactHeadWorkflow, /sha256sum/);
   assert.doesNotMatch(exactHeadWorkflow, /\buses:/);
   assert.doesNotMatch(exactHeadWorkflow, /actions\/checkout|actions\/setup-node|actions\/upload-artifact/);
 
   const packageJson = JSON.parse(packageManifest);
+  const packageLock = JSON.parse(packageLockManifest);
+  assert.equal(packageLock.lockfileVersion, 3);
+  assert.deepEqual(packageLock.packages[""].dependencies, packageJson.dependencies);
+  assert.deepEqual(packageLock.packages[""].devDependencies, packageJson.devDependencies);
   assert.equal(
     packageJson.scripts["verify:contact-ingress"],
     "npm run typecheck:contact && npm run test:contact && npm run dry-run:contact",
