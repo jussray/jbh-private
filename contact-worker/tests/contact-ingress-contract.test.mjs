@@ -82,10 +82,14 @@ test("production contact deployment is manual, exact-head, and fail-closed", asy
   assert.doesNotMatch(workflow, /pull_request:/);
   assert.doesNotMatch(workflow, /echo .*DATABASE_URL|echo .*TURNSTILE_SECRET_KEY/);
 
-  assert.match(exactHeadWorkflow, /FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true/);
   assert.match(exactHeadWorkflow, /admin\/migrations\/011_contact_ingress_safety\.sql/);
+  assert.match(exactHeadWorkflow, /git fetch --depth=1 origin \"\$EXPECTED_HEAD_SHA\"/);
+  assert.match(exactHeadWorkflow, /\/opt\/hostedtoolcache\/node/);
+  assert.match(exactHeadWorkflow, /grep -E '\^v24\\\.'/);
   assert.match(exactHeadWorkflow, /deploy --dry-run --config contact-worker\/wrangler\.jsonc/);
-  assert.match(exactHeadWorkflow, /actions\/upload-artifact@v4/);
+  assert.match(exactHeadWorkflow, /sha256sum/);
+  assert.doesNotMatch(exactHeadWorkflow, /\buses:/);
+  assert.doesNotMatch(exactHeadWorkflow, /actions\/checkout|actions\/setup-node|actions\/upload-artifact/);
 
   const packageJson = JSON.parse(packageManifest);
   assert.equal(
