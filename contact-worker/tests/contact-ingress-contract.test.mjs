@@ -90,7 +90,7 @@ test("production contact deployment is manual, exact-head, locked, and fail-clos
   assert.match(exactHeadWorkflow, /grep -E '\^v24\\\.'/);
   assert.match(exactHeadWorkflow, /npm ci/);
   assert.match(exactHeadWorkflow, /lockfileVersion !== 3/);
-  assert.match(exactHeadWorkflow, /deploy --dry-run --config contact-worker\/wrangler\.jsonc/);
+  assert.match(exactHeadWorkflow, /run: npm run dry-run:contact/);
   assert.match(exactHeadWorkflow, /sha256sum/);
   assert.doesNotMatch(exactHeadWorkflow, /\buses:/);
   assert.doesNotMatch(exactHeadWorkflow, /actions\/checkout|actions\/setup-node|actions\/upload-artifact/);
@@ -100,6 +100,10 @@ test("production contact deployment is manual, exact-head, locked, and fail-clos
   assert.equal(packageLock.lockfileVersion, 3);
   assert.deepEqual(packageLock.packages[""].dependencies, packageJson.dependencies);
   assert.deepEqual(packageLock.packages[""].devDependencies, packageJson.devDependencies);
+  assert.equal(
+    packageJson.scripts["dry-run:contact"],
+    "wrangler deploy --dry-run --config contact-worker/wrangler.jsonc --outdir .wrangler/contact-dry-run",
+  );
   assert.equal(
     packageJson.scripts["verify:contact-ingress"],
     "npm run typecheck:contact && npm run test:contact && npm run dry-run:contact",
