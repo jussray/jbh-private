@@ -18,6 +18,7 @@ jobs:
     env:
       EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - name: Fetch exact PR head with write-capable token
         shell: bash
