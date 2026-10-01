@@ -6,6 +6,7 @@ on:
       - "contact-worker/**"
       - "admin/migrations/011_contact_ingress_safety.sql"
       - "package.json"
+      - "package-lock.json"
       - "wrangler.toml"
       - ".github/workflows/contact-ingress-exact-head.yml"
       - ".github/workflows/deploy-contact-ingress.yml"
@@ -49,6 +50,13 @@ jobs:
           printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
           "$node24_root/x64/bin/node" --version | grep -E '^v24\.'
           "$node24_root/x64/bin/npm" --version
+
+      - name: Require root lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s package-lock.json
+          node -e "const p=require('./package-lock.json'); if (p.lockfileVersion !== 3) process.exit(1); console.log('lockfileVersion='+p.lockfileVersion)"
 
       - name: Install locked repository dependencies
         run: npm ci
