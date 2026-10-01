@@ -36,10 +36,10 @@ test('rejects expired-proof shapes without exact SHA verification', () => {
   assert.match(inspectWorkflow('broken.yml', broken).join('\n'), /EXPECTED_HEAD_SHA/);
 });
 
-test('requires security build to block high and critical dependency advisories', () => {
+test('requires security build to block moderate, high, and critical dependency advisories', () => {
   const secure = `
 Classify admin dependency advisories
-const blocking = rows.filter(row => ['high', 'critical'].includes(row.severity));
+const blocking = rows.filter(row => ['moderate', 'high', 'critical'].includes(row.severity));
 if (blocking.length) process.exit(1);
 `;
   assert.deepEqual(inspectSecurityAudit(secure), []);
