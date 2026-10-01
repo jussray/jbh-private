@@ -88,7 +88,9 @@ test("production contact deployment is manual, exact-head, locked, and fail-clos
   assert.match(exactHeadWorkflow, /git fetch --depth=1 origin \"\$EXPECTED_HEAD_SHA\"/);
   assert.match(exactHeadWorkflow, /\/opt\/hostedtoolcache\/node/);
   assert.match(exactHeadWorkflow, /grep -E '\^v24\\\.'/);
-  assert.match(exactHeadWorkflow, /npm ci/);
+  assert.match(exactHeadWorkflow, /EXPECTED_NPM_VERSION: "10\.9\.2"/);
+  assert.match(exactHeadWorkflow, /declared=.*packageManager/);
+  assert.match(exactHeadWorkflow, /npx --yes \"npm@\$\{EXPECTED_NPM_VERSION\}\" ci/);
   assert.match(exactHeadWorkflow, /lockfileVersion !== 3/);
   assert.match(exactHeadWorkflow, /run: npm run dry-run:contact/);
   assert.match(exactHeadWorkflow, /sha256sum/);
@@ -97,6 +99,7 @@ test("production contact deployment is manual, exact-head, locked, and fail-clos
 
   const packageJson = JSON.parse(packageManifest);
   const packageLock = JSON.parse(packageLockManifest);
+  assert.equal(packageJson.packageManager, "npm@10.9.2");
   assert.equal(packageLock.lockfileVersion, 3);
   assert.deepEqual(packageLock.packages[""].dependencies, packageJson.dependencies);
   assert.deepEqual(packageLock.packages[""].devDependencies, packageJson.devDependencies);
