@@ -1,0 +1,76 @@
+name: Private Contact Ingress Exact-Head Gate
+
+on:
+  pull_request:
+    paths:
+      - "contact-worker/**"
+      - "admin/migrations/011_contact_ingress_safety.sql"
+      - "package.json"
+      - "wrangler.toml"
+      - ".github/workflows/contact-ingress-exact-head.yml"
+      - ".github/workflows/deploy-contact-ingress.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-contact-ingress-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  verify:
+    name: Verify private contact ingress boundary
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - name: Check out exact requested head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+          persist-credentials: false
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install locked repository dependencies
+        run: npm ci
+
+      - name: Typecheck private ingress
+        run: npm run typecheck:contact
+
+      - name: Run contact authority and safety contract
+        run: npm run test:contact
+
+      - name: Validate migration is additive and collision-free
+        shell: bash
+        run: |
+          test -f admin/migrations/011_contact_ingress_safety.sql
+          grep -q 'ADD COLUMN IF NOT EXISTS' admin/migrations/011_contact_ingress_safety.sql
+          grep -q 'CREATE UNIQUE INDEX IF NOT EXISTS' admin/migrations/011_contact_ingress_safety.sql
+          ! grep -Eiq 'DROP[[:space:]]+(TABLE|COLUMN|INDEX)|DELETE[[:space:]]+FROM' admin/migrations/011_contact_ingress_safety.sql
+
+      - name: Prove Wrangler resolves the isolated Worker
+        run: npm run dry-run:contact
+
+      - name: Retain contact Worker bundle receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: jbh-contact-ingress-dry-run-${{ env.EXPECTED_HEAD_SHA }}
+          path: .wrangler/contact-dry-run
+          if-no-files-found: error
+          retention-days: 14
