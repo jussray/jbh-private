@@ -1,0 +1,21 @@
+name: JBH Runner Health Probe
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/runner-health-probe.yml"
+
+permissions: {}
+
+jobs:
+  probe:
+    name: Prove hosted runner can start
+    runs-on: ubuntu-22.04
+    timeout-minutes: 2
+    steps:
+      - name: Prove runner startup
+        shell: bash
+        run: |
+          printf 'runner_name=%s\n' "$RUNNER_NAME"
+          uname -a
+          node --version || true
