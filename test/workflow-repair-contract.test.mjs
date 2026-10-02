@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {inspectSecurityAudit, inspectWorkflow} from '../scripts/verify-workflow-repair-contract.mjs';
+import {inspectSecurityAudit, inspectWorkflow, protectedWorkflows} from '../scripts/verify-workflow-repair-contract.mjs';
 
 const healthy = `
 permissions:
@@ -34,6 +34,10 @@ test('rejects checkout/setup-node reusable bootstrap actions', () => {
 test('rejects expired-proof shapes without exact SHA verification', () => {
   const broken = healthy.replace('test "$actual" = "$EXPECTED_HEAD_SHA"', 'echo "$actual"');
   assert.match(inspectWorkflow('broken.yml', broken).join('\n'), /EXPECTED_HEAD_SHA/);
+});
+
+test('keeps the production contact deploy workflow under the repair membrane', () => {
+  assert.ok(protectedWorkflows.includes('.github/workflows/deploy-contact-ingress.yml'));
 });
 
 test('requires security build to block moderate, high, and critical dependency advisories', () => {
