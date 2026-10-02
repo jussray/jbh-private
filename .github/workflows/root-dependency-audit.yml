@@ -10,16 +10,18 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  EXPECTED_NPM_VERSION: "10.9.2"
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   audit:
     name: Audit root dependency graph
     runs-on: ubuntu-22.04
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - name: Fetch exact requested head without reusable actions
         shell: bash
@@ -40,8 +42,36 @@ jobs:
           printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
           "$node24_root/x64/bin/node" --version | grep -E '^v24\.'
 
+      - name: Regenerate root lock for restored Apify client
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GITHUB_TOKEN"
+          npx --yes "npm@${EXPECTED_NPM_VERSION}" install --package-lock-only --ignore-scripts
+          node --input-type=commonjs <<'NODE'
+          const lock = require('./package-lock.json');
+          if (lock.packages?.['']?.dependencies?.['apify-client'] !== '2.24.0') process.exit(1);
+          if (lock.packages?.['node_modules/apify-client']?.version !== '2.24.0') process.exit(1);
+          NODE
+          npx --yes "npm@${EXPECTED_NPM_VERSION}" ci --ignore-scripts
+          npm run verify:x-engagement
+          npm audit --audit-level=high
+          changes="$(git status --porcelain)"
+          if [ -z "$changes" ]; then
+            echo 'Root lock already synchronized.'
+            exit 0
+          fi
+          test "$(printf '%s\n' "$changes" | wc -l | tr -d ' ')" = "1"
+          printf '%s\n' "$changes" | grep -Eq '^ M package-lock\.json$'
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "fix(deps): synchronize root Apify lock"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_HEAD_REF}"
+
       - name: Install locked root dependency graph
-        run: npm ci --ignore-scripts
+        run: npx --yes "npm@${EXPECTED_NPM_VERSION}" ci --ignore-scripts
 
       - name: Capture and classify npm audit
         shell: bash
