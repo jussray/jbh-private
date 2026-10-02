@@ -32,6 +32,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  EXPECTED_HEAD_SHA: ${{ github.sha }}
+  EXPECTED_NPM_VERSION: "10.9.2"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -54,12 +56,14 @@ jobs:
       - name: Require main and explicit deployment approval
         shell: bash
         run: |
+          set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
           test "$APPROVAL_PHRASE" = "DEPLOY_JBH_CONTACT_INGRESS"
 
       - name: Validate required bindings without printing values
         shell: bash
         run: |
+          set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test -n "$DATABASE_URL"
@@ -69,27 +73,40 @@ jobs:
           test -n "$ALLOWED_CONTACT_ORIGINS"
           test -n "$ALLOWED_CONTACT_HOSTNAMES"
 
-      - name: Check out exact main head
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-
-      - name: Record exact deployment head
+      - name: Fetch exact requested head without reusable actions
         shell: bash
         run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
+          git checkout --detach FETCH_HEAD
           actual="$(git rev-parse HEAD)"
-          printf 'expected=%s\nactual=%s\n' "$GITHUB_SHA" "$actual"
-          test "$actual" = "$GITHUB_SHA"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: npm
+      - name: Select hosted Node 24 without setup-node
+        shell: bash
+        run: |
+          set -euo pipefail
+          node24_root="$(find /opt/hostedtoolcache/node -maxdepth 1 -mindepth 1 -type d -name '24.*' | sort -V | tail -1)"
+          test -n "$node24_root"
+          test -x "$node24_root/x64/bin/node"
+          printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
+          "$node24_root/x64/bin/node" --version | grep -E '^v24\.'
+
+      - name: Verify declared npm toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          declared="$(node -p "require('./package.json').packageManager")"
+          test "$declared" = "npm@${EXPECTED_NPM_VERSION}"
+          actual="$(npx --yes "npm@${EXPECTED_NPM_VERSION}" --version)"
+          printf 'declared=%s\nresolved=npm@%s\n' "$declared" "$actual"
+          test "$actual" = "$EXPECTED_NPM_VERSION"
 
       - name: Install locked dependencies
-        run: npm ci
+        run: npx --yes "npm@${EXPECTED_NPM_VERSION}" ci
 
       - name: Verify private ingress contract
         run: npm run verify:contact-ingress
