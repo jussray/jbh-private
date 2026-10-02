@@ -1,4 +1,5 @@
 name: Private security build
+# Exact-head proof refresh marker: keep this lane on PR synchronize events.
 
 on:
   push:
