@@ -7,6 +7,7 @@ export const protectedWorkflows = [
   '.github/workflows/control-room-tests.yml',
   '.github/workflows/cookie-contract.yml',
   '.github/workflows/deploy-contact-ingress.yml',
+  '.github/workflows/merge-membrane-exact-head.yml',
   '.github/workflows/paid-order-reconciliation-exact-head.yml',
   '.github/workflows/private-vendor-routing-exact-head.yml',
   '.github/workflows/root-dependency-audit.yml',
