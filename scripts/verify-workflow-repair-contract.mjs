@@ -8,6 +8,7 @@ export const protectedWorkflows = [
   '.github/workflows/cookie-contract.yml',
   '.github/workflows/deploy-contact-ingress.yml',
   '.github/workflows/merge-membrane-exact-head.yml',
+  '.github/workflows/paid-order-production-preflight.yml',
   '.github/workflows/paid-order-reconciliation-exact-head.yml',
   '.github/workflows/private-vendor-routing-exact-head.yml',
   '.github/workflows/root-dependency-audit.yml',

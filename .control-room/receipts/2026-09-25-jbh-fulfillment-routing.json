@@ -1,0 +1,146 @@
+{
+  "receipt_version": 1,
+  "task": "JBH fulfillment routing end-to-end audit and repair",
+  "audited_at_utc": "2026-09-25T22:31:00Z",
+  "authority_order": [
+    "live Shopify Admin / fulfillment-location readback",
+    "live deployed storefront readback",
+    "authoritative GitHub source",
+    "existing continuity records"
+  ],
+  "fingerprint": {
+    "shopify_shop_gid": "gid://shopify/Shop/84576043251",
+    "shopify_domain": "8qp1z2-az.myshopify.com",
+    "primary_domain": "jussbeautifulhair.com",
+    "public_repo": "jussray/jussbeautifulhair-site",
+    "public_main_sha": "489f364d2a7fe42c96c0ad7614ab3bac4f9b6b4e",
+    "public_production_deployment": "dpl_AXegJJ6hCUdfq32CZLAj82i8PJCa",
+    "private_repo": "jussray/jbh-private",
+    "private_main_sha": "66dca354040c7f55ff700845d63f65e6333b82e4",
+    "repair_pr": 77,
+    "repair_branch": "fix/paid-order-launch-closure-20260925",
+    "repair_head_before_receipt": "2e1b15342dd183a5f06c775eaf232564f96ad945"
+  },
+  "catalog_after_live_repair": {
+    "active_products_exact": 21,
+    "active_physical_products_exact": 20,
+    "active_service_products_exact": 1,
+    "active_manual_procurement_products_exact": 0,
+    "draft_manual_procurement_products_exact": 16,
+    "active_physical_authority": "dropship-beauty"
+  },
+  "fulfillment_authorities": {
+    "dropship_beauty": {
+      "status": "VERIFIED_DROPSHIP_BEAUTY",
+      "shopify_location_gid": "gid://shopify/Location/94408442099",
+      "location_active": true,
+      "fulfillment_service": true,
+      "inventory_management": true,
+      "has_active_inventory": true,
+      "active_products": 20,
+      "proven_supplier_sku_count": 158,
+      "notes": "Direct location inventory-level readback proves tracked Shopify variants at the Dropship Beauty fulfillment-service location. Inventory is dynamic and must be re-read for order-time availability."
+    },
+    "dsers": {
+      "status": "BLOCKED_UNKNOWN",
+      "shopify_location_gid": "gid://shopify/Location/94314266867",
+      "installed": true,
+      "location_active": true,
+      "has_active_inventory": false,
+      "inventory_levels_found": 0,
+      "dispatch_authority": false,
+      "notes": "Installation is proven. No exact JBH product/variant mapping or Shopify inventory-level assignment was proven. Do not dispatch through DSers from installation alone."
+    },
+    "manual_procurement": {
+      "status": "BLOCKED_UNKNOWN_QUARANTINED",
+      "products": 16,
+      "pre_repair_state": "ACTIVE + inventory untracked + quantity 0 + inventoryPolicy CONTINUE + availableForSale true",
+      "repair": "All 16 products changed to DRAFT in Shopify",
+      "reason": "Candidate sourcing documentation exists, but exact current supplier/product authority is not proven.",
+      "rollback": "Return an individual product to ACTIVE only after exact supplier/product/variant authority and a safe order path are proven."
+    }
+  },
+  "source_repairs_on_pr77": [
+    {
+      "commit": "18b90d7e8c97304345f089b05166d37da3113c19",
+      "change": "Expanded paid-order normalization from the historical 44 supplier aliases to the 158 exact SKU surface proven at the live Dropship Beauty location. Unknown SKU variants remain fail-closed."
+    },
+    {
+      "commit": "2176697958614282477614e08c6603afef959a44",
+      "change": "Repaired the stale supplier-alias contract to cover the full proven SKU surface and Shopify-paid-line price authority."
+    },
+    {
+      "commit": "35ae91fd4f6911412a80f2cc2c04a1b3e409c32c",
+      "change": "Added migration 012 to supersede the historical BRAZ-SEW-only non-authorizing supplier hint with current BRAZ-SEW, BRAZ-TRANS, and 613-BRAZ-SEW-BW families."
+    },
+    {
+      "commit": "2e1b15342dd183a5f06c775eaf232564f96ad945",
+      "change": "Updated vendor-state contract tests to prove migration-012 supersession without enabling exact dispatch authority."
+    }
+  ],
+  "proof": {
+    "public_deployment": {
+      "state": "READY",
+      "target": "production",
+      "github_sha": "489f364d2a7fe42c96c0ad7614ab3bac4f9b6b4e",
+      "root_http_status": 200
+    },
+    "public_source": {
+      "cart_preflight": "Worker re-reads submitted Shopify ProductVariant IDs and checks variant/product availableForSale before cartCreate.",
+      "exact_head_contract_job": "PASS",
+      "production_founder_funnel_job": "BLOCKED at production Cloudflare credential proof"
+    },
+    "private_source_ci": {
+      "head": "2e1b15342dd183a5f06c775eaf232564f96ad945",
+      "workflow_runs": 7,
+      "result": "startup_failure before executable jobs",
+      "status": "NO_EXECUTION_PROOF"
+    },
+    "playwright": {
+      "attempted_first": true,
+      "result": "BLOCKED_IN_CURRENT_ASSISTANT_RUNTIME",
+      "reason": "agent-browser executable unavailable; Opera fallback also unavailable in this session",
+      "interpretation": "Tool/runtime limitation, not evidence that the storefront or user setup is broken."
+    }
+  },
+  "activation_blockers": [
+    "PR #77 source repair is not merged or deployed.",
+    "Private exact-head GitHub Actions runs terminate startup_failure before jobs execute.",
+    "Authoritative production database identity/schema remains unproven.",
+    "Private Worker production configuration/secrets are not fully proven.",
+    "Exactly one Shopify ORDERS_PAID webhook subscription is not proven active; prior PR readback reported zero.",
+    "Signed positive/replay/invalid-HMAC/idempotency runtime proof is still required before supplier-dispatch activation."
+  ],
+  "rollback": {
+    "shopify_manual_quarantine": "Change only the 16 quarantined manual products back to ACTIVE after exact supplier authority is proven.",
+    "source_repair": "Revert commits after b1f34a057f60a7e7b817401da3b3207ee1a4d8dc on PR #77 if the expanded SKU contract is disproven by a fresh Shopify location readback.",
+    "dispatch": "No dispatch authority was enabled, so no supplier-order rollback is required."
+  },
+  "next_gate": [
+    "Obtain executable exact-head CI for PR #77 and require the new SKU/vendor contracts to pass.",
+    "Recover and fingerprint the authoritative JBH production database and private Worker runtime configuration.",
+    "Apply migrations only to the proven production database.",
+    "Register exactly one ORDERS_PAID webhook only after runtime config and schema proof are green.",
+    "Run signed webhook acceptance, replay, invalid-HMAC, idempotency, and one non-paid cart/checkout smoke proof.",
+    "Prove exact manual or DSers mappings before reactivating any quarantined product."
+  ],
+  "task_accuracy": {
+    "original_goal": "Every active physical JBH product must have exactly one verified fulfillment authority.",
+    "result": "PARTIAL_REPAIR_WITH_LIVE_QUARANTINE",
+    "verified": [
+      "20 active physical products now all belong to the verified Dropship Beauty Shopify fulfillment lane.",
+      "16 unverified manual-procurement products are no longer active commerce.",
+      "DSers is installed but has no proven JBH product mapping.",
+      "PR #77 contains bounded source repairs for the full proven Dropship Beauty SKU surface."
+    ],
+    "unknown_or_blocked": [
+      "production private-worker activation",
+      "production database authority/schema",
+      "ORDERS_PAID runtime subscription and signed webhook behavior",
+      "exact DSers product mappings",
+      "exact manual supplier mappings",
+      "fresh interactive Playwright proof in this assistant runtime"
+    ],
+    "outcome_status": "BLOCKED_FROM_END_TO_END_READY"
+  }
+}
