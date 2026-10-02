@@ -1,12 +1,18 @@
 import {readFile} from 'node:fs/promises';
 
 export const protectedWorkflows = [
-  '.github/workflows/contact-ingress-exact-head.yml',
-  '.github/workflows/deploy-contact-ingress.yml',
-  '.github/workflows/security-build.yml',
-  '.github/workflows/cookie-contract.yml',
   '.github/workflows/ai-skill-contract-exact-head.yml',
+  '.github/workflows/contact-ingress-exact-head.yml',
+  '.github/workflows/control-room-test-ledger.yml',
+  '.github/workflows/control-room-tests.yml',
+  '.github/workflows/cookie-contract.yml',
+  '.github/workflows/deploy-contact-ingress.yml',
+  '.github/workflows/paid-order-reconciliation-exact-head.yml',
   '.github/workflows/private-vendor-routing-exact-head.yml',
+  '.github/workflows/root-dependency-audit.yml',
+  '.github/workflows/security-build.yml',
+  '.github/workflows/workflow-attack-repair-contract.yml',
+  '.github/workflows/x-engagement-adapter.yml',
 ];
 
 const forbiddenReusableActions = [
@@ -18,6 +24,9 @@ const requiredBootstrapMarkers = [
   'permissions:',
   'contents: read',
   'EXPECTED_HEAD_SHA:',
+  'GH_TOKEN: ${{ github.token }}',
+  'test -n "$GH_TOKEN"',
+  'https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git',
   'git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"',
   'git checkout --detach FETCH_HEAD',
   'actual="$(git rev-parse HEAD)"',
@@ -72,7 +81,7 @@ async function main() {
   failures.push(...inspectSecurityAudit(security));
 
   const receipt = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     contract: 'workflow-attack-repair',
     protectedWorkflows: receipts,
     rules: {
@@ -80,6 +89,7 @@ async function main() {
       reusableBootstrapForbidden: true,
       hostedNode24Required: true,
       readOnlyContentsRequired: true,
+      privateRepositoryAuthenticatedFetchRequired: true,
       moderateHighCriticalDependencyGateRequired: true,
     },
     status: failures.length ? 'failed' : 'passed',
