@@ -35,6 +35,7 @@ permissions:
 
 env:
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  GH_TOKEN: ${{ github.token }}
   CONTROL_ROOM_TEST_REPORT_PATH: artifacts/control-room-tests.json
 
 jobs:
@@ -47,8 +48,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test -n "$GH_TOKEN"
           git init .
-          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
           git checkout --detach FETCH_HEAD
           actual="$(git rev-parse HEAD)"
