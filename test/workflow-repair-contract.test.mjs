@@ -7,14 +7,14 @@ permissions:
   contents: read
 env:
   EXPECTED_HEAD_SHA: test
-  GH_TOKEN: ${{ github.token }}
+  GH_TOKEN: \${{ github.token }}
 jobs:
   verify:
     runs-on: ubuntu-22.04
     steps:
       - run: |
           test -n "$GH_TOKEN"
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git remote add origin "https://x-access-token:\${GH_TOKEN}@github.com/\${GITHUB_REPOSITORY}.git"
           git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
           git checkout --detach FETCH_HEAD
           actual="$(git rev-parse HEAD)"
