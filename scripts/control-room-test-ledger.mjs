@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-export const CONTROL_ROOM_TEST_LEDGER_SCHEMA_VERSION = 1;
+export const CONTROL_ROOM_TEST_LEDGER_SCHEMA_VERSION = 2;
 const FAILURE_CONCLUSIONS = new Set(['action_required', 'cancelled', 'failure', 'startup_failure', 'stale', 'timed_out']);
 const clean = (value) => typeof value === 'string' ? value.trim() : '';
 const normalizeSha = (value) => clean(value).toLowerCase();
@@ -67,7 +67,19 @@ export function requiredSignalState(checks, requiredSignalNames, requiredApp = '
   return hasPending ? 'pending' : 'passed';
 }
 
-export function aggregateTestLedger(checks, requiredSignalNames = []) {
+export function cloudflareProductionEffectState(checks, branch = '') {
+  const list = Array.isArray(checks) ? checks : [];
+  const normalizedBranch = clean(branch);
+  const productionBuild = list.find((check) =>
+    clean(check?.app) === 'cloudflare-workers-and-pages' &&
+    /\/production\/builds\//.test(clean(check?.detailsUrl)),
+  );
+  if (!productionBuild) return 'passed';
+  if (normalizedBranch === 'main') return 'passed';
+  return 'failed';
+}
+
+export function aggregateTestLedger(checks, requiredSignalNames = [], branch = '') {
   const list = Array.isArray(checks) ? checks : [];
   const counts = {
     total: list.length,
@@ -87,19 +99,27 @@ export function aggregateTestLedger(checks, requiredSignalNames = []) {
   const requiredState = requiredSignalState(list, requiredSignalNames);
   if (requiredState === 'failed') state = 'failed';
   else if (requiredState === 'pending' && state !== 'failed') state = 'pending';
+
+  if (cloudflareProductionEffectState(list, branch) === 'failed') state = 'failed';
   return {state, counts};
 }
 
 export function buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames = [], observerState = 'observing', observedAt = new Date()}) {
+  const normalizedBranch = clean(branch) || null;
+  const cloudflareProductionState = cloudflareProductionEffectState(checks, normalizedBranch || '');
   return {
     schemaVersion: CONTROL_ROOM_TEST_LEDGER_SCHEMA_VERSION,
     repository,
     commitSha: normalizeSha(sha),
-    branch: clean(branch) || null,
+    branch: normalizedBranch,
     generatedAt: observedAt.toISOString(),
     source: {provider: 'github-check-runs', exactRef: 'commit-sha', dedupe: 'latest-by-app-and-name', includesAllDiscoveredChecks: true, excludesObserverCheck: true},
     runner: {provider: 'github-actions', runId: clean(runId) || null, observerState, authoritativeForMerge: false},
-    aggregate: aggregateTestLedger(checks, requiredSignalNames),
+    externalEffects: {
+      cloudflareNonMainProductionBuild: cloudflareProductionState,
+      policy: 'fail when cloudflare-workers-and-pages points a non-main exact head at /production/builds/',
+    },
+    aggregate: aggregateTestLedger(checks, requiredSignalNames, normalizedBranch || ''),
     checks,
   };
 }
@@ -163,7 +183,7 @@ export async function observeExactHeadChecks(env = process.env) {
   while (Date.now() - startedAt < timeoutMs) {
     checks = selectLatestChecks(await fetchAllCheckRuns({repository, sha, token}), sha, observerCheckName);
     writeLedger(outputPath, buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames}));
-    const fingerprint = JSON.stringify(checks.map((check) => [check.app, check.name, check.state]));
+    const fingerprint = JSON.stringify(checks.map((check) => [check.app, check.name, check.state, check.detailsUrl]));
     const terminal = !checks.some((check) => check.state === 'queued' || check.state === 'running');
     const oldEnough = Date.now() - startedAt >= minimumObservationMs;
     stableTerminalPolls = terminal && oldEnough && fingerprint === previousFingerprint ? stableTerminalPolls + 1 : 0;
@@ -175,6 +195,7 @@ export async function observeExactHeadChecks(env = process.env) {
   const ledger = buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, observerState: reachedStableTerminal ? 'stable' : 'window-expired'});
   writeLedger(outputPath, ledger);
   if (ledger.aggregate.counts.total === 0) throw new Error(`No exact-head checks were discovered. Evidence: ${outputPath}`);
+  if (ledger.aggregate.state === 'failed') throw new Error(`Exact-head ledger failed closed. Evidence: ${outputPath}`);
   console.log(JSON.stringify(ledger, null, 2));
   return ledger;
 }

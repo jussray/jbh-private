@@ -7,7 +7,7 @@ const read = (path) => readFile(path, "utf8");
 test("private contact ingress preserves customer-data and abuse boundaries", async () => {
   const [worker, migration, config, handoff, privateWorkerConfig] = await Promise.all([
     read("contact-worker/src/index.ts"),
-    read("admin/migrations/011_contact_ingress_safety.sql"),
+    read("admin/migrations/015_contact_ingress_safety.sql"),
     read("contact-worker/wrangler.jsonc"),
     read("contact-worker/README.md"),
     read("wrangler.toml"),
@@ -20,11 +20,14 @@ test("private contact ingress preserves customer-data and abuse boundaries", asy
   assert.match(worker, /consent: z\.literal\(true\)/);
   assert.match(worker, /result\.action === CONTACT_ACTION/);
   assert.match(worker, /allowedHostnames\.includes\(result\.hostname\)/);
+  assert.match(worker, /currentBucket - 1/);
+  assert.match(worker, /created_at >= NOW\(\) - INTERVAL '10 minutes'/);
   assert.match(worker, /ON CONFLICT DO NOTHING/);
   assert.match(worker, /turnstile_unavailable type=\$\{errorType\}/);
   assert.match(worker, /persistence_failed type=\$\{errorType\}/);
   assert.match(worker, /\{ received: true, duplicate: true \}/);
   assert.match(worker, /\{ received: true, receipt: storedReceipt, duplicate: false \}/);
+  assert.doesNotMatch(worker, /tenMinuteBucket/);
   assert.doesNotMatch(worker, /storedReceipt \|\| receipt/);
 
   assert.doesNotMatch(worker, /console\.(log|info|warn)\([^)]*(name|email|message)/i);
@@ -52,8 +55,9 @@ test("private contact ingress preserves customer-data and abuse boundaries", asy
 
   assert.match(handoff, /Intended private operations repository: `jussray\/jbh-private`/);
   assert.match(handoff, /visibility: public/);
-  assert.match(handoff, /Source merge authority is blocked/);
-  assert.match(handoff, /011_contact_ingress_safety\.sql/);
+  assert.match(handoff, /main` is not protected/);
+  assert.match(handoff, /Merge authority is blocked/);
+  assert.match(handoff, /015_contact_ingress_safety\.sql/);
   assert.match(handoff, /Make remains downstream and disabled/);
   assert.match(handoff, /startup_failure/);
 });
@@ -95,7 +99,10 @@ test("production contact deployment is manual, exact-head, locked, private-compa
   assert.doesNotMatch(workflow, /actions\/checkout|actions\/setup-node/);
   assert.doesNotMatch(workflow, /echo .*DATABASE_URL|echo .*TURNSTILE_SECRET_KEY/);
 
-  assert.match(exactHeadWorkflow, /admin\/migrations\/011_contact_ingress_safety\.sql/);
+  assert.match(exactHeadWorkflow, /admin\/migrations\/015_contact_ingress_safety\.sql/);
+  assert.match(exactHeadWorkflow, /repository must be private/);
+  assert.match(exactHeadWorkflow, /main branch must be protected/);
+  assert.match(exactHeadWorkflow, /post-010 migration/);
   assert.match(exactHeadWorkflow, /package-lock\.json/);
   assert.match(exactHeadWorkflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(exactHeadWorkflow, /https:\/\/x-access-token:\$\{GH_TOKEN\}@github\.com\/\$\{GITHUB_REPOSITORY\}\.git/);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
-import {aggregateTestLedger, buildTestLedger, mapCheckState, requiredSignalState, selectLatestChecks} from '../scripts/control-room-test-ledger.mjs';
+import {aggregateTestLedger, buildTestLedger, cloudflareProductionEffectState, mapCheckState, requiredSignalState, selectLatestChecks} from '../scripts/control-room-test-ledger.mjs';
 
 const SHA = '660325d3575fc81bdfa7fd7d6001016bad20cf21';
 const workflow = readFileSync(new URL('../.github/workflows/control-room-test-ledger.yml', import.meta.url), 'utf8');
@@ -56,10 +56,25 @@ test('accepts the required signal only when the exact GitHub Actions lane passes
   assert.equal(aggregateTestLedger(checks, required).state, 'passed');
 });
 
+test('fails closed when a non-main exact head receives a Cloudflare production build', () => {
+  const checks = selectLatestChecks([
+    run({
+      id: 9,
+      name: 'Workers Builds: jbh-private',
+      app: {slug: 'cloudflare-workers-and-pages'},
+      details_url: 'https://dash.cloudflare.com/account/workers/services/view/jbh-private/production/builds/build-1',
+    }),
+  ], SHA);
+  assert.equal(cloudflareProductionEffectState(checks, 'fix/contact'), 'failed');
+  assert.equal(aggregateTestLedger(checks, [], 'fix/contact').state, 'failed');
+  assert.equal(cloudflareProductionEffectState(checks, 'main'), 'passed');
+});
+
 test('builds sanitized exact-SHA evidence', () => {
   const ledger = buildTestLedger({repository: 'jussray/jbh-private', sha: SHA, branch: 'main', runId: '1', checks: selectLatestChecks([run()], SHA)});
   assert.equal(ledger.commitSha, SHA);
   assert.equal(ledger.source.includesAllDiscoveredChecks, true);
+  assert.equal(ledger.externalEffects.cloudflareNonMainProductionBuild, 'passed');
   assert.equal(JSON.stringify(ledger).includes('token'), false);
 });
 

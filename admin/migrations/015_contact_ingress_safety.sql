@@ -1,7 +1,7 @@
 -- Private contact-ingress evidence and duplicate protection.
--- Current-main port of the historical contact migration. Number 011 avoids
--- colliding with the existing 007_vendor_sample_readiness migration.
--- Apply after admin/migrations/001_init.sql.
+-- Current-main port of the historical contact migration.
+-- Number 015 is reserved after the still-active paid-order migration intent 011-014.
+-- Source merge alone does not authorize applying this migration to production.
 -- Additive only: this migration does not delete or rewrite contact messages.
 
 ALTER TABLE contact_messages

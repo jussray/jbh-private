@@ -17,6 +17,7 @@ interface TurnstileResult {
 
 const MAX_BODY_BYTES = 12_000;
 const CONTACT_ACTION = "contact";
+const DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 
 const contactSchema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -116,9 +117,8 @@ async function verifyTurnstile(
   }
 }
 
-async function fingerprint(email: string, message: string): Promise<string> {
-  const tenMinuteBucket = Math.floor(Date.now() / 600_000);
-  const normalized = `${email.toLowerCase()}\n${message.trim()}\n${tenMinuteBucket}`;
+async function fingerprint(email: string, message: string, bucket: number): Promise<string> {
+  const normalized = `${email.toLowerCase()}\n${message.trim()}\n${bucket}`;
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(normalized),
@@ -159,13 +159,29 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
   if (!challengePassed) return json({ error: "Verification failed" }, 403, origin);
 
   const receipt = crypto.randomUUID();
-  const submissionFingerprint = await fingerprint(
-    parsed.data.email,
-    parsed.data.message,
-  );
+  const currentBucket = Math.floor(Date.now() / DUPLICATE_WINDOW_MS);
+  const [submissionFingerprint, previousSubmissionFingerprint] = await Promise.all([
+    fingerprint(parsed.data.email, parsed.data.message, currentBucket),
+    fingerprint(parsed.data.email, parsed.data.message, currentBucket - 1),
+  ]);
 
   try {
     const sql = neon(env.DATABASE_URL);
+    const recentDuplicate = await sql`
+      SELECT 1
+      FROM contact_messages
+      WHERE submission_fingerprint IN (
+        ${submissionFingerprint},
+        ${previousSubmissionFingerprint}
+      )
+        AND created_at >= NOW() - INTERVAL '10 minutes'
+      LIMIT 1
+    `;
+
+    if (recentDuplicate.length > 0) {
+      return json({ received: true, duplicate: true }, 202, origin);
+    }
+
     const inserted = await sql`
       INSERT INTO contact_messages (
         name,

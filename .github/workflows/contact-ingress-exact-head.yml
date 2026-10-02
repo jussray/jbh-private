@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - "contact-worker/**"
-      - "admin/migrations/011_contact_ingress_safety.sql"
+      - "admin/migrations/015_contact_ingress_safety.sql"
       - "package.json"
       - "package-lock.json"
       - "wrangler.toml"
@@ -83,10 +83,29 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f admin/migrations/011_contact_ingress_safety.sql
-          grep -q 'ADD COLUMN IF NOT EXISTS' admin/migrations/011_contact_ingress_safety.sql
-          grep -q 'CREATE UNIQUE INDEX IF NOT EXISTS' admin/migrations/011_contact_ingress_safety.sql
-          ! grep -Eiq 'DROP[[:space:]]+(TABLE|COLUMN|INDEX)|DELETE[[:space:]]+FROM' admin/migrations/011_contact_ingress_safety.sql
+          test -f admin/migrations/015_contact_ingress_safety.sql
+          grep -q 'ADD COLUMN IF NOT EXISTS' admin/migrations/015_contact_ingress_safety.sql
+          grep -q 'CREATE UNIQUE INDEX IF NOT EXISTS' admin/migrations/015_contact_ingress_safety.sql
+          ! grep -Eiq 'DROP[[:space:]]+(TABLE|COLUMN|INDEX)|DELETE[[:space:]]+FROM' admin/migrations/015_contact_ingress_safety.sql
+          node --input-type=module <<'NODE'
+          import {readdirSync} from "node:fs";
+          const names = readdirSync("admin/migrations")
+            .filter((name) => /^\d{3}_.+\.sql$/.test(name))
+            .sort();
+          const byNumber = new Map();
+          for (const name of names) {
+            const number = name.slice(0, 3);
+            const entries = byNumber.get(number) ?? [];
+            entries.push(name);
+            byNumber.set(number, entries);
+          }
+          for (const [number, entries] of byNumber) {
+            if (number === "010") continue;
+            if (entries.length !== 1) {
+              throw new Error(`post-010 migration ${number} must be unique: ${entries.join(", ")}`);
+            }
+          }
+          NODE
 
       - name: Prove Wrangler resolves the isolated Worker
         run: npm run dry-run:contact
@@ -107,3 +126,34 @@ jobs:
             cat .wrangler/contact-dry-run.sha256
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Require private protected GitHub merge membrane
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="${GITHUB_API_URL:-https://api.github.com}"
+          headers=(
+            -H "Accept: application/vnd.github+json"
+            -H "Authorization: Bearer $GH_TOKEN"
+            -H "X-GitHub-Api-Version: 2022-11-28"
+          )
+          curl -fsSL "${headers[@]}" "$api/repos/$GITHUB_REPOSITORY" > "$RUNNER_TEMP/repository.json"
+          curl -fsSL "${headers[@]}" "$api/repos/$GITHUB_REPOSITORY/branches/main" > "$RUNNER_TEMP/main-branch.json"
+          node --input-type=module <<'NODE'
+          import {readFileSync} from "node:fs";
+          const root = process.env.RUNNER_TEMP;
+          const repository = JSON.parse(readFileSync(`${root}/repository.json`, "utf8"));
+          const main = JSON.parse(readFileSync(`${root}/main-branch.json`, "utf8"));
+          if (repository.private !== true) {
+            throw new Error("GitHub provider membrane failed: repository must be private.");
+          }
+          if (main.protected !== true) {
+            throw new Error("GitHub provider membrane failed: main branch must be protected.");
+          }
+          console.log(JSON.stringify({
+            repository: repository.full_name,
+            visibility: repository.visibility,
+            private: repository.private,
+            mainProtected: main.protected,
+          }));
+          NODE
