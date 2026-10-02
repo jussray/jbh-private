@@ -34,6 +34,7 @@ concurrency:
 env:
   EXPECTED_HEAD_SHA: ${{ github.sha }}
   EXPECTED_NPM_VERSION: "10.9.2"
+  GH_TOKEN: ${{ github.token }}
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -77,8 +78,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test -n "$GH_TOKEN"
           git init .
-          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
           git checkout --detach FETCH_HEAD
           actual="$(git rev-parse HEAD)"
