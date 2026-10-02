@@ -14,6 +14,7 @@ permissions:
 
 env:
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  GH_TOKEN: ${{ github.token }}
 
 jobs:
   audit:
@@ -25,11 +26,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test -n "$GH_TOKEN"
           git init .
-          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
           git checkout --detach FETCH_HEAD
-          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
 
       - name: Select hosted Node 24 without setup-node
         shell: bash
