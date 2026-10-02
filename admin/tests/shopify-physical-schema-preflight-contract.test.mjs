@@ -85,11 +85,17 @@ test("Shopify physical schema preflight publishes distinct bounded receipts", ()
   }
 });
 
-test("production preflight uses the Shopify schema verifier without applying SQL", () => {
+test("production preflight uses the Shopify schema verifier with exact-head shell bootstrap and without applying SQL", () => {
   assert.match(productionWorkflow, /preflight:shopify-physical-schema/);
   assert.match(productionWorkflow, /paid-order-production-preflight\/shopify-/);
   assert.match(productionWorkflow, /DATABASE_URL: \$\{\{ secrets\.DATABASE_URL \}\}/);
-  assert.match(productionWorkflow, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
+  assert.match(productionWorkflow, /EXPECTED_HEAD_SHA: \$\{\{ github\.sha \}\}/);
+  assert.match(productionWorkflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(productionWorkflow, /https:\/\/x-access-token:\$\{GH_TOKEN\}@github\.com\/\$\{GITHUB_REPOSITORY\}\.git/);
+  assert.match(productionWorkflow, /git fetch --depth=1 origin "\$EXPECTED_HEAD_SHA"/);
+  assert.match(productionWorkflow, /git checkout --detach FETCH_HEAD/);
+  assert.match(productionWorkflow, /test "\$actual" = "\$EXPECTED_HEAD_SHA"/);
+  assert.doesNotMatch(productionWorkflow, /actions\/checkout|actions\/setup-node/);
   assert.doesNotMatch(productionWorkflow, /psql\s+"\$DATABASE_URL"/);
   assert.doesNotMatch(productionWorkflow, /approval_phrase:/);
 });
