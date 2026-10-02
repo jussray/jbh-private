@@ -28,6 +28,7 @@ requireTruth(contract.shopify.catalogPath === "/api/shopify/catalog", "catalog r
 requireTruth(contract.shopify.cartPath === "/api/shopify/cart", "cart route drifted");
 requireTruth(contract.shopify.paidTopic === "orders/paid", "paid-order topic drifted");
 requireTruth(contract.privateOrderControl.serviceName === "jbh-private-payment-control", "private Worker identity drifted");
+requireTruth(contract.privateOrderControl.providerServiceAliases === undefined, "private Worker identity must not depend on provider aliases");
 requireTruth(contract.privateOrderControl.healthPath === "/health", "private health route drifted");
 requireTruth(contract.privateOrderControl.paidWebhookPath === "/webhooks/shopify/orders-paid", "private paid webhook route drifted");
 requireTruth(contract.productionTruth.authority === "external-provider-evidence", "production truth must stay provider-backed");

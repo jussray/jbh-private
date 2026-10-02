@@ -26,7 +26,7 @@ const [
 const packageContract = JSON.parse(packageJson);
 
 test("root Cloudflare deploy resolves the API-only private Worker", () => {
-  assert.match(wrangler, /name = "jbh-private-payment-control"/);
+  assert.match(wrangler, /^name = "jbh-private-payment-control"$/m);
   assert.match(wrangler, /main = "admin\/payment-worker\/src\/index\.ts"/);
   assert.match(wrangler, /workers_dev = false/);
   assert.match(wrangler, /preview_urls = false/);
@@ -105,5 +105,5 @@ test("root scripts verify and deploy the exact Worker contract", () => {
   );
   assert.match(packageContract.scripts["verify:worker"], /dry-run:worker/);
   assert.equal(packageContract.scripts.deploy, "wrangler deploy");
-  assert.equal(packageContract.devDependencies.wrangler, "4.143.1");
+  assert.equal(packageContract.devDependencies.wrangler, "4.118.0");
 });

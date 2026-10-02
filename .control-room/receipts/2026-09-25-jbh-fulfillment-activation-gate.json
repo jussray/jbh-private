@@ -1,0 +1,138 @@
+{
+  "receipt_version": 1,
+  "receipt_type": "fulfillment_activation_gate_successor",
+  "task": "Continue JBH fulfillment routing end-to-end repair after catalog quarantine",
+  "recorded_at_utc": "2026-09-25T22:45:16Z",
+  "supersedes": ".control-room/receipts/2026-09-25-jbh-fulfillment-routing.json",
+  "predecessor_private_head": "b789a13b7a460d2e0e12e6e986b046a01a83191f",
+  "authority_order": [
+    "live provider readback",
+    "live Shopify Admin readback",
+    "authoritative GitHub source",
+    "durable continuity records",
+    "historical conversation or memory"
+  ],
+  "fingerprint": {
+    "shopify_shop_gid": "gid://shopify/Shop/84576043251",
+    "shopify_domain": "8qp1z2-az.myshopify.com",
+    "primary_domain": "jussbeautifulhair.com",
+    "private_repo": "jussray/jbh-private",
+    "private_base_sha": "66dca354040c7f55ff700845d63f65e6333b82e4",
+    "repair_pr": 77,
+    "repair_branch": "fix/paid-order-launch-closure-20260925",
+    "repair_head_at_gate_start": "b789a13b7a460d2e0e12e6e986b046a01a83191f",
+    "cloudflare_live_worker": "jbh-private",
+    "cloudflare_live_version": "94b5c7fd-d9c6-45c7-b96a-fc9782a4f41f",
+    "cloudflare_live_deployed_at": "2026-09-25T09:44:55.386676Z",
+    "cloudflare_live_route": "api.jussbeautifulhair.com",
+    "canonical_source_worker": "jbh-private-payment-control"
+  },
+  "continued_proof": {
+    "github_exact_head": {
+      "head": "b789a13b7a460d2e0e12e6e986b046a01a83191f",
+      "workflow_runs": 7,
+      "result": "startup_failure_before_job_creation",
+      "job_count_on_inspected_run": 0,
+      "retry_attempt": "403_this_workflow_run_cannot_be_retried",
+      "interpretation": "No executable exact-head CI proof exists. This is infrastructure admission failure, not a green or red code-test result."
+    },
+    "shopify_orders_paid_webhook": {
+      "query_scope": "shop-scoped webhookSubscriptions for ORDERS_PAID",
+      "count_exact": 0,
+      "has_next_page": false,
+      "action": "left_unregistered",
+      "reason": "Private runtime and database authority are not green."
+    },
+    "cloudflare_worker": {
+      "live_script": "jbh-private",
+      "route": "api.jussbeautifulhair.com",
+      "bindings_observed": [
+        "SHOPIFY_SHOP_DOMAIN"
+      ],
+      "secret_names_observed": [],
+      "required_unproven_bindings": [
+        "WORKER_HOST",
+        "DATABASE_URL",
+        "SHOPIFY_WEBHOOK_SECRET"
+      ],
+      "source_identity_drift": "Provider is jbh-private while source authority remains jbh-private-payment-control. Do not silently promote the provider label into source authority."
+    },
+    "cloudflare_access": {
+      "domain": "api.jussbeautifulhair.com",
+      "access_app_count_exact": 0,
+      "action": "no_mutation",
+      "reason": "A future Shopify webhook needs deliberate machine-to-machine reachability; do not add blanket Access before the webhook ingress design is proven."
+    },
+    "database_authority_recovery": {
+      "status": "BLOCKED_UNKNOWN",
+      "repo_neon_identity_found": false,
+      "connected_context_identity_found": false,
+      "gmail_identity_found": false,
+      "verified_project_id": null,
+      "verified_project_name": null,
+      "verified_branch": null,
+      "verified_database": null,
+      "verified_hostname": null,
+      "explicit_exclusions": [
+        "Do not infer JBH authority from a generic Neon project named Juss.",
+        "Do not infer JBH authority from SleepWealth database state.",
+        "Do not run migrations against any merely plausible project."
+      ]
+    },
+    "browser_health_probe": {
+      "playwright": "unavailable_in_current_assistant_runtime",
+      "web_fetch": "target_not_accessible_via_web_tool",
+      "opera": "browser_connector_not_connected",
+      "interpretation": "Browser/tool limitation does not prove a user configuration failure or a healthy runtime. Provider readback remains authoritative for current binding state."
+    }
+  },
+  "commerce_state": {
+    "active_physical_products": 20,
+    "active_physical_authority": "dropship-beauty",
+    "manual_products_quarantined_draft": 16,
+    "dsers_dispatch_authority": false,
+    "supplier_dispatch_enabled_by_this_work": false,
+    "customer_payment_created_by_this_work": false
+  },
+  "verdict": {
+    "dropship_beauty": "VERIFIED_DROPSHIP_BEAUTY_CATALOG_AUTHORITY",
+    "dsers": "BLOCKED_UNKNOWN",
+    "manual": "BLOCKED_UNKNOWN_QUARANTINED",
+    "private_post_payment_runtime": "BLOCKED_UNKNOWN",
+    "end_to_end_commerce": "NOT_READY"
+  },
+  "stop_conditions": [
+    "Do not merge or deploy PR #77 while exact-head execution proof is absent.",
+    "Do not create the ORDERS_PAID subscription before the intended database, Worker configuration, webhook secret, endpoint health, and signed webhook behavior are proven.",
+    "Do not enable supplier dispatch from the private Worker while database and provider authority remain unknown.",
+    "Do not reactivate the 16 manual-procurement products without exact supplier/product/variant authority.",
+    "Do not map Dropship Beauty products into DSers."
+  ],
+  "rollback": {
+    "catalog": "The 16 quarantined manual products remain preserved as DRAFT and can be reactivated individually only after proof.",
+    "source": "PR #77 remains unmerged; source changes can be reverted on the branch without changing production.",
+    "runtime": "No runtime binding, secret, Access, webhook, database migration, supplier dispatch, or paid order was created in this continuation."
+  },
+  "next_gate": [
+    "Resolve GitHub Actions execution admission so PR #77 can produce real exact-head jobs.",
+    "Recover a concrete JBH production database fingerprint: project, branch, database, hostname, and schema readback.",
+    "Establish the canonical private Worker with required non-secret bindings and provider-held secrets only after database authority is proven.",
+    "Design api.jussbeautifulhair.com Access so owner/admin surfaces are protected without blocking Shopify webhook machine ingress.",
+    "Require healthy runtime and read-only schema proof, then register exactly one ORDERS_PAID webhook.",
+    "Run signed acceptance, replay, invalid-HMAC, idempotency, variant identity, and fulfillment-lane proof before any supplier dispatch activation."
+  ],
+  "task_accuracy": {
+    "requested_continuation": true,
+    "actions_taken": [
+      "reconfirmed exact-head CI failure with zero jobs",
+      "attempted safe CI retry and recorded 403 non-retriable result",
+      "freshly queried Shopify ORDERS_PAID subscriptions and proved exact zero",
+      "freshly read Cloudflare Worker bindings, secret names, deployment and route",
+      "freshly read Cloudflare Access applications for api.jussbeautifulhair.com and proved exact zero",
+      "searched repository and connected context for authoritative JBH Neon identity without finding one",
+      "kept webhook registration, secrets, deployment, database migration and supplier dispatch frozen"
+    ],
+    "outcome_status": "BLOCKED_AT_EXTERNAL_AUTHORITY_GATE",
+    "no_fake_green": true
+  }
+}
