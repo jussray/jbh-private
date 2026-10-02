@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-export const CONTROL_ROOM_TEST_LEDGER_SCHEMA_VERSION = 1;
+export const CONTROL_ROOM_TEST_LEDGER_SCHEMA_VERSION = 3;
 const FAILURE_CONCLUSIONS = new Set(['action_required', 'cancelled', 'failure', 'startup_failure', 'stale', 'timed_out']);
 const clean = (value) => typeof value === 'string' ? value.trim() : '';
 const normalizeSha = (value) => clean(value).toLowerCase();
@@ -67,7 +67,23 @@ export function requiredSignalState(checks, requiredSignalNames, requiredApp = '
   return hasPending ? 'pending' : 'passed';
 }
 
-export function aggregateTestLedger(checks, requiredSignalNames = []) {
+export function cloudflareProductionEffectState(checks, branch = '') {
+  const list = Array.isArray(checks) ? checks : [];
+  const normalizedBranch = clean(branch);
+  const productionBuild = list.find((check) =>
+    clean(check?.app) === 'cloudflare-workers-and-pages' &&
+    /\/production\/builds\//.test(clean(check?.detailsUrl)),
+  );
+  if (!productionBuild) return 'passed';
+  if (normalizedBranch === 'main') return 'passed';
+  return 'failed';
+}
+
+export function githubProviderMembraneState(provider = {}) {
+  return provider?.repositoryPrivate === true && provider?.mainProtected === true ? 'passed' : 'failed';
+}
+
+export function aggregateTestLedger(checks, requiredSignalNames = [], branch = '') {
   const list = Array.isArray(checks) ? checks : [];
   const counts = {
     total: list.length,
@@ -87,26 +103,60 @@ export function aggregateTestLedger(checks, requiredSignalNames = []) {
   const requiredState = requiredSignalState(list, requiredSignalNames);
   if (requiredState === 'failed') state = 'failed';
   else if (requiredState === 'pending' && state !== 'failed') state = 'pending';
+
+  if (cloudflareProductionEffectState(list, branch) === 'failed') state = 'failed';
   return {state, counts};
 }
 
-export function buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames = [], observerState = 'observing', observedAt = new Date()}) {
+function normalizeProviderMembrane(providerMembrane) {
+  if (!providerMembrane || typeof providerMembrane !== 'object') {
+    return {
+      repositoryPrivate: null,
+      visibility: null,
+      mainProtected: null,
+      state: 'unknown',
+      policy: 'require the repository to be private and main to be protected',
+    };
+  }
+  const normalized = {
+    repositoryPrivate: providerMembrane.repositoryPrivate === true,
+    visibility: clean(providerMembrane.visibility) || null,
+    mainProtected: providerMembrane.mainProtected === true,
+  };
+  return {
+    ...normalized,
+    state: githubProviderMembraneState(normalized),
+    policy: 'require the repository to be private and main to be protected',
+  };
+}
+
+export function buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames = [], providerMembrane = null, observerState = 'observing', observedAt = new Date()}) {
+  const normalizedBranch = clean(branch) || null;
+  const cloudflareProductionState = cloudflareProductionEffectState(checks, normalizedBranch || '');
+  const normalizedProviderMembrane = normalizeProviderMembrane(providerMembrane);
+  const aggregate = aggregateTestLedger(checks, requiredSignalNames, normalizedBranch || '');
+  if (normalizedProviderMembrane.state !== 'passed') aggregate.state = 'failed';
   return {
     schemaVersion: CONTROL_ROOM_TEST_LEDGER_SCHEMA_VERSION,
     repository,
     commitSha: normalizeSha(sha),
-    branch: clean(branch) || null,
+    branch: normalizedBranch,
     generatedAt: observedAt.toISOString(),
     source: {provider: 'github-check-runs', exactRef: 'commit-sha', dedupe: 'latest-by-app-and-name', includesAllDiscoveredChecks: true, excludesObserverCheck: true},
     runner: {provider: 'github-actions', runId: clean(runId) || null, observerState, authoritativeForMerge: false},
-    aggregate: aggregateTestLedger(checks, requiredSignalNames),
+    providerMembrane: normalizedProviderMembrane,
+    externalEffects: {
+      cloudflareNonMainProductionBuild: cloudflareProductionState,
+      policy: 'fail when cloudflare-workers-and-pages points a non-main exact head at /production/builds/',
+    },
+    aggregate,
     checks,
   };
 }
 
 async function githubJson(url, token) {
   const response = await fetch(url, {headers: {Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'User-Agent': 'control-room-test-ledger', 'X-GitHub-Api-Version': '2022-11-28'}});
-  if (!response.ok) throw new Error(`GitHub check lookup failed (${response.status}): ${(await response.text()).slice(0, 500)}`);
+  if (!response.ok) throw new Error(`GitHub lookup failed (${response.status}): ${(await response.text()).slice(0, 500)}`);
   return response.json();
 }
 
@@ -125,6 +175,19 @@ async function fetchAllCheckRuns({repository, sha, token}) {
     if (pageRuns.length < 100) break;
   }
   return runs;
+}
+
+export async function fetchGithubProviderMembrane({repository, token}) {
+  const [owner, repo] = clean(repository).split('/');
+  if (!owner || !repo) throw new Error('GITHUB_REPOSITORY must use owner/repo format.');
+  const repositoryState = await githubJson(`https://api.github.com/repos/${owner}/${repo}`, token);
+  const mainState = await githubJson(`https://api.github.com/repos/${owner}/${repo}/branches/main`, token);
+  const result = {
+    repositoryPrivate: repositoryState?.private === true,
+    visibility: clean(repositoryState?.visibility) || null,
+    mainProtected: mainState?.protected === true,
+  };
+  return {...result, state: githubProviderMembraneState(result)};
 }
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -154,6 +217,7 @@ export async function observeExactHeadChecks(env = process.env) {
   const minimumObservationMs = Number(env.CONTROL_ROOM_LEDGER_MINIMUM_MS || 30_000);
   if (!repository || !sha || !token) throw new Error('GITHUB_REPOSITORY, EXPECTED_HEAD_SHA/GITHUB_SHA, and GITHUB_TOKEN are required.');
   const requiredSignalNames = loadRequiredSignalNames();
+  const providerMembrane = await fetchGithubProviderMembrane({repository, token});
 
   const startedAt = Date.now();
   let stableTerminalPolls = 0;
@@ -162,8 +226,8 @@ export async function observeExactHeadChecks(env = process.env) {
   let reachedStableTerminal = false;
   while (Date.now() - startedAt < timeoutMs) {
     checks = selectLatestChecks(await fetchAllCheckRuns({repository, sha, token}), sha, observerCheckName);
-    writeLedger(outputPath, buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames}));
-    const fingerprint = JSON.stringify(checks.map((check) => [check.app, check.name, check.state]));
+    writeLedger(outputPath, buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, providerMembrane}));
+    const fingerprint = JSON.stringify(checks.map((check) => [check.app, check.name, check.state, check.detailsUrl]));
     const terminal = !checks.some((check) => check.state === 'queued' || check.state === 'running');
     const oldEnough = Date.now() - startedAt >= minimumObservationMs;
     stableTerminalPolls = terminal && oldEnough && fingerprint === previousFingerprint ? stableTerminalPolls + 1 : 0;
@@ -172,9 +236,11 @@ export async function observeExactHeadChecks(env = process.env) {
     await sleep(pollMs);
   }
 
-  const ledger = buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, observerState: reachedStableTerminal ? 'stable' : 'window-expired'});
+  const ledger = buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, providerMembrane, observerState: reachedStableTerminal ? 'stable' : 'window-expired'});
   writeLedger(outputPath, ledger);
   if (ledger.aggregate.counts.total === 0) throw new Error(`No exact-head checks were discovered. Evidence: ${outputPath}`);
+  if (ledger.providerMembrane.state !== 'passed') throw new Error(`GitHub provider membrane failed: repositoryPrivate=${ledger.providerMembrane.repositoryPrivate} mainProtected=${ledger.providerMembrane.mainProtected}. Evidence: ${outputPath}`);
+  if (ledger.aggregate.state === 'failed') throw new Error(`Exact-head ledger failed closed. Evidence: ${outputPath}`);
   console.log(JSON.stringify(ledger, null, 2));
   return ledger;
 }
