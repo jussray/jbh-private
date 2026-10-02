@@ -58,7 +58,7 @@ test("private contact ingress preserves customer-data and abuse boundaries", asy
   assert.match(handoff, /startup_failure/);
 });
 
-test("production contact deployment is manual, exact-head, locked, and fail-closed", async () => {
+test("production contact deployment is manual, exact-head, locked, private-compatible, and fail-closed", async () => {
   const [workflow, exactHeadWorkflow, packageManifest, packageLockManifest] = await Promise.all([
     read(".github/workflows/deploy-contact-ingress.yml"),
     read(".github/workflows/contact-ingress-exact-head.yml"),
@@ -70,6 +70,8 @@ test("production contact deployment is manual, exact-head, locked, and fail-clos
   assert.match(workflow, /DEPLOY_JBH_CONTACT_INGRESS/);
   assert.match(workflow, /test \"\$GITHUB_REF\" = \"refs\/heads\/main\"/);
   assert.match(workflow, /EXPECTED_HEAD_SHA: \$\{\{ github\.sha \}\}/);
+  assert.match(workflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(workflow, /https:\/\/x-access-token:\$\{GH_TOKEN\}@github\.com\/\$\{GITHUB_REPOSITORY\}\.git/);
   assert.match(workflow, /git fetch --depth=1 origin \"\$EXPECTED_HEAD_SHA\"/);
   assert.match(workflow, /actual=\"\$\(git rev-parse HEAD\)\"/);
   assert.match(workflow, /test \"\$actual\" = \"\$EXPECTED_HEAD_SHA\"/);
@@ -95,6 +97,8 @@ test("production contact deployment is manual, exact-head, locked, and fail-clos
 
   assert.match(exactHeadWorkflow, /admin\/migrations\/011_contact_ingress_safety\.sql/);
   assert.match(exactHeadWorkflow, /package-lock\.json/);
+  assert.match(exactHeadWorkflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(exactHeadWorkflow, /https:\/\/x-access-token:\$\{GH_TOKEN\}@github\.com\/\$\{GITHUB_REPOSITORY\}\.git/);
   assert.match(exactHeadWorkflow, /git fetch --depth=1 origin \"\$EXPECTED_HEAD_SHA\"/);
   assert.match(exactHeadWorkflow, /\/opt\/hostedtoolcache\/node/);
   assert.match(exactHeadWorkflow, /grep -E '\^v24\\\.'/);
