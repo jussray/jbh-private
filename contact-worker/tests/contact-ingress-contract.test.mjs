@@ -50,7 +50,9 @@ test("private contact ingress preserves customer-data and abuse boundaries", asy
   assert.equal(contactManifest.routes, undefined);
   assert.equal(contactManifest.vars, undefined);
 
-  assert.match(handoff, /Authoritative private operations repository: `jussray\/jbh-private`/);
+  assert.match(handoff, /Intended private operations repository: `jussray\/jbh-private`/);
+  assert.match(handoff, /visibility: public/);
+  assert.match(handoff, /Source merge authority is blocked/);
   assert.match(handoff, /011_contact_ingress_safety\.sql/);
   assert.match(handoff, /Make remains downstream and disabled/);
   assert.match(handoff, /startup_failure/);
@@ -67,7 +69,13 @@ test("production contact deployment is manual, exact-head, locked, and fail-clos
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /DEPLOY_JBH_CONTACT_INGRESS/);
   assert.match(workflow, /test \"\$GITHUB_REF\" = \"refs\/heads\/main\"/);
-  assert.match(workflow, /ref: \$\{\{ github\.sha \}\}/);
+  assert.match(workflow, /EXPECTED_HEAD_SHA: \$\{\{ github\.sha \}\}/);
+  assert.match(workflow, /git fetch --depth=1 origin \"\$EXPECTED_HEAD_SHA\"/);
+  assert.match(workflow, /actual=\"\$\(git rev-parse HEAD\)\"/);
+  assert.match(workflow, /test \"\$actual\" = \"\$EXPECTED_HEAD_SHA\"/);
+  assert.match(workflow, /\/opt\/hostedtoolcache\/node/);
+  assert.match(workflow, /EXPECTED_NPM_VERSION: "10\.9\.2"/);
+  assert.match(workflow, /npx --yes \"npm@\$\{EXPECTED_NPM_VERSION\}\" ci/);
   assert.match(workflow, /npm run verify:contact-ingress/);
   assert.match(workflow, /invalid_route_pattern/);
   assert.match(workflow, /route_outside_zone/);
@@ -81,6 +89,8 @@ test("production contact deployment is manual, exact-head, locked, and fail-clos
   assert.match(workflow, /deploy --strict --secrets-file \"\$RUNNER_TEMP\/contact-secrets\.json\" --config \"\$CONTACT_WRANGLER_CONFIG\"/);
   assert.doesNotMatch(workflow, /push:/);
   assert.doesNotMatch(workflow, /pull_request:/);
+  assert.doesNotMatch(workflow, /\buses:/);
+  assert.doesNotMatch(workflow, /actions\/checkout|actions\/setup-node/);
   assert.doesNotMatch(workflow, /echo .*DATABASE_URL|echo .*TURNSTILE_SECRET_KEY/);
 
   assert.match(exactHeadWorkflow, /admin\/migrations\/011_contact_ingress_safety\.sql/);
@@ -103,6 +113,8 @@ test("production contact deployment is manual, exact-head, locked, and fail-clos
   assert.equal(packageLock.lockfileVersion, 3);
   assert.deepEqual(packageLock.packages[""].dependencies, packageJson.dependencies);
   assert.deepEqual(packageLock.packages[""].devDependencies, packageJson.devDependencies);
+  assert.equal(packageJson.dependencies["apify-client"], "2.20.0");
+  assert.equal(packageLock.packages["node_modules/apify-client"].version, "2.20.0");
   assert.equal(
     packageJson.scripts["dry-run:contact"],
     "wrangler deploy --dry-run --config contact-worker/wrangler.jsonc --outdir .wrangler/contact-dry-run",
