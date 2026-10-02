@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
-import {aggregateTestLedger, buildTestLedger, cloudflareProductionEffectState, mapCheckState, requiredSignalState, selectLatestChecks} from '../scripts/control-room-test-ledger.mjs';
+import {aggregateTestLedger, buildTestLedger, cloudflareProductionEffectState, githubProviderMembraneState, mapCheckState, requiredSignalState, selectLatestChecks} from '../scripts/control-room-test-ledger.mjs';
 
 const SHA = '660325d3575fc81bdfa7fd7d6001016bad20cf21';
 const workflow = readFileSync(new URL('../.github/workflows/control-room-test-ledger.yml', import.meta.url), 'utf8');
@@ -70,12 +70,40 @@ test('fails closed when a non-main exact head receives a Cloudflare production b
   assert.equal(cloudflareProductionEffectState(checks, 'main'), 'passed');
 });
 
+test('requires both private repository visibility and protected main', () => {
+  assert.equal(githubProviderMembraneState({repositoryPrivate: true, mainProtected: true}), 'passed');
+  assert.equal(githubProviderMembraneState({repositoryPrivate: false, mainProtected: true}), 'failed');
+  assert.equal(githubProviderMembraneState({repositoryPrivate: true, mainProtected: false}), 'failed');
+  assert.equal(githubProviderMembraneState({repositoryPrivate: false, mainProtected: false}), 'failed');
+});
+
 test('builds sanitized exact-SHA evidence', () => {
-  const ledger = buildTestLedger({repository: 'jussray/jbh-private', sha: SHA, branch: 'main', runId: '1', checks: selectLatestChecks([run()], SHA)});
+  const ledger = buildTestLedger({
+    repository: 'jussray/jbh-private',
+    sha: SHA,
+    branch: 'main',
+    runId: '1',
+    checks: selectLatestChecks([run()], SHA),
+    providerMembrane: {repositoryPrivate: true, visibility: 'private', mainProtected: true},
+  });
   assert.equal(ledger.commitSha, SHA);
   assert.equal(ledger.source.includesAllDiscoveredChecks, true);
   assert.equal(ledger.externalEffects.cloudflareNonMainProductionBuild, 'passed');
+  assert.equal(ledger.providerMembrane.state, 'passed');
   assert.equal(JSON.stringify(ledger).includes('token'), false);
+});
+
+test('marks the ledger failed when GitHub provider state is unsafe', () => {
+  const ledger = buildTestLedger({
+    repository: 'jussray/jbh-private',
+    sha: SHA,
+    branch: 'main',
+    runId: '1',
+    checks: selectLatestChecks([run()], SHA),
+    providerMembrane: {repositoryPrivate: false, visibility: 'public', mainProtected: false},
+  });
+  assert.equal(ledger.providerMembrane.state, 'failed');
+  assert.equal(ledger.aggregate.state, 'failed');
 });
 
 test('keeps the always-on ledger on one GitHub runner', () => {
