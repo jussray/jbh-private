@@ -48,9 +48,10 @@ test('rejects anonymous Git fetch that would fail after repository privatization
   assert.match(failures.join('\n'), /GH_TOKEN|x-access-token/);
 });
 
-test('protects all repaired PR workflows, including production contact deployment', () => {
-  assert.equal(protectedWorkflows.length, 12);
+test('protects all repaired PR workflows, including merge and production membranes', () => {
+  assert.equal(protectedWorkflows.length, 13);
   assert.ok(protectedWorkflows.includes('.github/workflows/deploy-contact-ingress.yml'));
+  assert.ok(protectedWorkflows.includes('.github/workflows/merge-membrane-exact-head.yml'));
   assert.ok(protectedWorkflows.includes('.github/workflows/root-dependency-audit.yml'));
   assert.ok(protectedWorkflows.includes('.github/workflows/workflow-attack-repair-contract.yml'));
 });
