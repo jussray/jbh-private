@@ -2,6 +2,7 @@ import {readFile} from 'node:fs/promises';
 
 export const protectedWorkflows = [
   '.github/workflows/contact-ingress-exact-head.yml',
+  '.github/workflows/deploy-contact-ingress.yml',
   '.github/workflows/security-build.yml',
   '.github/workflows/cookie-contract.yml',
   '.github/workflows/ai-skill-contract-exact-head.yml',
