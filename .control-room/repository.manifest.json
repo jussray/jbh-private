@@ -34,6 +34,42 @@
         "workflow": ".github/workflows/paid-order-reconciliation-exact-head.yml"
       },
       {
+        "id": "shopify-customer-contact-contract",
+        "name": "Shopify customer contact compatibility contract",
+        "kind": "contract",
+        "signalId": "paid-order-exact-head",
+        "required": true,
+        "command": "node --test admin/tests/shopify-customer-contact-contract.test.mjs",
+        "workflow": ".github/workflows/paid-order-reconciliation-exact-head.yml"
+      },
+      {
+        "id": "migration-ledger-contract",
+        "name": "Migration ledger uniqueness contract",
+        "kind": "contract",
+        "signalId": "paid-order-exact-head",
+        "required": true,
+        "command": "node --test admin/tests/migration-ledger-contract.test.mjs",
+        "workflow": ".github/workflows/paid-order-reconciliation-exact-head.yml"
+      },
+      {
+        "id": "shopify-physical-schema-preflight-contract",
+        "name": "Shopify physical schema preflight contract",
+        "kind": "contract",
+        "signalId": "paid-order-exact-head",
+        "required": true,
+        "command": "node --test admin/tests/shopify-physical-schema-preflight-contract.test.mjs",
+        "workflow": ".github/workflows/paid-order-reconciliation-exact-head.yml"
+      },
+      {
+        "id": "vendor-connection-state-contract",
+        "name": "Vendor connection state contract",
+        "kind": "contract",
+        "signalId": "paid-order-exact-head",
+        "required": true,
+        "command": "node --test admin/tests/vendor-connection-state-contract.test.mjs",
+        "workflow": ".github/workflows/paid-order-reconciliation-exact-head.yml"
+      },
+      {
         "id": "admin-build",
         "name": "Private admin production build",
         "kind": "build",
@@ -54,7 +90,14 @@
         "admin/payment-worker/src/shopify-physical-webhook.ts",
         "admin/payment-worker/src/shopify-physical-order-model.ts",
         "admin/migrations/008_shopify_physical_procurement.sql",
+        "admin/migrations/009_vendor_connection_state.sql",
+        "admin/migrations/011_shopify_customer_contact.sql",
+        "admin/scripts/preflight-shopify-physical-order-schema.mjs",
+        "admin/tests/shopify-customer-contact-contract.test.mjs",
+        "admin/tests/migration-ledger-contract.test.mjs",
+        "admin/tests/shopify-physical-schema-preflight-contract.test.mjs",
         "admin/tests/private-order-worker-shopify-physical-contract.test.mjs",
+        "admin/tests/vendor-connection-state-contract.test.mjs",
         "admin/api/stripe/webhook.ts",
         "admin/api/_lib/storage.ts",
         "admin/shared/schema.ts",
@@ -62,7 +105,8 @@
         "admin/scripts/preflight-paid-order-migration.mjs",
         "admin/tests/paid-order-reconciliation-contract.test.mjs",
         "admin/tests/paid-order-migration-preflight-contract.test.mjs",
-        ".github/workflows/paid-order-reconciliation-exact-head.yml"
+        ".github/workflows/paid-order-reconciliation-exact-head.yml",
+        ".github/workflows/paid-order-production-preflight.yml"
       ],
       "requiredSignals": [
         "paid-order-exact-head"
@@ -79,6 +123,30 @@
           "path": ".github/workflows/paid-order-reconciliation-exact-head.yml",
           "marker": "private-order-worker-shopify-physical-contract.test.mjs",
           "description": "The same exact-head workflow executes the active Shopify paid-order contract."
+        },
+        {
+          "id": "workflow-runs-shopify-customer-contact-contract",
+          "path": ".github/workflows/paid-order-reconciliation-exact-head.yml",
+          "marker": "shopify-customer-contact-contract.test.mjs",
+          "description": "The same exact-head workflow separately verifies email-or-phone Shopify customer contact compatibility and migration 011 safety."
+        },
+        {
+          "id": "workflow-runs-migration-ledger-contract",
+          "path": ".github/workflows/paid-order-reconciliation-exact-head.yml",
+          "marker": "migration-ledger-contract.test.mjs",
+          "description": "The same exact-head workflow preserves the known historical 010 collision while rejecting any new duplicate numbered migration."
+        },
+        {
+          "id": "workflow-runs-shopify-schema-preflight-contract",
+          "path": ".github/workflows/paid-order-reconciliation-exact-head.yml",
+          "marker": "shopify-physical-schema-preflight-contract.test.mjs",
+          "description": "The same exact-head workflow separately verifies the read-only active-lane database preflight contract."
+        },
+        {
+          "id": "workflow-runs-vendor-state-contract",
+          "path": ".github/workflows/paid-order-reconciliation-exact-head.yml",
+          "marker": "vendor-connection-state-contract.test.mjs",
+          "description": "The same exact-head workflow separately verifies supplier-connection state and migration 009 safety."
         },
         {
           "id": "workflow-runs-private-build",

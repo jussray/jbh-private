@@ -27,7 +27,7 @@
       "SHOPIFY_SHOP_DOMAIN matches shopDomain",
       "SHOPIFY_WEBHOOK_SECRET is configured outside source",
       "Shopify orders/paid subscription targets the private paidWebhookPath",
-      "admin/migrations/008_shopify_physical_procurement.sql is applied to the intended private database",
+      "read-only Shopify physical-order schema preflight passes on the intended private database, including the customer email-or-phone invariant",
       "signed synthetic paid webhook is accepted once, duplicate is idempotent, invalid signature is rejected"
     ]
   }

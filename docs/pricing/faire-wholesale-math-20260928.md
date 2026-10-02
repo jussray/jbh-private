@@ -4,36 +4,26 @@ Source: Shopify Admin 8qp1z2-az, vendor:JBH, status:ACTIVE, ProductVariant.price
 
 ## Founder answer
 
-- Faire's default price (retail ÷ 2) nets between -$113.41 and -$1.48 per unit on the 158 costed variants. Never publish to Faire before setting wholesale prices.
-- Setting a variant at or above its **Floor wholesale** means no Faire channel loses money: Faire Direct keeps 15%, reorders stay positive, and a new retailer's first order at the $100 minimum breaks even or better. This holds only if the Faire first-order minimum is set to $100 or more and shipping is covered as stated below.
-- **Worth listing at the floor (1):** body-wave-human-hair-bundles 12" → $42.00.
-- **Not viable at current retail (157):** the floor leaves retailers less than 1.6× markup. Making them work means raising retail to the "Retail needed for keystone" column, a founder decision that also changes jussbeautifulhair.com prices.
-- **Hold (15):** no unit cost in Shopify. Add the cost, then rerun this script.
+- **Faire's default price (retail ÷ 2) loses money on every costed variant**: from $1.48 to $113.41 per unit. Do not publish products to Faire before setting wholesale prices.
+- **Rule that guarantees no loss:** set each variant's Faire wholesale price at or above its **Floor wholesale** below. At the floor, Faire Direct orders (retailers you invite, 0% commission) keep a 15% profit, and marketplace orders are break-even or better.
+- **Worth listing now (30 variants):** Lawless Body Wave 10"–26", Lawless Loose Wave 10"–22", Lawless Deep Wave 10"–22", Flawless Kinky Straight 14"–26". At the floor price, retailers still get at least 1.6× markup. Sell these through Faire Direct for profit.
+- **Not viable at current retail (128 variants):** every bundle deal, transparent closure/frontal, Straight, Spanish Wave, Afro Kinky, Kinky Curly, Juss Blonde, and the longest Lawless/Flawless lengths. The floor wholesale is too close to retail for any shop to buy. Making them work on Faire means raising retail to the "Retail needed for keystone" column. That is a separate founder pricing decision because it changes the jussbeautifulhair.com price too.
+- **Hold (15 variants):** the 9 original JBH products (bone straight, Royal Indian, HD closures and frontal, the 4 wigs) have no unit cost in Shopify. Add their cost, then rerun this script.
 - **Remove from Faire:** the Hair Match Session + $25 credit is a retail consultation, not a wholesale product.
-
-Listable variants by first-order minimum:
-
-| First-order minimum (wholesale $) | Listable variants |
-|---|---|
-| $100 | 1 |
-| $150 | 10 |
-| $250 | 14 |
 
 ## Formula
 
-- First-order fee rate f = new-retailer fee ÷ first-order minimum (worst case: an order exactly at the minimum)
-- Net per unit = wholesale × (1 − commission − processing − f on first orders) − unit cost − shipping per unit
-- Wholesale for a profit share s = (unit cost + shipping) ÷ (1 − commission − processing − f − s)
-- Floor wholesale = ceil(max(Faire Direct at the target profit, marketplace first order at break-even)); at the floor no Faire channel loses money
+- Net per unit = wholesale × (1 − commission − processing) − unit cost − shipping per unit
+- Minimum wholesale = (unit cost + shipping) ÷ (1 − commission − processing − target profit share)
 - Faire default wholesale = retail ÷ 2 (keystone)
-- Keystone retail needed = 2 × max(floor, marketplace first order at the target profit)
+- Keystone retail needed = 2 × minimum marketplace wholesale
+- Floor wholesale = ceil(minimum Faire Direct wholesale); at the floor a marketplace order is break-even or better
 
 ## Assumptions (confirm in the Faire brand dashboard)
 
-- Marketplace commission 15%, Faire Direct 0%, processing 3.5% (worst case)
-- $10 new-retailer fee against a $100 first-order minimum (10% of a minimum order); **set that minimum in Faire** or the floor no longer covers the fee
-- Target profit 15% of wholesale; retailer markup floor 1.6×
-- Shipping per unit $0.00. Unknown for dropshipped goods; if JBH pays shipping on Faire orders, rerun with SHIPPING_PER_UNIT or the floor does not cover it
+- Marketplace commission 15%, Faire Direct 0%, processing 3.5000000000000004% (worst case)
+- $10 new-retailer first-order fee is per order and not included per unit
+- Target profit 15% of wholesale; retailer markup floor 1.6×; shipping per unit $0.00 (unknown for dropshipped goods)
 
 ## Summary
 
@@ -41,12 +31,12 @@ Listable variants by first-order minimum:
 |---|---|
 | NOT_A_WHOLESALE_PRODUCT | 1 |
 | HOLD_UNKNOWN_COST | 15 |
-| NOT_PROFITABLE_ON_FAIRE | 157 |
-| LIST_AT_FLOOR | 1 |
+| NOT_PROFITABLE_ON_FAIRE | 128 |
+| FAIRE_DIRECT_ONLY | 30 |
 
 ## Ledger
 
-| Product | Option | Retail | Cost | Faire default wholesale | Net at default | Floor wholesale | Net at floor: Direct / reorder / first order | Retail needed for keystone | Verdict |
+| Product | Option | Retail | Cost | Faire default wholesale | Net at default | Floor wholesale | Net at floor (Direct / marketplace) | Retail needed for keystone | Verdict |
 |---|---|---|---|---|---|---|---|---|---|
 | juss-hair-match-session-25-purchase-credit | Hair Match Session | $25.00 | — | — | — | — | — | — | NOT_A_WHOLESALE_PRODUCT |
 | lawless-bone-straight-bundle-raw-vietnamese | 14" | $75.00 | — | — | — | — | — | — | HOLD_UNKNOWN_COST |
@@ -64,161 +54,161 @@ Listable variants by first-order minimum:
 | flawless-13-4-lace-frontal-wig-straight | 22" | $215.00 | — | — | — | — | — | — | HOLD_UNKNOWN_COST |
 | flawless-deep-wave-u-part-wig | 20" | $145.00 | — | — | — | — | — | — | HOLD_UNKNOWN_COST |
 | flawless-13-6-body-wave-bob-wig | 10" bob | $135.00 | — | — | — | — | — | — | HOLD_UNKNOWN_COST |
-| deep-wave-4x4-transparent-lace-closure | 12" | $39.99 | $28.00 | $20.00 | -$11.70 | $40.00 | $10.60 / $4.60 / $0.60 | $99.12 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-4x4-transparent-lace-closure | 14" | $43.99 | $31.00 | $22.00 | -$13.07 | $44.00 | $11.46 / $4.86 / $0.46 | $109.73 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-4x4-transparent-lace-closure | 16" | $46.99 | $33.00 | $23.50 | -$13.85 | $47.00 | $12.35 / $5.31 / $0.60 | $116.81 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-4x4-transparent-lace-closure | 18" | $53.99 | $38.00 | $27.00 | -$15.99 | $54.00 | $14.11 / $6.01 / $0.61 | $134.51 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundle-deal | 10"/12"/14" | $127.99 | $91.00 | $64.00 | -$38.84 | $128.00 | $32.52 / $13.32 / $0.52 | $322.12 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundle-deal | 12"/14"/16" | $144.99 | $103.00 | $72.50 | -$43.91 | $145.00 | $36.92 / $15.17 / $0.67 | $364.60 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundle-deal | 14"/16"/18" | $163.99 | $117.00 | $82.00 | -$50.17 | $164.00 | $41.26 / $16.66 / $0.26 | $414.16 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundle-deal | 16"/18"/20" | $187.99 | $134.00 | $94.00 | -$57.39 | $188.00 | $47.42 / $19.22 / $0.42 | $474.34 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundle-deal | 18"/20"/22" | $211.99 | $151.00 | $106.00 | -$64.61 | $212.00 | $53.58 / $21.78 / $0.58 | $534.51 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundle-deal | 20"/22"/24" | $236.99 | $169.00 | $118.50 | -$72.42 | $237.00 | $59.70 / $24.16 / $0.45 | $598.23 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundle-deal | 22"/24"/26" | $267.99 | $191.00 | $134.00 | -$81.79 | $268.00 | $67.62 / $27.42 / $0.62 | $676.11 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundle-deal | 24"/26"/28" | $298.99 | $213.00 | $149.50 | -$91.16 | $298.00 | $74.57 / $29.87 / $0.07 | $753.98 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundle-deal | 26"/28"/30" | $333.99 | $238.00 | $167.00 | -$101.90 | $333.00 | $83.34 / $33.39 / $0.09 | $842.48 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundle-deal | 28"/30"/32" | $362.99 | $259.00 | $181.50 | -$111.08 | $363.00 | $91.30 / $36.84 / $0.55 | $916.81 | NOT_PROFITABLE_ON_FAIRE |
-| afro-kinky-human-hair-bundle-deal | 12"/14"/16" | $161.99 | $115.00 | $81.00 | -$48.98 | $161.00 | $40.37 / $16.22 / $0.11 | $407.08 | NOT_PROFITABLE_ON_FAIRE |
-| afro-kinky-human-hair-bundle-deal | 14"/16"/18" | $180.99 | $129.00 | $90.50 | -$55.24 | $181.00 | $45.66 / $18.51 / $0.41 | $456.64 | NOT_PROFITABLE_ON_FAIRE |
-| afro-kinky-human-hair-bundle-deal | 16"/18"/20" | $204.99 | $146.00 | $102.50 | -$62.46 | $205.00 | $51.82 / $21.07 / $0.57 | $516.81 | NOT_PROFITABLE_ON_FAIRE |
-| straight-13x4-transparent-lace-frontal | 14" | $63.99 | $45.00 | $32.00 | -$18.92 | $63.00 | $15.79 / $6.34 / $0.04 | $159.29 | NOT_PROFITABLE_ON_FAIRE |
-| straight-13x4-transparent-lace-frontal | 16" | $75.99 | $54.00 | $37.99 | -$23.04 | $76.00 | $19.34 / $7.94 / $0.34 | $191.15 | NOT_PROFITABLE_ON_FAIRE |
-| straight-13x4-transparent-lace-frontal | 18" | $85.99 | $61.00 | $43.00 | -$25.96 | $86.00 | $21.99 / $9.09 / $0.49 | $215.93 | NOT_PROFITABLE_ON_FAIRE |
-| straight-13x4-transparent-lace-frontal | 20" | $96.99 | $69.00 | $48.50 | -$29.47 | $97.00 | $24.61 / $10.05 / $0.36 | $244.25 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-13x4-transparent-lace-frontal | 14" | $68.99 | $49.00 | $34.49 | -$20.89 | $69.00 | $17.58 / $7.24 / $0.34 | $173.45 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-13x4-transparent-lace-frontal | 16" | $81.99 | $58.00 | $41.00 | -$24.58 | $82.00 | $21.13 / $8.83 / $0.63 | $205.31 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-13x4-transparent-lace-frontal | 18" | $91.99 | $65.00 | $46.00 | -$27.51 | $91.00 | $22.82 / $9.16 / $0.06 | $230.09 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-13x4-transparent-lace-frontal | 20" | $100.99 | $72.00 | $50.50 | -$30.84 | $101.00 | $25.47 / $10.31 / $0.22 | $254.87 | NOT_PROFITABLE_ON_FAIRE |
-| straight-4x4-transparent-lace-closure | 12" | $36.99 | $26.00 | $18.50 | -$10.92 | $37.00 | $9.70 / $4.15 / $0.45 | $92.04 | NOT_PROFITABLE_ON_FAIRE |
-| straight-4x4-transparent-lace-closure | 14" | $42.99 | $30.00 | $21.50 | -$12.48 | $42.00 | $10.53 / $4.23 / $0.03 | $106.19 | NOT_PROFITABLE_ON_FAIRE |
-| straight-4x4-transparent-lace-closure | 16" | $43.99 | $31.00 | $22.00 | -$13.07 | $44.00 | $11.46 / $4.86 / $0.46 | $109.73 | NOT_PROFITABLE_ON_FAIRE |
-| straight-4x4-transparent-lace-closure | 18" | $50.99 | $36.00 | $25.50 | -$15.22 | $51.00 | $13.21 / $5.56 / $0.46 | $127.43 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-4x4-transparent-lace-closure | 14" | $43.99 | $31.00 | $22.00 | -$13.07 | $44.00 | $11.46 / $4.86 / $0.46 | $109.73 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-4x4-transparent-lace-closure | 16" | $46.99 | $33.00 | $23.50 | -$13.85 | $47.00 | $12.35 / $5.31 / $0.60 | $116.81 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-4x4-transparent-lace-closure | 18" | $53.99 | $38.00 | $27.00 | -$15.99 | $54.00 | $14.11 / $6.01 / $0.61 | $134.51 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-4x4-transparent-lace-closure | 12" | $39.99 | $28.00 | $20.00 | -$11.70 | $40.00 | $10.60 / $4.60 / $0.60 | $99.12 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-4x4-transparent-lace-closure | 14" | $43.99 | $31.00 | $22.00 | -$13.07 | $44.00 | $11.46 / $4.86 / $0.46 | $109.73 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-4x4-transparent-lace-closure | 16" | $46.99 | $33.00 | $23.50 | -$13.85 | $47.00 | $12.35 / $5.31 / $0.60 | $116.81 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-4x4-transparent-lace-closure | 18" | $53.99 | $38.00 | $27.00 | -$15.99 | $54.00 | $14.11 / $6.01 / $0.61 | $134.51 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundle-deal | 10"/12"/14" | $135.99 | $97.00 | $68.00 | -$41.58 | $136.00 | $34.24 / $13.84 / $0.24 | $343.36 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundle-deal | 12"/14"/16" | $152.99 | $109.00 | $76.50 | -$46.65 | $153.00 | $38.64 / $15.69 / $0.39 | $385.84 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundle-deal | 14"/16"/18" | $172.99 | $123.00 | $86.50 | -$52.50 | $173.00 | $43.94 / $18.00 / $0.69 | $435.40 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundle-deal | 16"/18"/20" | $196.99 | $140.00 | $98.50 | -$59.72 | $196.00 | $49.14 / $19.74 / $0.14 | $495.58 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundle-deal | 18"/20"/22" | $218.99 | $156.00 | $109.50 | -$66.76 | $219.00 | $55.33 / $22.48 / $0.58 | $552.21 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundle-deal | 20"/22"/24" | $243.99 | $174.00 | $122.00 | -$74.57 | $244.00 | $61.46 / $24.86 / $0.46 | $615.93 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundle-deal | 22"/24"/26" | $274.99 | $196.00 | $137.50 | -$83.94 | $275.00 | $69.38 / $28.12 / $0.63 | $693.81 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundle-deal | 24"/26"/28" | $306.99 | $219.00 | $153.50 | -$93.90 | $307.00 | $77.26 / $31.20 / $0.50 | $775.22 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundle-deal | 26"/28"/30" | $341.99 | $244.00 | $171.00 | -$104.64 | $342.00 | $86.03 / $34.73 / $0.53 | $863.72 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundle-deal | 28"/30"/32" | $371.99 | $265.00 | $186.00 | -$113.41 | $371.00 | $93.01 / $37.36 / $0.26 | $938.05 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundle-deal | 10"/12"/14" | $127.99 | $91.00 | $64.00 | -$38.84 | $128.00 | $32.52 / $13.32 / $0.52 | $322.12 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundle-deal | 12"/14"/16" | $144.99 | $103.00 | $72.50 | -$43.91 | $145.00 | $36.92 / $15.17 / $0.67 | $364.60 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundle-deal | 14"/16"/18" | $163.99 | $117.00 | $82.00 | -$50.17 | $164.00 | $41.26 / $16.66 / $0.26 | $414.16 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundle-deal | 16"/18"/20" | $187.99 | $134.00 | $94.00 | -$57.39 | $188.00 | $47.42 / $19.22 / $0.42 | $474.34 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundle-deal | 18"/20"/22" | $211.99 | $151.00 | $106.00 | -$64.61 | $212.00 | $53.58 / $21.78 / $0.58 | $534.51 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundle-deal | 20"/22"/24" | $236.99 | $169.00 | $118.50 | -$72.42 | $237.00 | $59.70 / $24.16 / $0.45 | $598.23 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundle-deal | 22"/24"/26" | $267.99 | $191.00 | $134.00 | -$81.79 | $268.00 | $67.62 / $27.42 / $0.62 | $676.11 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundle-deal | 24"/26"/28" | $298.99 | $213.00 | $149.50 | -$91.16 | $298.00 | $74.57 / $29.87 / $0.07 | $753.98 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundle-deal | 26"/28"/30" | $333.99 | $238.00 | $167.00 | -$101.90 | $333.00 | $83.34 / $33.39 / $0.09 | $842.48 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundle-deal | 28"/30"/32" | $362.99 | $259.00 | $181.50 | -$111.08 | $363.00 | $91.30 / $36.84 / $0.55 | $916.81 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundle-deal | 10"/12"/14" | $135.99 | $97.00 | $68.00 | -$41.58 | $136.00 | $34.24 / $13.84 / $0.24 | $343.36 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundle-deal | 12"/14"/16" | $152.99 | $109.00 | $76.50 | -$46.65 | $153.00 | $38.64 / $15.69 / $0.39 | $385.84 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundle-deal | 14"/16"/18" | $172.99 | $123.00 | $86.50 | -$52.50 | $173.00 | $43.94 / $18.00 / $0.69 | $435.40 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundle-deal | 16"/18"/20" | $196.99 | $140.00 | $98.50 | -$59.72 | $196.00 | $49.14 / $19.74 / $0.14 | $495.58 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundle-deal | 18"/20"/22" | $218.99 | $156.00 | $109.50 | -$66.76 | $219.00 | $55.33 / $22.48 / $0.58 | $552.21 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundle-deal | 20"/22"/24" | $243.99 | $174.00 | $122.00 | -$74.57 | $244.00 | $61.46 / $24.86 / $0.46 | $615.93 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundle-deal | 22"/24"/26" | $274.99 | $196.00 | $137.50 | -$83.94 | $275.00 | $69.38 / $28.12 / $0.63 | $693.81 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundle-deal | 24"/26"/28" | $306.99 | $219.00 | $153.50 | -$93.90 | $307.00 | $77.26 / $31.20 / $0.50 | $775.22 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundle-deal | 26"/28"/30" | $341.99 | $244.00 | $171.00 | -$104.64 | $342.00 | $86.03 / $34.73 / $0.53 | $863.72 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundle-deal | 28"/30"/32" | $371.99 | $265.00 | $186.00 | -$113.41 | $371.00 | $93.01 / $37.36 / $0.26 | $938.05 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundles | 10" | $37.99 | $27.00 | $19.00 | -$11.51 | $38.00 | $9.67 / $3.97 / $0.17 | $95.58 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundles | 12" | $42.99 | $30.00 | $21.50 | -$12.48 | $42.00 | $10.53 / $4.23 / $0.03 | $106.19 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundles | 14" | $47.99 | $34.00 | $24.00 | -$14.44 | $48.00 | $12.32 / $5.12 / $0.32 | $120.35 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundles | 16" | $54.99 | $39.00 | $27.50 | -$16.59 | $55.00 | $14.07 / $5.82 / $0.32 | $138.05 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundles | 18" | $61.99 | $44.00 | $31.00 | -$18.74 | $62.00 | $15.83 / $6.53 / $0.33 | $155.75 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundles | 20" | $71.99 | $51.00 | $35.99 | -$21.67 | $72.00 | $18.48 / $7.68 / $0.48 | $180.53 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundles | 22" | $78.99 | $56.00 | $39.49 | -$23.82 | $79.00 | $20.24 / $8.38 / $0.48 | $198.23 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundles | 24" | $86.99 | $62.00 | $43.50 | -$26.55 | $87.00 | $21.96 / $8.91 / $0.20 | $219.47 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundles | 26" | $102.99 | $73.00 | $51.50 | -$31.03 | $103.00 | $26.39 / $10.94 / $0.64 | $258.41 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundles | 28" | $109.99 | $78.00 | $55.00 | -$33.18 | $110.00 | $28.15 / $11.65 / $0.65 | $276.11 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundles | 30" | $121.99 | $87.00 | $61.00 | -$37.29 | $122.00 | $30.73 / $12.43 / $0.23 | $307.96 | NOT_PROFITABLE_ON_FAIRE |
-| straight-human-hair-bundles | 32" | $131.99 | $94.00 | $66.00 | -$40.21 | $132.00 | $33.38 / $13.58 / $0.38 | $332.74 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundles | 10" | $65.00 | $29.00 | $32.50 | -$2.51 | $41.00 | $10.56 / $4.41 / $0.31 | $102.65 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundles | 12" | $70.00 | $32.00 | $35.00 | -$3.48 | $45.00 | $11.42 / $4.67 / $0.17 | $113.27 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundles | 14" | $80.00 | $36.00 | $40.00 | -$3.40 | $51.00 | $13.21 / $5.56 / $0.46 | $127.43 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundles | 16" | $85.00 | $41.00 | $42.50 | -$6.36 | $58.00 | $14.97 / $6.27 / $0.47 | $145.13 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundles | 18" | $95.00 | $46.00 | $47.50 | -$7.29 | $65.00 | $16.73 / $6.97 / $0.48 | $162.83 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundles | 20" | $110.00 | $53.00 | $55.00 | -$8.18 | $75.00 | $19.38 / $8.12 / $0.63 | $187.61 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundles | 22" | $115.00 | $57.00 | $57.50 | -$10.14 | $80.00 | $20.20 / $8.20 / $0.20 | $201.77 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundles | 24" | $125.00 | $64.00 | $62.50 | -$13.06 | $90.00 | $22.85 / $9.35 / $0.35 | $226.55 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundles | 26" | $145.00 | $75.00 | $72.50 | -$15.91 | $105.00 | $26.33 / $10.57 / $0.08 | $265.49 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundles | 28" | $155.00 | $80.00 | $77.50 | -$16.84 | $112.00 | $28.08 / $11.28 / $0.08 | $283.19 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundles | 30" | $170.00 | $89.00 | $85.00 | -$19.73 | $125.00 | $31.63 / $12.88 / $0.38 | $315.04 | NOT_PROFITABLE_ON_FAIRE |
-| loose-wave-human-hair-bundles | 32" | $185.00 | $96.00 | $92.50 | -$20.61 | $135.00 | $34.28 / $14.02 / $0.52 | $339.82 | NOT_PROFITABLE_ON_FAIRE |
-| blonde-body-wave-human-hair-bundles | 12" | $46.99 | $33.00 | $23.50 | -$13.85 | $47.00 | $12.35 / $5.31 / $0.60 | $116.81 | NOT_PROFITABLE_ON_FAIRE |
-| blonde-body-wave-human-hair-bundles | 14" | $49.99 | $35.00 | $25.00 | -$14.62 | $49.00 | $12.28 / $4.93 / $0.03 | $123.89 | NOT_PROFITABLE_ON_FAIRE |
-| blonde-body-wave-human-hair-bundles | 16" | $58.99 | $42.00 | $29.50 | -$17.96 | $59.00 | $14.93 / $6.08 / $0.18 | $148.67 | NOT_PROFITABLE_ON_FAIRE |
-| blonde-body-wave-human-hair-bundles | 18" | $72.99 | $52.00 | $36.49 | -$22.26 | $73.00 | $18.44 / $7.49 / $0.20 | $184.07 | NOT_PROFITABLE_ON_FAIRE |
-| blonde-body-wave-human-hair-bundles | 20" | $82.99 | $59.00 | $41.50 | -$25.18 | $83.00 | $21.10 / $8.64 / $0.34 | $208.85 | NOT_PROFITABLE_ON_FAIRE |
-| blonde-body-wave-human-hair-bundles | 22" | $91.99 | $65.00 | $46.00 | -$27.51 | $91.00 | $22.82 / $9.16 / $0.06 | $230.09 | NOT_PROFITABLE_ON_FAIRE |
-| blonde-body-wave-human-hair-bundles | 24" | $107.99 | $77.00 | $54.00 | -$32.99 | $108.00 | $27.22 / $11.02 / $0.22 | $272.57 | NOT_PROFITABLE_ON_FAIRE |
-| blonde-body-wave-human-hair-bundles | 26" | $114.99 | $82.00 | $57.50 | -$35.14 | $115.00 | $28.97 / $11.72 / $0.22 | $290.27 | NOT_PROFITABLE_ON_FAIRE |
-| spanish-wave-human-hair-bundles | 12" | $51.99 | $37.00 | $26.00 | -$15.81 | $52.00 | $13.18 / $5.38 / $0.18 | $130.97 | NOT_PROFITABLE_ON_FAIRE |
-| spanish-wave-human-hair-bundles | 14" | $57.99 | $41.00 | $29.00 | -$17.37 | $58.00 | $14.97 / $6.27 / $0.47 | $145.13 | NOT_PROFITABLE_ON_FAIRE |
-| spanish-wave-human-hair-bundles | 16" | $64.99 | $46.00 | $32.49 | -$19.52 | $65.00 | $16.73 / $6.97 / $0.48 | $162.83 | NOT_PROFITABLE_ON_FAIRE |
-| spanish-wave-human-hair-bundles | 18" | $70.99 | $50.00 | $35.49 | -$21.08 | $70.00 | $17.55 / $7.05 / $0.05 | $176.99 | NOT_PROFITABLE_ON_FAIRE |
-| spanish-wave-human-hair-bundles | 20" | $77.99 | $55.00 | $38.99 | -$23.22 | $77.00 | $19.30 / $7.75 / $0.05 | $194.69 | NOT_PROFITABLE_ON_FAIRE |
-| spanish-wave-human-hair-bundles | 22" | $85.99 | $61.00 | $43.00 | -$25.96 | $86.00 | $21.99 / $9.09 / $0.49 | $215.93 | NOT_PROFITABLE_ON_FAIRE |
-| spanish-wave-human-hair-bundles | 24" | $98.99 | $70.00 | $49.50 | -$29.66 | $98.00 | $24.57 / $9.87 / $0.07 | $247.79 | NOT_PROFITABLE_ON_FAIRE |
-| spanish-wave-human-hair-bundles | 26" | $106.99 | $76.00 | $53.50 | -$32.40 | $107.00 | $27.25 / $11.20 / $0.50 | $269.03 | NOT_PROFITABLE_ON_FAIRE |
-| spanish-wave-human-hair-bundles | 28" | $119.99 | $85.00 | $60.00 | -$36.10 | $119.00 | $29.83 / $11.99 / $0.08 | $300.88 | NOT_PROFITABLE_ON_FAIRE |
-| spanish-wave-human-hair-bundles | 30" | $127.99 | $91.00 | $64.00 | -$38.84 | $128.00 | $32.52 / $13.32 / $0.52 | $322.12 | NOT_PROFITABLE_ON_FAIRE |
-| afro-kinky-human-hair-bundles | 12" | $47.99 | $34.00 | $24.00 | -$14.44 | $48.00 | $12.32 / $5.12 / $0.32 | $120.35 | NOT_PROFITABLE_ON_FAIRE |
-| afro-kinky-human-hair-bundles | 14" | $53.99 | $38.00 | $27.00 | -$15.99 | $54.00 | $14.11 / $6.01 / $0.61 | $134.51 | NOT_PROFITABLE_ON_FAIRE |
-| afro-kinky-human-hair-bundles | 16" | $60.99 | $43.00 | $30.50 | -$18.14 | $61.00 | $15.86 / $6.71 / $0.61 | $152.21 | NOT_PROFITABLE_ON_FAIRE |
-| afro-kinky-human-hair-bundles | 18" | $67.99 | $48.00 | $33.99 | -$20.30 | $68.00 | $17.62 / $7.42 / $0.62 | $169.91 | NOT_PROFITABLE_ON_FAIRE |
-| afro-kinky-human-hair-bundles | 20" | $77.99 | $55.00 | $38.99 | -$23.22 | $77.00 | $19.30 / $7.75 / $0.05 | $194.69 | NOT_PROFITABLE_ON_FAIRE |
-| afro-kinky-human-hair-bundles | 22" | $82.99 | $59.00 | $41.50 | -$25.18 | $83.00 | $21.10 / $8.64 / $0.34 | $208.85 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-curly-human-hair-bundles | 10" | $43.99 | $31.00 | $22.00 | -$13.07 | $44.00 | $11.46 / $4.86 / $0.46 | $109.73 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-curly-human-hair-bundles | 12" | $51.99 | $37.00 | $26.00 | -$15.81 | $52.00 | $13.18 / $5.38 / $0.18 | $130.97 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-curly-human-hair-bundles | 14" | $57.99 | $41.00 | $29.00 | -$17.37 | $58.00 | $14.97 / $6.27 / $0.47 | $145.13 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-curly-human-hair-bundles | 16" | $64.99 | $46.00 | $32.49 | -$19.52 | $65.00 | $16.73 / $6.97 / $0.48 | $162.83 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-curly-human-hair-bundles | 18" | $70.99 | $50.00 | $35.49 | -$21.08 | $70.00 | $17.55 / $7.05 / $0.05 | $176.99 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-curly-human-hair-bundles | 20" | $77.99 | $55.00 | $38.99 | -$23.22 | $77.00 | $19.30 / $7.75 / $0.05 | $194.69 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-curly-human-hair-bundles | 22" | $85.99 | $61.00 | $43.00 | -$25.96 | $86.00 | $21.99 / $9.09 / $0.49 | $215.93 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-curly-human-hair-bundles | 24" | $98.99 | $70.00 | $49.50 | -$29.66 | $98.00 | $24.57 / $9.87 / $0.07 | $247.79 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-curly-human-hair-bundles | 26" | $106.99 | $76.00 | $53.50 | -$32.40 | $107.00 | $27.25 / $11.20 / $0.50 | $269.03 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-curly-human-hair-bundles | 28" | $119.99 | $85.00 | $60.00 | -$36.10 | $119.00 | $29.83 / $11.99 / $0.08 | $300.88 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-curly-human-hair-bundles | 30" | $127.99 | $91.00 | $64.00 | -$38.84 | $128.00 | $32.52 / $13.32 / $0.52 | $322.12 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-curly-human-hair-bundles | 32" | $144.99 | $103.00 | $72.50 | -$43.91 | $145.00 | $36.92 / $15.17 / $0.67 | $364.60 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundles | 10" | $65.00 | $29.00 | $32.50 | -$2.51 | $41.00 | $10.56 / $4.41 / $0.31 | $102.65 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundles | 12" | $70.00 | $32.00 | $35.00 | -$3.48 | $45.00 | $11.42 / $4.67 / $0.17 | $113.27 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundles | 14" | $80.00 | $36.00 | $40.00 | -$3.40 | $51.00 | $13.21 / $5.56 / $0.46 | $127.43 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundles | 16" | $85.00 | $41.00 | $42.50 | -$6.36 | $58.00 | $14.97 / $6.27 / $0.47 | $145.13 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundles | 18" | $95.00 | $46.00 | $47.50 | -$7.29 | $65.00 | $16.73 / $6.97 / $0.48 | $162.83 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundles | 20" | $110.00 | $53.00 | $55.00 | -$8.18 | $75.00 | $19.38 / $8.12 / $0.63 | $187.61 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundles | 22" | $115.00 | $57.00 | $57.50 | -$10.14 | $80.00 | $20.20 / $8.20 / $0.20 | $201.77 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundles | 24" | $125.00 | $64.00 | $62.50 | -$13.06 | $90.00 | $22.85 / $9.35 / $0.35 | $226.55 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundles | 26" | $145.00 | $75.00 | $72.50 | -$15.91 | $105.00 | $26.33 / $10.57 / $0.08 | $265.49 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundles | 28" | $155.00 | $80.00 | $77.50 | -$16.84 | $112.00 | $28.08 / $11.28 / $0.08 | $283.19 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundles | 30" | $170.00 | $89.00 | $85.00 | -$19.73 | $125.00 | $31.63 / $12.88 / $0.38 | $315.04 | NOT_PROFITABLE_ON_FAIRE |
-| deep-wave-human-hair-bundles | 32" | $185.00 | $96.00 | $92.50 | -$20.61 | $135.00 | $34.28 / $14.02 / $0.52 | $339.82 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundles | 10" | $60.00 | $27.00 | $30.00 | -$2.55 | $38.00 | $9.67 / $3.97 / $0.17 | $95.58 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundles | 12" | $70.00 | $30.00 | $35.00 | -$1.48 | $42.00 | $10.53 / $4.23 / $0.03 | $106.19 | LIST_AT_FLOOR |
-| body-wave-human-hair-bundles | 14" | $75.00 | $34.00 | $37.50 | -$3.44 | $48.00 | $12.32 / $5.12 / $0.32 | $120.35 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundles | 16" | $85.00 | $39.00 | $42.50 | -$4.36 | $55.00 | $14.07 / $5.82 / $0.32 | $138.05 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundles | 18" | $90.00 | $44.00 | $45.00 | -$7.33 | $62.00 | $15.83 / $6.53 / $0.33 | $155.75 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundles | 20" | $105.00 | $51.00 | $52.50 | -$8.21 | $72.00 | $18.48 / $7.68 / $0.48 | $180.53 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundles | 22" | $115.00 | $56.00 | $57.50 | -$9.14 | $79.00 | $20.24 / $8.38 / $0.48 | $198.23 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundles | 24" | $125.00 | $62.00 | $62.50 | -$11.06 | $87.00 | $21.96 / $8.91 / $0.20 | $219.47 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundles | 26" | $145.00 | $73.00 | $72.50 | -$13.91 | $103.00 | $26.39 / $10.94 / $0.64 | $258.41 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundles | 28" | $150.00 | $78.00 | $75.00 | -$16.88 | $110.00 | $28.15 / $11.65 / $0.65 | $276.11 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundles | 30" | $170.00 | $87.00 | $85.00 | -$17.73 | $122.00 | $30.73 / $12.43 / $0.23 | $307.96 | NOT_PROFITABLE_ON_FAIRE |
-| body-wave-human-hair-bundles | 32" | $180.00 | $94.00 | $90.00 | -$20.65 | $132.00 | $33.38 / $13.58 / $0.38 | $332.74 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-straight-human-hair-bundles | 14" | $85.00 | $41.00 | $42.50 | -$6.36 | $58.00 | $14.97 / $6.27 / $0.47 | $145.13 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-straight-human-hair-bundles | 16" | $95.00 | $46.00 | $47.50 | -$7.29 | $65.00 | $16.73 / $6.97 / $0.48 | $162.83 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-straight-human-hair-bundles | 18" | $105.00 | $50.00 | $52.50 | -$7.21 | $70.00 | $17.55 / $7.05 / $0.05 | $176.99 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-straight-human-hair-bundles | 20" | $110.00 | $55.00 | $55.00 | -$10.18 | $77.00 | $19.30 / $7.75 / $0.05 | $194.69 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-straight-human-hair-bundles | 22" | $120.00 | $61.00 | $60.00 | -$12.10 | $86.00 | $21.99 / $9.09 / $0.49 | $215.93 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-straight-human-hair-bundles | 24" | $140.00 | $70.00 | $70.00 | -$12.95 | $98.00 | $24.57 / $9.87 / $0.07 | $247.79 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-straight-human-hair-bundles | 26" | $155.00 | $76.00 | $77.50 | -$12.84 | $107.00 | $27.25 / $11.20 / $0.50 | $269.03 | NOT_PROFITABLE_ON_FAIRE |
-| kinky-straight-human-hair-bundles | 28" | $165.00 | $85.00 | $82.50 | -$17.76 | $119.00 | $29.83 / $11.99 / $0.08 | $300.88 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-4x4-transparent-lace-closure | 12" | $39.99 | $28.00 | $20.00 | $-11.70 | $35.00 | $5.77 / $0.52 | $84.21 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-4x4-transparent-lace-closure | 14" | $43.99 | $31.00 | $22.00 | $-13.07 | $39.00 | $6.63 / $0.78 | $93.23 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-4x4-transparent-lace-closure | 16" | $46.99 | $33.00 | $23.50 | $-13.85 | $41.00 | $6.56 / $0.41 | $99.25 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-4x4-transparent-lace-closure | 18" | $53.99 | $38.00 | $27.00 | $-15.99 | $47.00 | $7.35 / $0.30 | $114.29 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-human-hair-bundle-deal | 10"/12"/14" | $127.99 | $91.00 | $64.00 | $-38.84 | $112.00 | $17.08 / $0.28 | $273.68 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-human-hair-bundle-deal | 12"/14"/16" | $144.99 | $103.00 | $72.50 | $-43.91 | $127.00 | $19.55 / $0.50 | $309.77 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-human-hair-bundle-deal | 14"/16"/18" | $163.99 | $117.00 | $82.00 | $-50.17 | $144.00 | $21.96 / $0.36 | $351.88 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-human-hair-bundle-deal | 16"/18"/20" | $187.99 | $134.00 | $94.00 | $-57.39 | $165.00 | $25.22 / $0.47 | $403.01 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-human-hair-bundle-deal | 18"/20"/22" | $211.99 | $151.00 | $106.00 | $-64.61 | $186.00 | $28.49 / $0.59 | $454.14 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-human-hair-bundle-deal | 20"/22"/24" | $236.99 | $169.00 | $118.50 | $-72.42 | $208.00 | $31.72 / $0.52 | $508.27 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-human-hair-bundle-deal | 22"/24"/26" | $267.99 | $191.00 | $134.00 | $-81.79 | $235.00 | $35.78 / $0.52 | $574.44 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-human-hair-bundle-deal | 24"/26"/28" | $298.99 | $213.00 | $149.50 | $-91.16 | $262.00 | $39.83 / $0.53 | $640.60 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-human-hair-bundle-deal | 26"/28"/30" | $333.99 | $238.00 | $167.00 | $-101.90 | $293.00 | $44.75 / $0.79 | $715.79 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-human-hair-bundle-deal | 28"/30"/32" | $362.99 | $259.00 | $181.50 | $-111.08 | $318.00 | $47.87 / $0.17 | $778.95 | NOT_PROFITABLE_ON_FAIRE |
+| afro-kinky-human-hair-bundle-deal | 12"/14"/16" | $161.99 | $115.00 | $81.00 | $-48.98 | $142.00 | $22.03 / $0.73 | $345.86 | NOT_PROFITABLE_ON_FAIRE |
+| afro-kinky-human-hair-bundle-deal | 14"/16"/18" | $180.99 | $129.00 | $90.50 | $-55.24 | $159.00 | $24.44 / $0.58 | $387.97 | NOT_PROFITABLE_ON_FAIRE |
+| afro-kinky-human-hair-bundle-deal | 16"/18"/20" | $204.99 | $146.00 | $102.50 | $-62.46 | $180.00 | $27.70 / $0.70 | $439.10 | NOT_PROFITABLE_ON_FAIRE |
+| straight-13x4-transparent-lace-frontal | 14" | $63.99 | $45.00 | $32.00 | $-18.92 | $56.00 | $9.04 / $0.64 | $135.34 | NOT_PROFITABLE_ON_FAIRE |
+| straight-13x4-transparent-lace-frontal | 16" | $75.99 | $54.00 | $37.99 | $-23.04 | $67.00 | $10.66 / $0.60 | $162.41 | NOT_PROFITABLE_ON_FAIRE |
+| straight-13x4-transparent-lace-frontal | 18" | $85.99 | $61.00 | $43.00 | $-25.96 | $75.00 | $11.38 / $0.12 | $183.46 | NOT_PROFITABLE_ON_FAIRE |
+| straight-13x4-transparent-lace-frontal | 20" | $96.99 | $69.00 | $48.50 | $-29.47 | $85.00 | $13.02 / $0.27 | $207.52 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-13x4-transparent-lace-frontal | 14" | $68.99 | $49.00 | $34.49 | $-20.89 | $61.00 | $9.86 / $0.71 | $147.37 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-13x4-transparent-lace-frontal | 16" | $81.99 | $58.00 | $41.00 | $-24.58 | $72.00 | $11.48 / $0.68 | $174.44 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-13x4-transparent-lace-frontal | 18" | $91.99 | $65.00 | $46.00 | $-27.51 | $80.00 | $12.20 / $0.20 | $195.49 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-13x4-transparent-lace-frontal | 20" | $100.99 | $72.00 | $50.50 | $-30.84 | $89.00 | $13.88 / $0.53 | $216.54 | NOT_PROFITABLE_ON_FAIRE |
+| straight-4x4-transparent-lace-closure | 12" | $36.99 | $26.00 | $18.50 | $-10.92 | $32.00 | $4.88 / $0.08 | $78.20 | NOT_PROFITABLE_ON_FAIRE |
+| straight-4x4-transparent-lace-closure | 14" | $42.99 | $30.00 | $21.50 | $-12.48 | $37.00 | $5.70 / $0.15 | $90.23 | NOT_PROFITABLE_ON_FAIRE |
+| straight-4x4-transparent-lace-closure | 16" | $43.99 | $31.00 | $22.00 | $-13.07 | $39.00 | $6.63 / $0.78 | $93.23 | NOT_PROFITABLE_ON_FAIRE |
+| straight-4x4-transparent-lace-closure | 18" | $50.99 | $36.00 | $25.50 | $-15.22 | $45.00 | $7.42 / $0.67 | $108.27 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-4x4-transparent-lace-closure | 14" | $43.99 | $31.00 | $22.00 | $-13.07 | $39.00 | $6.63 / $0.78 | $93.23 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-4x4-transparent-lace-closure | 16" | $46.99 | $33.00 | $23.50 | $-13.85 | $41.00 | $6.56 / $0.41 | $99.25 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-4x4-transparent-lace-closure | 18" | $53.99 | $38.00 | $27.00 | $-15.99 | $47.00 | $7.35 / $0.30 | $114.29 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-4x4-transparent-lace-closure | 12" | $39.99 | $28.00 | $20.00 | $-11.70 | $35.00 | $5.77 / $0.52 | $84.21 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-4x4-transparent-lace-closure | 14" | $43.99 | $31.00 | $22.00 | $-13.07 | $39.00 | $6.63 / $0.78 | $93.23 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-4x4-transparent-lace-closure | 16" | $46.99 | $33.00 | $23.50 | $-13.85 | $41.00 | $6.56 / $0.41 | $99.25 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-4x4-transparent-lace-closure | 18" | $53.99 | $38.00 | $27.00 | $-15.99 | $47.00 | $7.35 / $0.30 | $114.29 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundle-deal | 10"/12"/14" | $135.99 | $97.00 | $68.00 | $-41.58 | $120.00 | $18.80 / $0.80 | $291.73 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundle-deal | 12"/14"/16" | $152.99 | $109.00 | $76.50 | $-46.65 | $134.00 | $20.31 / $0.21 | $327.82 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundle-deal | 14"/16"/18" | $172.99 | $123.00 | $86.50 | $-52.50 | $151.00 | $22.72 / $0.06 | $369.92 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundle-deal | 16"/18"/20" | $196.99 | $140.00 | $98.50 | $-59.72 | $172.00 | $25.98 / $0.18 | $421.05 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundle-deal | 18"/20"/22" | $218.99 | $156.00 | $109.50 | $-66.76 | $192.00 | $29.28 / $0.48 | $469.17 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundle-deal | 20"/22"/24" | $243.99 | $174.00 | $122.00 | $-74.57 | $214.00 | $32.51 / $0.41 | $523.31 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundle-deal | 22"/24"/26" | $274.99 | $196.00 | $137.50 | $-83.94 | $241.00 | $36.57 / $0.41 | $589.47 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundle-deal | 24"/26"/28" | $306.99 | $219.00 | $153.50 | $-93.90 | $269.00 | $40.58 / $0.23 | $658.65 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundle-deal | 26"/28"/30" | $341.99 | $244.00 | $171.00 | $-104.64 | $300.00 | $45.50 / $0.50 | $733.83 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundle-deal | 28"/30"/32" | $371.99 | $265.00 | $186.00 | $-113.41 | $326.00 | $49.59 / $0.69 | $796.99 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundle-deal | 10"/12"/14" | $127.99 | $91.00 | $64.00 | $-38.84 | $112.00 | $17.08 / $0.28 | $273.68 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundle-deal | 12"/14"/16" | $144.99 | $103.00 | $72.50 | $-43.91 | $127.00 | $19.55 / $0.50 | $309.77 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundle-deal | 14"/16"/18" | $163.99 | $117.00 | $82.00 | $-50.17 | $144.00 | $21.96 / $0.36 | $351.88 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundle-deal | 16"/18"/20" | $187.99 | $134.00 | $94.00 | $-57.39 | $165.00 | $25.22 / $0.47 | $403.01 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundle-deal | 18"/20"/22" | $211.99 | $151.00 | $106.00 | $-64.61 | $186.00 | $28.49 / $0.59 | $454.14 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundle-deal | 20"/22"/24" | $236.99 | $169.00 | $118.50 | $-72.42 | $208.00 | $31.72 / $0.52 | $508.27 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundle-deal | 22"/24"/26" | $267.99 | $191.00 | $134.00 | $-81.79 | $235.00 | $35.78 / $0.52 | $574.44 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundle-deal | 24"/26"/28" | $298.99 | $213.00 | $149.50 | $-91.16 | $262.00 | $39.83 / $0.53 | $640.60 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundle-deal | 26"/28"/30" | $333.99 | $238.00 | $167.00 | $-101.90 | $293.00 | $44.75 / $0.79 | $715.79 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundle-deal | 28"/30"/32" | $362.99 | $259.00 | $181.50 | $-111.08 | $318.00 | $47.87 / $0.17 | $778.95 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundle-deal | 10"/12"/14" | $135.99 | $97.00 | $68.00 | $-41.58 | $120.00 | $18.80 / $0.80 | $291.73 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundle-deal | 12"/14"/16" | $152.99 | $109.00 | $76.50 | $-46.65 | $134.00 | $20.31 / $0.21 | $327.82 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundle-deal | 14"/16"/18" | $172.99 | $123.00 | $86.50 | $-52.50 | $151.00 | $22.72 / $0.06 | $369.92 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundle-deal | 16"/18"/20" | $196.99 | $140.00 | $98.50 | $-59.72 | $172.00 | $25.98 / $0.18 | $421.05 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundle-deal | 18"/20"/22" | $218.99 | $156.00 | $109.50 | $-66.76 | $192.00 | $29.28 / $0.48 | $469.17 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundle-deal | 20"/22"/24" | $243.99 | $174.00 | $122.00 | $-74.57 | $214.00 | $32.51 / $0.41 | $523.31 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundle-deal | 22"/24"/26" | $274.99 | $196.00 | $137.50 | $-83.94 | $241.00 | $36.57 / $0.41 | $589.47 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundle-deal | 24"/26"/28" | $306.99 | $219.00 | $153.50 | $-93.90 | $269.00 | $40.58 / $0.23 | $658.65 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundle-deal | 26"/28"/30" | $341.99 | $244.00 | $171.00 | $-104.64 | $300.00 | $45.50 / $0.50 | $733.83 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundle-deal | 28"/30"/32" | $371.99 | $265.00 | $186.00 | $-113.41 | $326.00 | $49.59 / $0.69 | $796.99 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundles | 10" | $37.99 | $27.00 | $19.00 | $-11.51 | $34.00 | $5.81 / $0.71 | $81.20 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundles | 12" | $42.99 | $30.00 | $21.50 | $-12.48 | $37.00 | $5.70 / $0.15 | $90.23 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundles | 14" | $47.99 | $34.00 | $24.00 | $-14.44 | $42.00 | $6.53 / $0.23 | $102.26 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundles | 16" | $54.99 | $39.00 | $27.50 | $-16.59 | $48.00 | $7.32 / $0.12 | $117.29 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundles | 18" | $61.99 | $44.00 | $31.00 | $-18.74 | $54.00 | $8.11 / $0.01 | $132.33 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundles | 20" | $71.99 | $51.00 | $35.99 | $-21.67 | $63.00 | $9.79 / $0.34 | $153.38 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundles | 22" | $78.99 | $56.00 | $39.49 | $-23.82 | $69.00 | $10.58 / $0.23 | $168.42 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundles | 24" | $86.99 | $62.00 | $43.50 | $-26.55 | $77.00 | $12.30 / $0.75 | $186.47 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundles | 26" | $102.99 | $73.00 | $51.50 | $-31.03 | $90.00 | $13.85 / $0.35 | $219.55 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundles | 28" | $109.99 | $78.00 | $55.00 | $-33.18 | $96.00 | $14.64 / $0.24 | $234.59 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundles | 30" | $121.99 | $87.00 | $61.00 | $-37.29 | $107.00 | $16.25 / $0.20 | $261.65 | NOT_PROFITABLE_ON_FAIRE |
+| straight-human-hair-bundles | 32" | $131.99 | $94.00 | $66.00 | $-40.21 | $116.00 | $17.94 / $0.54 | $282.71 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundles | 10" | $65.00 | $29.00 | $32.50 | $-2.51 | $36.00 | $5.74 / $0.34 | $87.22 | FAIRE_DIRECT_ONLY |
+| loose-wave-human-hair-bundles | 12" | $70.00 | $32.00 | $35.00 | $-3.48 | $40.00 | $6.60 / $0.60 | $96.24 | FAIRE_DIRECT_ONLY |
+| loose-wave-human-hair-bundles | 14" | $80.00 | $36.00 | $40.00 | $-3.40 | $45.00 | $7.42 / $0.67 | $108.27 | FAIRE_DIRECT_ONLY |
+| loose-wave-human-hair-bundles | 16" | $85.00 | $41.00 | $42.50 | $-6.36 | $51.00 | $8.21 / $0.56 | $123.31 | FAIRE_DIRECT_ONLY |
+| loose-wave-human-hair-bundles | 18" | $95.00 | $46.00 | $47.50 | $-7.29 | $57.00 | $9.00 / $0.45 | $138.35 | FAIRE_DIRECT_ONLY |
+| loose-wave-human-hair-bundles | 20" | $110.00 | $53.00 | $55.00 | $-8.18 | $66.00 | $10.69 / $0.79 | $159.40 | FAIRE_DIRECT_ONLY |
+| loose-wave-human-hair-bundles | 22" | $115.00 | $57.00 | $57.50 | $-10.14 | $70.00 | $10.55 / $0.05 | $171.43 | FAIRE_DIRECT_ONLY |
+| loose-wave-human-hair-bundles | 24" | $125.00 | $64.00 | $62.50 | $-13.06 | $79.00 | $12.24 / $0.38 | $192.48 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundles | 26" | $145.00 | $75.00 | $72.50 | $-15.91 | $93.00 | $14.74 / $0.80 | $225.56 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundles | 28" | $155.00 | $80.00 | $77.50 | $-16.84 | $99.00 | $15.53 / $0.68 | $240.60 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundles | 30" | $170.00 | $89.00 | $85.00 | $-19.73 | $110.00 | $17.15 / $0.65 | $267.67 | NOT_PROFITABLE_ON_FAIRE |
+| loose-wave-human-hair-bundles | 32" | $185.00 | $96.00 | $92.50 | $-20.61 | $118.00 | $17.87 / $0.17 | $288.72 | NOT_PROFITABLE_ON_FAIRE |
+| blonde-body-wave-human-hair-bundles | 12" | $46.99 | $33.00 | $23.50 | $-13.85 | $41.00 | $6.56 / $0.41 | $99.25 | NOT_PROFITABLE_ON_FAIRE |
+| blonde-body-wave-human-hair-bundles | 14" | $49.99 | $35.00 | $25.00 | $-14.62 | $43.00 | $6.49 / $0.04 | $105.26 | NOT_PROFITABLE_ON_FAIRE |
+| blonde-body-wave-human-hair-bundles | 16" | $58.99 | $42.00 | $29.50 | $-17.96 | $52.00 | $8.18 / $0.38 | $126.32 | NOT_PROFITABLE_ON_FAIRE |
+| blonde-body-wave-human-hair-bundles | 18" | $72.99 | $52.00 | $36.49 | $-22.26 | $64.00 | $9.76 / $0.16 | $156.39 | NOT_PROFITABLE_ON_FAIRE |
+| blonde-body-wave-human-hair-bundles | 20" | $82.99 | $59.00 | $41.50 | $-25.18 | $73.00 | $11.44 / $0.49 | $177.44 | NOT_PROFITABLE_ON_FAIRE |
+| blonde-body-wave-human-hair-bundles | 22" | $91.99 | $65.00 | $46.00 | $-27.51 | $80.00 | $12.20 / $0.20 | $195.49 | NOT_PROFITABLE_ON_FAIRE |
+| blonde-body-wave-human-hair-bundles | 24" | $107.99 | $77.00 | $54.00 | $-32.99 | $95.00 | $14.67 / $0.42 | $231.58 | NOT_PROFITABLE_ON_FAIRE |
+| blonde-body-wave-human-hair-bundles | 26" | $114.99 | $82.00 | $57.50 | $-35.14 | $101.00 | $15.47 / $0.31 | $246.62 | NOT_PROFITABLE_ON_FAIRE |
+| spanish-wave-human-hair-bundles | 12" | $51.99 | $37.00 | $26.00 | $-15.81 | $46.00 | $7.39 / $0.49 | $111.28 | NOT_PROFITABLE_ON_FAIRE |
+| spanish-wave-human-hair-bundles | 14" | $57.99 | $41.00 | $29.00 | $-17.37 | $51.00 | $8.21 / $0.56 | $123.31 | NOT_PROFITABLE_ON_FAIRE |
+| spanish-wave-human-hair-bundles | 16" | $64.99 | $46.00 | $32.49 | $-19.52 | $57.00 | $9.00 / $0.45 | $138.35 | NOT_PROFITABLE_ON_FAIRE |
+| spanish-wave-human-hair-bundles | 18" | $70.99 | $50.00 | $35.49 | $-21.08 | $62.00 | $9.83 / $0.53 | $150.38 | NOT_PROFITABLE_ON_FAIRE |
+| spanish-wave-human-hair-bundles | 20" | $77.99 | $55.00 | $38.99 | $-23.22 | $68.00 | $10.62 / $0.42 | $165.41 | NOT_PROFITABLE_ON_FAIRE |
+| spanish-wave-human-hair-bundles | 22" | $85.99 | $61.00 | $43.00 | $-25.96 | $75.00 | $11.38 / $0.12 | $183.46 | NOT_PROFITABLE_ON_FAIRE |
+| spanish-wave-human-hair-bundles | 24" | $98.99 | $70.00 | $49.50 | $-29.66 | $86.00 | $12.99 / $0.09 | $210.53 | NOT_PROFITABLE_ON_FAIRE |
+| spanish-wave-human-hair-bundles | 26" | $106.99 | $76.00 | $53.50 | $-32.40 | $94.00 | $14.71 / $0.61 | $228.57 | NOT_PROFITABLE_ON_FAIRE |
+| spanish-wave-human-hair-bundles | 28" | $119.99 | $85.00 | $60.00 | $-36.10 | $105.00 | $16.33 / $0.57 | $255.64 | NOT_PROFITABLE_ON_FAIRE |
+| spanish-wave-human-hair-bundles | 30" | $127.99 | $91.00 | $64.00 | $-38.84 | $112.00 | $17.08 / $0.28 | $273.68 | NOT_PROFITABLE_ON_FAIRE |
+| afro-kinky-human-hair-bundles | 12" | $47.99 | $34.00 | $24.00 | $-14.44 | $42.00 | $6.53 / $0.23 | $102.26 | NOT_PROFITABLE_ON_FAIRE |
+| afro-kinky-human-hair-bundles | 14" | $53.99 | $38.00 | $27.00 | $-15.99 | $47.00 | $7.35 / $0.30 | $114.29 | NOT_PROFITABLE_ON_FAIRE |
+| afro-kinky-human-hair-bundles | 16" | $60.99 | $43.00 | $30.50 | $-18.14 | $53.00 | $8.14 / $0.20 | $129.32 | NOT_PROFITABLE_ON_FAIRE |
+| afro-kinky-human-hair-bundles | 18" | $67.99 | $48.00 | $33.99 | $-20.30 | $59.00 | $8.93 / $0.08 | $144.36 | NOT_PROFITABLE_ON_FAIRE |
+| afro-kinky-human-hair-bundles | 20" | $77.99 | $55.00 | $38.99 | $-23.22 | $68.00 | $10.62 / $0.42 | $165.41 | NOT_PROFITABLE_ON_FAIRE |
+| afro-kinky-human-hair-bundles | 22" | $82.99 | $59.00 | $41.50 | $-25.18 | $73.00 | $11.44 / $0.49 | $177.44 | NOT_PROFITABLE_ON_FAIRE |
+| kinky-curly-human-hair-bundles | 10" | $43.99 | $31.00 | $22.00 | $-13.07 | $39.00 | $6.63 / $0.78 | $93.23 | NOT_PROFITABLE_ON_FAIRE |
+| kinky-curly-human-hair-bundles | 12" | $51.99 | $37.00 | $26.00 | $-15.81 | $46.00 | $7.39 / $0.49 | $111.28 | NOT_PROFITABLE_ON_FAIRE |
+| kinky-curly-human-hair-bundles | 14" | $57.99 | $41.00 | $29.00 | $-17.37 | $51.00 | $8.21 / $0.56 | $123.31 | NOT_PROFITABLE_ON_FAIRE |
+| kinky-curly-human-hair-bundles | 16" | $64.99 | $46.00 | $32.49 | $-19.52 | $57.00 | $9.00 / $0.45 | $138.35 | NOT_PROFITABLE_ON_FAIRE |
+| kinky-curly-human-hair-bundles | 18" | $70.99 | $50.00 | $35.49 | $-21.08 | $62.00 | $9.83 / $0.53 | $150.38 | NOT_PROFITABLE_ON_FAIRE |
+| kinky-curly-human-hair-bundles | 20" | $77.99 | $55.00 | $38.99 | $-23.22 | $68.00 | $10.62 / $0.42 | $165.41 | NOT_PROFITABLE_ON_FAIRE |
+| kinky-curly-human-hair-bundles | 22" | $85.99 | $61.00 | $43.00 | $-25.96 | $75.00 | $11.38 / $0.12 | $183.46 | NOT_PROFITABLE_ON_FAIRE |
+| kinky-curly-human-hair-bundles | 24" | $98.99 | $70.00 | $49.50 | $-29.66 | $86.00 | $12.99 / $0.09 | $210.53 | NOT_PROFITABLE_ON_FAIRE |
+| kinky-curly-human-hair-bundles | 26" | $106.99 | $76.00 | $53.50 | $-32.40 | $94.00 | $14.71 / $0.61 | $228.57 | NOT_PROFITABLE_ON_FAIRE |
+| kinky-curly-human-hair-bundles | 28" | $119.99 | $85.00 | $60.00 | $-36.10 | $105.00 | $16.33 / $0.57 | $255.64 | NOT_PROFITABLE_ON_FAIRE |
+| kinky-curly-human-hair-bundles | 30" | $127.99 | $91.00 | $64.00 | $-38.84 | $112.00 | $17.08 / $0.28 | $273.68 | NOT_PROFITABLE_ON_FAIRE |
+| kinky-curly-human-hair-bundles | 32" | $144.99 | $103.00 | $72.50 | $-43.91 | $127.00 | $19.55 / $0.50 | $309.77 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundles | 10" | $65.00 | $29.00 | $32.50 | $-2.51 | $36.00 | $5.74 / $0.34 | $87.22 | FAIRE_DIRECT_ONLY |
+| deep-wave-human-hair-bundles | 12" | $70.00 | $32.00 | $35.00 | $-3.48 | $40.00 | $6.60 / $0.60 | $96.24 | FAIRE_DIRECT_ONLY |
+| deep-wave-human-hair-bundles | 14" | $80.00 | $36.00 | $40.00 | $-3.40 | $45.00 | $7.42 / $0.67 | $108.27 | FAIRE_DIRECT_ONLY |
+| deep-wave-human-hair-bundles | 16" | $85.00 | $41.00 | $42.50 | $-6.36 | $51.00 | $8.21 / $0.56 | $123.31 | FAIRE_DIRECT_ONLY |
+| deep-wave-human-hair-bundles | 18" | $95.00 | $46.00 | $47.50 | $-7.29 | $57.00 | $9.00 / $0.45 | $138.35 | FAIRE_DIRECT_ONLY |
+| deep-wave-human-hair-bundles | 20" | $110.00 | $53.00 | $55.00 | $-8.18 | $66.00 | $10.69 / $0.79 | $159.40 | FAIRE_DIRECT_ONLY |
+| deep-wave-human-hair-bundles | 22" | $115.00 | $57.00 | $57.50 | $-10.14 | $70.00 | $10.55 / $0.05 | $171.43 | FAIRE_DIRECT_ONLY |
+| deep-wave-human-hair-bundles | 24" | $125.00 | $64.00 | $62.50 | $-13.06 | $79.00 | $12.24 / $0.38 | $192.48 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundles | 26" | $145.00 | $75.00 | $72.50 | $-15.91 | $93.00 | $14.74 / $0.80 | $225.56 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundles | 28" | $155.00 | $80.00 | $77.50 | $-16.84 | $99.00 | $15.53 / $0.68 | $240.60 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundles | 30" | $170.00 | $89.00 | $85.00 | $-19.73 | $110.00 | $17.15 / $0.65 | $267.67 | NOT_PROFITABLE_ON_FAIRE |
+| deep-wave-human-hair-bundles | 32" | $185.00 | $96.00 | $92.50 | $-20.61 | $118.00 | $17.87 / $0.17 | $288.72 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-human-hair-bundles | 10" | $60.00 | $27.00 | $30.00 | $-2.55 | $34.00 | $5.81 / $0.71 | $81.20 | FAIRE_DIRECT_ONLY |
+| body-wave-human-hair-bundles | 12" | $70.00 | $30.00 | $35.00 | $-1.48 | $37.00 | $5.70 / $0.15 | $90.23 | FAIRE_DIRECT_ONLY |
+| body-wave-human-hair-bundles | 14" | $75.00 | $34.00 | $37.50 | $-3.44 | $42.00 | $6.53 / $0.23 | $102.26 | FAIRE_DIRECT_ONLY |
+| body-wave-human-hair-bundles | 16" | $85.00 | $39.00 | $42.50 | $-4.36 | $48.00 | $7.32 / $0.12 | $117.29 | FAIRE_DIRECT_ONLY |
+| body-wave-human-hair-bundles | 18" | $90.00 | $44.00 | $45.00 | $-7.33 | $54.00 | $8.11 / $0.01 | $132.33 | FAIRE_DIRECT_ONLY |
+| body-wave-human-hair-bundles | 20" | $105.00 | $51.00 | $52.50 | $-8.21 | $63.00 | $9.79 / $0.34 | $153.38 | FAIRE_DIRECT_ONLY |
+| body-wave-human-hair-bundles | 22" | $115.00 | $56.00 | $57.50 | $-9.14 | $69.00 | $10.58 / $0.23 | $168.42 | FAIRE_DIRECT_ONLY |
+| body-wave-human-hair-bundles | 24" | $125.00 | $62.00 | $62.50 | $-11.06 | $77.00 | $12.30 / $0.75 | $186.47 | FAIRE_DIRECT_ONLY |
+| body-wave-human-hair-bundles | 26" | $145.00 | $73.00 | $72.50 | $-13.91 | $90.00 | $13.85 / $0.35 | $219.55 | FAIRE_DIRECT_ONLY |
+| body-wave-human-hair-bundles | 28" | $150.00 | $78.00 | $75.00 | $-16.88 | $96.00 | $14.64 / $0.24 | $234.59 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-human-hair-bundles | 30" | $170.00 | $87.00 | $85.00 | $-17.73 | $107.00 | $16.25 / $0.20 | $261.65 | NOT_PROFITABLE_ON_FAIRE |
+| body-wave-human-hair-bundles | 32" | $180.00 | $94.00 | $90.00 | $-20.65 | $116.00 | $17.94 / $0.54 | $282.71 | NOT_PROFITABLE_ON_FAIRE |
+| kinky-straight-human-hair-bundles | 14" | $85.00 | $41.00 | $42.50 | $-6.36 | $51.00 | $8.21 / $0.56 | $123.31 | FAIRE_DIRECT_ONLY |
+| kinky-straight-human-hair-bundles | 16" | $95.00 | $46.00 | $47.50 | $-7.29 | $57.00 | $9.00 / $0.45 | $138.35 | FAIRE_DIRECT_ONLY |
+| kinky-straight-human-hair-bundles | 18" | $105.00 | $50.00 | $52.50 | $-7.21 | $62.00 | $9.83 / $0.53 | $150.38 | FAIRE_DIRECT_ONLY |
+| kinky-straight-human-hair-bundles | 20" | $110.00 | $55.00 | $55.00 | $-10.18 | $68.00 | $10.62 / $0.42 | $165.41 | FAIRE_DIRECT_ONLY |
+| kinky-straight-human-hair-bundles | 22" | $120.00 | $61.00 | $60.00 | $-12.10 | $75.00 | $11.38 / $0.12 | $183.46 | FAIRE_DIRECT_ONLY |
+| kinky-straight-human-hair-bundles | 24" | $140.00 | $70.00 | $70.00 | $-12.95 | $86.00 | $12.99 / $0.09 | $210.53 | FAIRE_DIRECT_ONLY |
+| kinky-straight-human-hair-bundles | 26" | $155.00 | $76.00 | $77.50 | $-12.84 | $94.00 | $14.71 / $0.61 | $228.57 | FAIRE_DIRECT_ONLY |
+| kinky-straight-human-hair-bundles | 28" | $165.00 | $85.00 | $82.50 | $-17.76 | $105.00 | $16.33 / $0.57 | $255.64 | NOT_PROFITABLE_ON_FAIRE |

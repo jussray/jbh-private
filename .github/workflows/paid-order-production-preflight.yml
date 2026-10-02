@@ -1,11 +1,13 @@
-name: Paid Order Production Preflight
+name: Shopify Paid Order Production Preflight
 
 on:
   push:
     branches: [main]
     paths:
-      - "admin/migrations/002_unique_stripe_session.sql"
-      - "admin/scripts/preflight-paid-order-migration.mjs"
+      - "admin/migrations/008_shopify_physical_procurement.sql"
+      - "admin/migrations/009_vendor_connection_state.sql"
+      - "admin/migrations/011_shopify_customer_contact.sql"
+      - "admin/scripts/preflight-shopify-physical-order-schema.mjs"
       - "admin/package.json"
       - ".github/workflows/paid-order-production-preflight.yml"
   workflow_dispatch:
@@ -23,7 +25,7 @@ env:
 
 jobs:
   preflight:
-    name: Read-only Neon duplicate and index preflight
+    name: Read-only Shopify physical-order schema preflight
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     environment: production-payments
@@ -56,17 +58,17 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Run read-only migration preflight
+      - name: Run read-only Shopify schema preflight
         id: preflight
         shell: bash
         run: |
           set +e
-          npm run preflight:paid-order-migration
+          npm run preflight:shopify-physical-schema
           code=$?
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit 0
 
-      - name: Publish classified production preflight status
+      - name: Publish classified Shopify production preflight status
         if: always()
         uses: actions/github-script@v7
         env:
@@ -75,18 +77,18 @@ jobs:
         with:
           script: |
             const result = process.env.PREFLIGHT_RESULT;
-            const passed = result.startsWith("passed-");
+            const passed = result === "passed-shopify-physical-schema";
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: process.env.EXPECTED_HEAD_SHA,
               state: passed ? "success" : "failure",
-              context: `paid-order-production-preflight/${result}`,
+              context: `paid-order-production-preflight/shopify-${result}`,
               description: passed
-                ? "Read-only Neon preflight passed"
-                : `Read-only Neon preflight blocked (${process.env.PREFLIGHT_EXIT_CODE})`,
+                ? "Read-only Shopify physical-order schema preflight passed"
+                : `Read-only Shopify schema preflight blocked (${process.env.PREFLIGHT_EXIT_CODE})`,
             });
 
-      - name: Fail when production preflight did not pass
+      - name: Fail when Shopify production preflight did not pass
         if: steps.preflight.outputs.exit_code != '0'
         run: exit 1
