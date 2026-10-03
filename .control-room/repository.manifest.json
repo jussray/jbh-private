@@ -10,7 +10,7 @@
     "requiredSignals": [
       {
         "id": "paid-order-exact-head",
-        "name": "Verify private paid-order control",
+        "name": "Verify private paid-order reconciliation",
         "required": true
       }
     ],

@@ -8,6 +8,7 @@ on:
       - "README.md"
       - "wrangler.toml"
       - "scripts/verify-commerce-seam.mjs"
+      - "scripts/verify-cloudflare-worker-identity.mjs"
       - "admin/README.md"
       - "admin/payment-worker/**"
       - "admin/tests/private-order-worker-contract.test.mjs"
@@ -22,9 +23,14 @@ on:
       - "admin/migrations/008_shopify_physical_procurement.sql"
       - "admin/migrations/009_vendor_connection_state.sql"
       - "admin/migrations/011_shopify_customer_contact.sql"
+      - "admin/migrations/012_dropship_beauty_sku_families.sql"
+      - "admin/migrations/013_dispatch_authority_gate.sql"
+      - "admin/migrations/014_shopify_physical_dispatch_gate.sql"
       - "admin/scripts/preflight-shopify-physical-order-schema.mjs"
       - "admin/tests/shopify-physical-schema-preflight-contract.test.mjs"
       - "admin/tests/vendor-connection-state-contract.test.mjs"
+      - "admin/tests/vendor-dispatch-authority-contract.test.mjs"
+      - "admin/tests/shopify-physical-dispatch-authority-contract.test.mjs"
       - "admin/scripts/preflight-paid-order-migration.mjs"
       - "admin/tests/paid-order-reconciliation-contract.test.mjs"
       - "admin/tests/paid-order-migration-preflight-contract.test.mjs"
@@ -42,8 +48,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  GH_TOKEN: ${{ github.token }}
 
 defaults:
   run:
@@ -55,36 +61,41 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
-      - name: Check out exact requested head
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.EXPECTED_HEAD_SHA }}
-
-      - name: Record and verify exact head
+      - name: Fetch exact requested head without reusable actions
         shell: bash
-        working-directory: .
+        working-directory: ${{ github.workspace }}
         run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          git init .
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
+          git checkout --detach FETCH_HEAD
           actual="$(git rev-parse HEAD)"
           printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: admin/package-lock.json
+      - name: Select hosted Node 24 without setup-node
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          node24_root="$(find /opt/hostedtoolcache/node -maxdepth 1 -mindepth 1 -type d -name '24.*' | sort -V | tail -1)"
+          test -n "$node24_root"
+          test -x "$node24_root/x64/bin/node"
+          printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
+          "$node24_root/x64/bin/node" --version | grep -E '^v24\.'
 
       - name: Install private admin dependencies
         run: npm ci
 
-      - name: Install private Worker dependencies
-        working-directory: .
-        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Install locked private Worker dependencies
+        working-directory: ${{ github.workspace }}
+        run: npx --yes "npm@10.9.2" ci --ignore-scripts --no-audit --no-fund
 
-      - name: Verify private order Worker
-        working-directory: .
-        run: npm run verify:worker
+      - name: Verify private order Worker and Cloudflare identity
+        working-directory: ${{ github.workspace }}
+        run: npm run verify:worker:cloudflare
 
       - name: Run private admin TypeScript
         run: npm run check
@@ -101,8 +112,8 @@ jobs:
       - name: Verify Shopify physical schema preflight contract
         run: node --test tests/shopify-physical-schema-preflight-contract.test.mjs
 
-      - name: Verify vendor connection state contract
-        run: node --test tests/vendor-connection-state-contract.test.mjs
+      - name: Verify vendor connection and dispatch authority contracts
+        run: node --test tests/vendor-connection-state-contract.test.mjs tests/vendor-dispatch-authority-contract.test.mjs tests/shopify-physical-dispatch-authority-contract.test.mjs
 
       - name: Build private admin
         run: npm run build

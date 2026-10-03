@@ -1,0 +1,74 @@
+name: Root Dependency Audit Exact-Head
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/root-dependency-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  audit:
+    name: Audit root dependency graph
+    runs-on: ubuntu-22.04
+    timeout-minutes: 8
+    steps:
+      - name: Fetch exact requested head without reusable actions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          git init .
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
+          git checkout --detach FETCH_HEAD
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Select hosted Node 24 without setup-node
+        shell: bash
+        run: |
+          set -euo pipefail
+          node24_root="$(find /opt/hostedtoolcache/node -maxdepth 1 -mindepth 1 -type d -name '24.*' | sort -V | tail -1)"
+          test -x "$node24_root/x64/bin/node"
+          printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
+          "$node24_root/x64/bin/node" --version | grep -E '^v24\.'
+
+      - name: Install locked root dependency graph
+        run: npm ci --ignore-scripts
+
+      - name: Capture and classify npm audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm audit --json > root-audit.json || true
+          node --input-type=commonjs <<'NODE'
+          const fs = require('node:fs');
+          const audit = JSON.parse(fs.readFileSync('root-audit.json', 'utf8'));
+          const vulns = audit.vulnerabilities || {};
+          const rows = Object.entries(vulns)
+            .filter(([, v]) => ['high', 'critical'].includes(v.severity))
+            .map(([name, v]) => ({
+              name,
+              severity: v.severity,
+              direct: Boolean(v.isDirect),
+              range: v.range || '',
+              fixAvailable: v.fixAvailable === true ? 'yes' : v.fixAvailable ? JSON.stringify(v.fixAvailable) : 'no',
+              via: (v.via || []).map(x => typeof x === 'string' ? x : `${x.source}:${x.title}`).join(' | '),
+            }));
+          console.log(JSON.stringify({metadata: audit.metadata, highOrCritical: rows}, null, 2));
+          const lines = ['### Root dependency audit', '', '| Package | Severity | Direct | Range | Fix |', '|---|---|---:|---|---|'];
+          for (const row of rows) lines.push(`| ${row.name} | ${row.severity} | ${row.direct ? 'yes' : 'no'} | ${String(row.range).replace(/\|/g,'\\|')} | ${String(row.fixAvailable).replace(/\|/g,'\\|')} |`);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+          if (rows.length) process.exit(1);
+          NODE

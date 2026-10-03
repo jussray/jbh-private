@@ -1,0 +1,135 @@
+name: Private Contact Ingress Exact-Head Gate
+
+on:
+  pull_request:
+    paths:
+      - "contact-worker/**"
+      - "admin/migrations/015_contact_ingress_safety.sql"
+      - "package.json"
+      - "package-lock.json"
+      - "wrangler.toml"
+      - ".github/workflows/contact-ingress-exact-head.yml"
+      - ".github/workflows/deploy-contact-ingress.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-contact-ingress-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  EXPECTED_NPM_VERSION: "10.9.2"
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  verify:
+    name: Verify private contact ingress boundary
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - name: Fetch exact requested head without reusable actions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          git init .
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
+          git checkout --detach FETCH_HEAD
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Select hosted Node 24 without setup-node
+        shell: bash
+        run: |
+          set -euo pipefail
+          node24_root="$(find /opt/hostedtoolcache/node -maxdepth 1 -mindepth 1 -type d -name '24.*' | sort -V | tail -1)"
+          test -n "$node24_root"
+          test -x "$node24_root/x64/bin/node"
+          printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
+          "$node24_root/x64/bin/node" --version | grep -E '^v24\.'
+
+      - name: Verify declared npm toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          declared="$(node -p "require('./package.json').packageManager")"
+          test "$declared" = "npm@${EXPECTED_NPM_VERSION}"
+          actual="$(npx --yes "npm@${EXPECTED_NPM_VERSION}" --version)"
+          printf 'declared=%s\nresolved=npm@%s\n' "$declared" "$actual"
+          test "$actual" = "$EXPECTED_NPM_VERSION"
+
+      - name: Require root lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s package-lock.json
+          node -e "const p=require('./package-lock.json'); if (p.lockfileVersion !== 3) process.exit(1); console.log('lockfileVersion='+p.lockfileVersion)"
+
+      - name: Install locked repository dependencies
+        run: npx --yes "npm@${EXPECTED_NPM_VERSION}" ci
+
+      - name: Typecheck private ingress
+        run: npm run typecheck:contact
+
+      - name: Run contact authority and safety contract
+        run: npm run test:contact
+
+      - name: Validate migration is additive and collision-free
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f admin/migrations/015_contact_ingress_safety.sql
+          grep -q 'ADD COLUMN IF NOT EXISTS' admin/migrations/015_contact_ingress_safety.sql
+          grep -q 'CREATE UNIQUE INDEX IF NOT EXISTS' admin/migrations/015_contact_ingress_safety.sql
+          ! grep -Eiq 'DROP[[:space:]]+(TABLE|COLUMN|INDEX)|DELETE[[:space:]]+FROM' admin/migrations/015_contact_ingress_safety.sql
+          node --input-type=module <<'NODE'
+          import {readdirSync} from "node:fs";
+          const names = readdirSync("admin/migrations")
+            .filter((name) => /^\d{3}_.+\.sql$/.test(name))
+            .sort();
+          const byNumber = new Map();
+          for (const name of names) {
+            const number = name.slice(0, 3);
+            const entries = byNumber.get(number) ?? [];
+            entries.push(name);
+            byNumber.set(number, entries);
+          }
+          for (const [number, entries] of byNumber) {
+            if (number === "010") continue;
+            if (entries.length !== 1) {
+              throw new Error(`post-010 migration ${number} must be unique: ${entries.join(", ")}`);
+            }
+          }
+          NODE
+
+      - name: Prove Wrangler resolves the isolated Worker
+        run: npm run dry-run:contact
+
+      - name: Record deterministic bundle receipt in workflow logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d .wrangler/contact-dry-run
+          find .wrangler/contact-dry-run -type f -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            | tee .wrangler/contact-dry-run.sha256
+          {
+            echo '### Contact Worker dry-run receipt'
+            echo
+            echo '```text'
+            cat .wrangler/contact-dry-run.sha256
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record approved build-phase provider state
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EXPECTED_BRANCH: ${{ github.head_ref || github.ref_name }}
+          MERGE_MEMBRANE_OBSERVATION_MS: "0"
+        run: node scripts/verify-merge-membrane.mjs

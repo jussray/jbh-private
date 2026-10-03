@@ -1,21 +1,19 @@
-name: X Engagement Gate Adapter Exact-Head
+name: Workflow Attack Repair Contract
 
 on:
   pull_request:
     branches: [main]
     paths:
-      - "automation/social/**"
-      - "package.json"
-      - ".gitignore"
-      - "skills/juss-beautiful-hair-private/SKILL.md"
-      - ".github/workflows/x-engagement-adapter.yml"
+      - '.github/workflows/**'
+      - 'scripts/verify-workflow-repair-contract.mjs'
+      - 'test/workflow-repair-contract.test.mjs'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: x-engagement-adapter-${{ github.event.pull_request.number || github.ref }}
+  group: workflow-attack-repair-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -24,11 +22,11 @@ env:
 
 jobs:
   verify:
-    name: Verify X engagement adapter
+    name: Verify workflow bootstrap and dependency repair doctrine
     runs-on: ubuntu-22.04
     timeout-minutes: 8
     steps:
-      - name: Fetch exact requested head without reusable actions
+      - name: Fetch immutable target head without reusable actions
         shell: bash
         run: |
           set -euo pipefail
@@ -46,14 +44,13 @@ jobs:
         run: |
           set -euo pipefail
           node24_root="$(find /opt/hostedtoolcache/node -maxdepth 1 -mindepth 1 -type d -name '24.*' | sort -V | tail -1)"
+          test -n "$node24_root"
           test -x "$node24_root/x64/bin/node"
           printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
           "$node24_root/x64/bin/node" --version | grep -E '^v24\.'
 
-      - name: Install exact declared dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Unit-test repair classifier
+        run: node --test test/workflow-repair-contract.test.mjs
 
-      - name: Verify adapter without live Apify credentials
-        env:
-          APIFY_TOKEN: ""
-        run: npm run verify:x-engagement
+      - name: Verify protected workflow repair contract
+        run: node scripts/verify-workflow-repair-contract.mjs

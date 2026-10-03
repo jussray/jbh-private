@@ -22,6 +22,7 @@ concurrency:
 
 env:
   EXPECTED_HEAD_SHA: ${{ github.sha }}
+  GH_TOKEN: ${{ github.token }}
 
 jobs:
   preflight:
@@ -35,25 +36,29 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
-      - name: Check out exact requested head
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.EXPECTED_HEAD_SHA }}
-
-      - name: Record and verify exact head
-        working-directory: .
+      - name: Fetch exact requested head without reusable actions
         shell: bash
+        working-directory: ${{ github.workspace }}
         run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          git init .
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
+          git checkout --detach FETCH_HEAD
           actual="$(git rev-parse HEAD)"
           printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: admin/package-lock.json
+      - name: Select hosted Node 24 without setup-node
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          node24_root="$(find /opt/hostedtoolcache/node -maxdepth 1 -mindepth 1 -type d -name '24.*' | sort -V | tail -1)"
+          test -x "$node24_root/x64/bin/node"
+          printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
+          "$node24_root/x64/bin/node" --version | grep -E '^v24\.'
 
       - name: Install locked dependencies
         run: npm ci
@@ -70,24 +75,27 @@ jobs:
 
       - name: Publish classified Shopify production preflight status
         if: always()
-        uses: actions/github-script@v7
+        shell: bash
+        working-directory: ${{ github.workspace }}
         env:
           PREFLIGHT_RESULT: ${{ steps.preflight.outputs.result || 'unknown-failure' }}
           PREFLIGHT_EXIT_CODE: ${{ steps.preflight.outputs.exit_code || '99' }}
-        with:
-          script: |
-            const result = process.env.PREFLIGHT_RESULT;
-            const passed = result === "passed-shopify-physical-schema";
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: process.env.EXPECTED_HEAD_SHA,
-              state: passed ? "success" : "failure",
-              context: `paid-order-production-preflight/shopify-${result}`,
-              description: passed
-                ? "Read-only Shopify physical-order schema preflight passed"
-                : `Read-only Shopify schema preflight blocked (${process.env.PREFLIGHT_EXIT_CODE})`,
-            });
+        run: |
+          set -euo pipefail
+          state=failure
+          description="Read-only Shopify schema preflight blocked (${PREFLIGHT_EXIT_CODE})"
+          if [ "$PREFLIGHT_RESULT" = "passed-shopify-physical-schema" ]; then
+            state=success
+            description="Read-only Shopify physical-order schema preflight passed"
+          fi
+          context="paid-order-production-preflight/shopify-${PREFLIGHT_RESULT}"
+          node -e 'const [state,context,description]=process.argv.slice(1); process.stdout.write(JSON.stringify({state,context,description}))' "$state" "$context" "$description" > "$RUNNER_TEMP/preflight-status.json"
+          curl -fsSL -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/statuses/$EXPECTED_HEAD_SHA" \
+            --data-binary @"$RUNNER_TEMP/preflight-status.json"
 
       - name: Fail when Shopify production preflight did not pass
         if: steps.preflight.outputs.exit_code != '0'
