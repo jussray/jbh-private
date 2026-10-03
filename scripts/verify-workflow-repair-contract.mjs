@@ -60,8 +60,11 @@ export function inspectSecurityAudit(source) {
   const text = String(source || '');
   for (const marker of [
     'Classify admin dependency advisories',
-    "['moderate', 'high', 'critical'].includes(row.severity)",
-    'if (blocking.length) process.exit(1);',
+    'npm audit --omit=dev --json',
+    "const productionBlocking = productionRows.filter(row => ['moderate', 'high', 'critical'].includes(row.severity));",
+    "const criticalAnywhere = rows.filter(row => row.severity === 'critical');",
+    'if (productionBlocking.length || criticalAnywhere.length) process.exit(1);',
+    'Dev-tooling-only high/moderate advisories remain visible and require build + Playwright proof.',
   ]) {
     if (!text.includes(marker)) failures.push(`security-build: missing dependency attack marker ${JSON.stringify(marker)}`);
   }
@@ -83,7 +86,7 @@ async function main() {
   failures.push(...inspectSecurityAudit(security));
 
   const receipt = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     contract: 'workflow-attack-repair',
     protectedWorkflows: receipts,
     rules: {
@@ -92,7 +95,9 @@ async function main() {
       hostedNode24Required: true,
       readOnlyContentsRequired: true,
       privateRepositoryAuthenticatedFetchRequired: true,
-      moderateHighCriticalDependencyGateRequired: true,
+      productionModerateHighCriticalDependencyGateRequired: true,
+      criticalAllDependenciesGateRequired: true,
+      devToolingHighModerateMustRemainVisible: true,
     },
     status: failures.length ? 'failed' : 'passed',
     failures,
