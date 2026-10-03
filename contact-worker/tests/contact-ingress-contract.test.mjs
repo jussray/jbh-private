@@ -100,10 +100,9 @@ test("production contact deployment is manual, exact-head, locked, private-compa
   assert.doesNotMatch(workflow, /echo .*DATABASE_URL|echo .*TURNSTILE_SECRET_KEY/);
 
   assert.match(exactHeadWorkflow, /admin\/migrations\/015_contact_ingress_safety\.sql/);
-  assert.match(exactHeadWorkflow, /repository must be private/);
-  assert.match(exactHeadWorkflow, /main branch must be protected/);
-  assert.match(exactHeadWorkflow, /main must enforce at least one required status check/);
-  assert.match(exactHeadWorkflow, /Verify test-ledger contract must be a required main status check/);
+  assert.match(exactHeadWorkflow, /Record approved build-phase provider state/);
+  assert.match(exactHeadWorkflow, /MERGE_MEMBRANE_OBSERVATION_MS: "0"/);
+  assert.match(exactHeadWorkflow, /node scripts\/verify-merge-membrane\.mjs/);
   assert.match(exactHeadWorkflow, /post-010 migration/);
   assert.match(exactHeadWorkflow, /package-lock\.json/);
   assert.match(exactHeadWorkflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
