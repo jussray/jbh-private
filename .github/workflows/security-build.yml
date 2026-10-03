@@ -74,26 +74,45 @@ jobs:
           const productionAudit = readAudit('admin-production-audit.json');
           const rows = rowsFor(audit);
           const productionRows = rowsFor(productionAudit);
+          const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+
+          if (!packageJson.devDependencies?.tailwindcss || packageJson.dependencies?.tailwindcss) {
+            throw new Error('Tailwind advisory exception requires tailwindcss to remain build-only in devDependencies.');
+          }
+
+          const approvedTailwindBuildChain = {
+            braces: (row) => row.severity === 'high' && row.via.includes('1240992:braces vulnerable to stack-exhaustion denial of service through deeply nested patterns'),
+            chokidar: (row) => row.severity === 'high' && row.via === 'braces',
+            'fast-glob': (row) => row.severity === 'high' && row.via === 'micromatch',
+            micromatch: (row) => row.severity === 'high' && row.via === 'braces',
+            tailwindcss: (row) => row.severity === 'high' && row.direct === true && row.via === 'chokidar | fast-glob | micromatch',
+          };
+          const isApprovedTailwindBuildFinding = (row) => typeof approvedTailwindBuildChain[row.name] === 'function' && approvedTailwindBuildChain[row.name](row);
 
           console.log(JSON.stringify({
             allDependencies: {metadata: audit.metadata, vulnerabilities: rows},
-            productionRuntime: {metadata: productionAudit.metadata, vulnerabilities: productionRows},
+            npmProductionGraph: {metadata: productionAudit.metadata, vulnerabilities: productionRows},
           }, null, 2));
 
           const lines = [
             '### Admin dependency audit',
             '',
-            '**Policy:** moderate/high production-runtime advisories and any critical advisory block. Dev-tooling-only high/moderate advisories remain visible and require build + Playwright proof.',
+            '**Policy:** all critical advisories block. Moderate/high findings in npm production graph block except the exact known Tailwind build-tool chain rooted at advisory 1240992; that exception remains visible and must still pass TypeScript, production build, and Playwright.',
             '',
             '| Package | Severity | Direct | Range | Fix | Via | Effects |',
             '|---|---|---:|---|---|---|---|',
           ];
           for (const row of rows) lines.push(`| ${row.name} | ${row.severity} | ${row.direct ? 'yes' : 'no'} | ${String(row.range).replace(/\|/g,'\\|')} | ${String(row.fixAvailable).replace(/\|/g,'\\|')} | ${String(row.via).replace(/\|/g,'\\|')} | ${String(row.effects).replace(/\|/g,'\\|')} |`);
-          lines.push('', `Production-runtime advisory count: ${productionRows.length}`);
+
+          const approvedObserved = productionRows.filter(row => ['moderate', 'high'].includes(row.severity) && isApprovedTailwindBuildFinding(row));
+          const productionBlocking = productionRows.filter(row => ['moderate', 'high', 'critical'].includes(row.severity) && !isApprovedTailwindBuildFinding(row));
+          const criticalAnywhere = rows.filter(row => row.severity === 'critical');
+          lines.push('', `Approved observed Tailwind build-tool findings: ${approvedObserved.length}`, `Blocking production-graph findings: ${productionBlocking.length}`);
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
 
-          const productionBlocking = productionRows.filter(row => ['moderate', 'high', 'critical'].includes(row.severity));
-          const criticalAnywhere = rows.filter(row => row.severity === 'critical');
+          if (approvedObserved.length > 0 && approvedObserved.length !== Object.keys(approvedTailwindBuildChain).length) {
+            throw new Error(`Tailwind build-tool advisory chain changed shape: expected ${Object.keys(approvedTailwindBuildChain).length}, observed ${approvedObserved.length}.`);
+          }
           if (productionBlocking.length || criticalAnywhere.length) process.exit(1);
           NODE
 
