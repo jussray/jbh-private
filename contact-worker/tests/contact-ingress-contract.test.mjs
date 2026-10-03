@@ -75,6 +75,9 @@ test("production contact deployment is manual, exact-head, locked, private-compa
   assert.match(workflow, /test \"\$GITHUB_REF\" = \"refs\/heads\/main\"/);
   assert.match(workflow, /EXPECTED_HEAD_SHA: \$\{\{ github\.sha \}\}/);
   assert.match(workflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(workflow, /Production membrane failed: repository must be private/);
+  assert.match(workflow, /Production membrane failed: main branch must be protected/);
+  assert.match(workflow, /Production membrane failed: Verify test-ledger contract must be required on main/);
   assert.match(workflow, /https:\/\/x-access-token:\$\{GH_TOKEN\}@github\.com\/\$\{GITHUB_REPOSITORY\}\.git/);
   assert.match(workflow, /git fetch --depth=1 origin \"\$EXPECTED_HEAD_SHA\"/);
   assert.match(workflow, /actual=\"\$\(git rev-parse HEAD\)\"/);
