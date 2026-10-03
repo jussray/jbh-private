@@ -57,11 +57,14 @@ test('protects all repaired workflows, including merge and paid-order production
   assert.ok(protectedWorkflows.includes('.github/workflows/workflow-attack-repair-contract.yml'));
 });
 
-test('requires security build to block moderate, high, and critical dependency advisories', () => {
+test('requires runtime moderate/high/critical blocking plus critical blocking across all dependencies', () => {
   const secure = `
 Classify admin dependency advisories
-const blocking = rows.filter(row => ['moderate', 'high', 'critical'].includes(row.severity));
-if (blocking.length) process.exit(1);
+npm audit --omit=dev --json
+const productionBlocking = productionRows.filter(row => ['moderate', 'high', 'critical'].includes(row.severity));
+const criticalAnywhere = rows.filter(row => row.severity === 'critical');
+if (productionBlocking.length || criticalAnywhere.length) process.exit(1);
+Dev-tooling-only high/moderate advisories remain visible and require build + Playwright proof.
 `;
   assert.deepEqual(inspectSecurityAudit(secure), []);
   assert.ok(inspectSecurityAudit('Classify admin dependency advisories').length > 0);
