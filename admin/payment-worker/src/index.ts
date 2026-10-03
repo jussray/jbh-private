@@ -1,5 +1,6 @@
 import { handleAdminRequest } from "./admin-orders";
 import { handleProviderAdminRequest } from "./provider-admin";
+import { enforcePrivateRateLimit } from "./rate-limit";
 import { type Env, isApprovedHost, json, text } from "./shared";
 import { handleShopifyProcurementAdminRequest } from "./shopify-procurement-admin";
 import { handleShopifyPhysicalWebhook } from "./shopify-physical-webhook";
@@ -9,6 +10,9 @@ import { handleWebhook } from "./webhook";
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (!isApprovedHost(request, env)) return text("Not found", 404);
+
+    const limited = await enforcePrivateRateLimit(request, env);
+    if (limited) return limited;
 
     const { pathname } = new URL(request.url);
     if (pathname === "/health") {
