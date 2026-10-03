@@ -127,47 +127,9 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Require private protected GitHub merge membrane
-        shell: bash
-        run: |
-          set -euo pipefail
-          api="${GITHUB_API_URL:-https://api.github.com}"
-          headers=(
-            -H "Accept: application/vnd.github+json"
-            -H "Authorization: Bearer $GH_TOKEN"
-            -H "X-GitHub-Api-Version: 2022-11-28"
-          )
-          curl -fsSL "${headers[@]}" "$api/repos/$GITHUB_REPOSITORY" > "$RUNNER_TEMP/repository.json"
-          curl -fsSL "${headers[@]}" "$api/repos/$GITHUB_REPOSITORY/branches/main" > "$RUNNER_TEMP/main-branch.json"
-          node --input-type=module <<'NODE'
-          import {readFileSync} from "node:fs";
-          const root = process.env.RUNNER_TEMP;
-          const repository = JSON.parse(readFileSync(`${root}/repository.json`, "utf8"));
-          const main = JSON.parse(readFileSync(`${root}/main-branch.json`, "utf8"));
-          if (repository.private !== true) {
-            throw new Error("GitHub provider membrane failed: repository must be private.");
-          }
-          if (main.protected !== true) {
-            throw new Error("GitHub provider membrane failed: main branch must be protected.");
-          }
-          const requiredStatusChecks = main.protection?.required_status_checks;
-          const requiredContexts = [
-            ...(Array.isArray(requiredStatusChecks?.contexts) ? requiredStatusChecks.contexts : []),
-            ...(Array.isArray(requiredStatusChecks?.checks)
-              ? requiredStatusChecks.checks.map((item) => item?.context).filter(Boolean)
-              : []),
-          ];
-          if (requiredStatusChecks?.enforcement_level === "off" || requiredContexts.length === 0) {
-            throw new Error("GitHub provider membrane failed: main must enforce at least one required status check.");
-          }
-          if (!requiredContexts.includes("Verify test-ledger contract")) {
-            throw new Error("GitHub provider membrane failed: Verify test-ledger contract must be a required main status check.");
-          }
-          console.log(JSON.stringify({
-            repository: repository.full_name,
-            visibility: repository.visibility,
-            private: repository.private,
-            mainProtected: main.protected,
-            requiredStatusChecks: requiredContexts,
-          }));
-          NODE
+      - name: Record approved build-phase provider state
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EXPECTED_BRANCH: ${{ github.head_ref || github.ref_name }}
+          MERGE_MEMBRANE_OBSERVATION_MS: "0"
+        run: node scripts/verify-merge-membrane.mjs
