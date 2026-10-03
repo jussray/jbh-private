@@ -2,7 +2,9 @@ name: Private security build
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'security/**'
   pull_request:
   workflow_dispatch:
 
@@ -15,6 +17,7 @@ jobs:
   verify:
     name: Typecheck, build, and Playwright private control layer
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: admin
@@ -33,7 +36,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: admin/package-lock.json
-      - name: Install dependencies
+      - name: Install private admin dependencies
         run: npm ci
       - name: Verify MCP config
         run: npm run verify:mcp
@@ -45,9 +48,54 @@ jobs:
         run: npm run check
       - name: Build private admin
         run: npm run build
-      - name: Install pinned Playwright verifier
+      - name: Install pinned Playwright verifier for private admin
         run: npm install --no-save --package-lock=false --ignore-scripts playwright@1.61.1
-      - name: Install Chromium
+      - name: Install Chromium for private admin proof
         run: npm exec -- playwright install --with-deps chromium
       - name: Verify approved storefront truth mirror in browser
         run: npm run verify:playwright
+
+      - name: Install exact root Worker dependencies
+        working-directory: .
+        run: npm install --no-audit --no-fund --package-lock=false
+      - name: Verify private Worker contracts and dry run
+        working-directory: .
+        run: npm run verify:worker
+      - name: Install pinned root Playwright verifier
+        working-directory: .
+        run: npm install --no-save --package-lock=false --ignore-scripts playwright@1.61.1
+      - name: Install Chromium for private Worker proof
+        working-directory: .
+        run: npx playwright install --with-deps chromium
+      - name: Start exact-head private Worker locally
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler dev --local --ip 127.0.0.1 --port 8792 > "$RUNNER_TEMP/jbh-private-wrangler.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/jbh-private-wrangler.pid"
+          for attempt in {1..60}; do
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8792/health || true)"
+            if [ "$status" = "200" ]; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/jbh-private-wrangler.log" >&2
+          exit 1
+      - name: Run private ingress rate-limit Playwright witness through Wrangler
+        working-directory: .
+        env:
+          JBH_PRIVATE_EDGE_BASE_URL: http://127.0.0.1:8792
+        run: node scripts/private-rate-limit-playwright.mjs
+      - name: Stop exact-head private Worker
+        if: always()
+        working-directory: .
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/jbh-private-wrangler.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/jbh-private-wrangler.pid")" 2>/dev/null || true
+          fi
+          if [ -f "$RUNNER_TEMP/jbh-private-wrangler.log" ]; then
+            cat "$RUNNER_TEMP/jbh-private-wrangler.log"
+          fi
