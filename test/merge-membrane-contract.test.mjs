@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {evaluateMergeMembrane, findNonMainCloudflareProductionEffects, REQUIRED_MAIN_STATUS, requiredStatusContexts} from '../scripts/verify-merge-membrane.mjs';
+import {BUILD_PHASE_PROVIDER_POLICY, evaluateMergeMembrane, findNonMainCloudflareProductionEffects, REQUIRED_MAIN_STATUS, requiredStatusContexts} from '../scripts/verify-merge-membrane.mjs';
 
 const healthyRepository = {full_name: 'jussray/jbh-private', visibility: 'private', private: true};
 const healthyMain = {
@@ -25,25 +25,19 @@ test('accepts a private protected repo with the ledger required', () => {
   assert.deepEqual(evaluateMergeMembrane({repository: healthyRepository, main: healthyMain, checkRuns: [], branch: 'feature'}).failures, []);
 });
 
-test('fails when repository is public', () => {
+test('records temporary public repository visibility without blocking the approved build phase', () => {
   const result = evaluateMergeMembrane({repository: {...healthyRepository, visibility: 'public', private: false}, main: healthyMain, checkRuns: [], branch: 'feature'});
-  assert.match(result.failures.join('\n'), /repository must be private/);
+  assert.deepEqual(result.failures, []);
+  assert.equal(result.receipt.githubProviderPolicy, BUILD_PHASE_PROVIDER_POLICY);
+  assert.match(result.receipt.providerObservations.join('\n'), /intentionally public/);
 });
 
-test('fails when main is unprotected', () => {
-  const result = evaluateMergeMembrane({repository: healthyRepository, main: {...healthyMain, protected: false}, checkRuns: [], branch: 'feature'});
-  assert.match(result.failures.join('\n'), /main branch must be protected/);
-});
-
-test('fails when required status checks are cosmetic or missing the ledger', () => {
-  const off = structuredClone(healthyMain);
-  off.protection.required_status_checks.enforcement_level = 'off';
-  off.protection.required_status_checks.contexts = [];
-  assert.match(evaluateMergeMembrane({repository: healthyRepository, main: off, checkRuns: [], branch: 'feature'}).failures.join('\n'), /required status check/);
-
-  const wrong = structuredClone(healthyMain);
-  wrong.protection.required_status_checks.contexts = ['Some Other Check'];
-  assert.match(evaluateMergeMembrane({repository: healthyRepository, main: wrong, checkRuns: [], branch: 'feature'}).failures.join('\n'), /Verify test-ledger contract/);
+test('records deferred main protection without blocking the approved build phase', () => {
+  const main = {...healthyMain, protected: false, protection: {required_status_checks: {enforcement_level: 'off', contexts: [], checks: []}}};
+  const result = evaluateMergeMembrane({repository: healthyRepository, main, checkRuns: [], branch: 'feature'});
+  assert.deepEqual(result.failures, []);
+  assert.match(result.receipt.providerObservations.join('\n'), /main protection is deferred/);
+  assert.match(result.receipt.providerObservations.join('\n'), /required main status checks are deferred/);
 });
 
 test('records intentional non-main Cloudflare production builds without blocking merge policy', () => {
@@ -51,6 +45,7 @@ test('records intentional non-main Cloudflare production builds without blocking
   assert.deepEqual(result.failures, []);
   assert.equal(result.receipt.cloudflareProductionBuildPolicy, 'observed-allowed-during-build-phase');
   assert.equal(result.receipt.nonMainCloudflareProductionBuilds.length, 1);
+  assert.match(result.receipt.providerObservations.join('\n'), /Cloudflare non-main deployment observed/);
   assert.equal(findNonMainCloudflareProductionEffects([cloudflareProduction], 'feature').length, 1);
 });
 
