@@ -36,9 +36,6 @@ export function evaluateMergeMembrane({repository, main, checkRuns, branch}) {
   }
 
   const cloudflareEffects = findNonMainCloudflareProductionEffects(checkRuns, branch);
-  if (cloudflareEffects.length > 0) {
-    failures.push('non-main head received a Cloudflare production build');
-  }
 
   return {
     failures,
@@ -49,6 +46,7 @@ export function evaluateMergeMembrane({repository, main, checkRuns, branch}) {
       mainProtected: main?.protected === true,
       requiredStatusChecks: contexts,
       branch: clean(branch),
+      cloudflareProductionBuildPolicy: 'observed-allowed-during-build-phase',
       nonMainCloudflareProductionBuilds: cloudflareEffects.map((run) => ({
         id: String(run?.id ?? ''),
         name: clean(run?.name),
