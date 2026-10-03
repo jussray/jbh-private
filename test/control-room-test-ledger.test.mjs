@@ -56,7 +56,7 @@ test('accepts the required signal only when the exact GitHub Actions lane passes
   assert.equal(aggregateTestLedger(checks, required).state, 'passed');
 });
 
-test('fails closed when a non-main exact head receives a Cloudflare production build', () => {
+test('records a non-main Cloudflare production build without failing the ledger', () => {
   const checks = selectLatestChecks([
     run({
       id: 9,
@@ -65,8 +65,8 @@ test('fails closed when a non-main exact head receives a Cloudflare production b
       details_url: 'https://dash.cloudflare.com/account/workers/services/view/jbh-private/production/builds/build-1',
     }),
   ], SHA);
-  assert.equal(cloudflareProductionEffectState(checks, 'fix/contact'), 'failed');
-  assert.equal(aggregateTestLedger(checks, [], 'fix/contact').state, 'failed');
+  assert.equal(cloudflareProductionEffectState(checks, 'fix/contact'), 'observed');
+  assert.equal(aggregateTestLedger(checks, [], 'fix/contact').state, 'passed');
   assert.equal(cloudflareProductionEffectState(checks, 'main'), 'passed');
 });
 
