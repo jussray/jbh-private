@@ -9,6 +9,7 @@ const [
   wrangler,
   packageJson,
   entry,
+  rateLimit,
   webhook,
   adminOrders,
   access,
@@ -17,6 +18,7 @@ const [
   read("wrangler.toml"),
   read("package.json"),
   read("admin/payment-worker/src/index.ts"),
+  read("admin/payment-worker/src/rate-limit.ts"),
   read("admin/payment-worker/src/webhook.ts"),
   read("admin/payment-worker/src/admin-orders.ts"),
   read("admin/payment-worker/src/access.ts"),
@@ -34,6 +36,22 @@ test("root Cloudflare deploy resolves the API-only private Worker", () => {
   assert.doesNotMatch(wrangler, /\[assets\]/);
   assert.doesNotMatch(wrangler, /\[\[routes\]\]/);
   assert.doesNotMatch(wrangler, /directory\s*=/);
+});
+
+test("every approved-host request crosses the Cloudflare rate-limit baseline", () => {
+  assert.match(wrangler, /\[\[ratelimits\]\]/);
+  assert.match(wrangler, /name = "JBH_PRIVATE_RATE_LIMITER"/);
+  assert.match(wrangler, /simple = \{ limit = 120, period = 60 \}/);
+  assert.match(entry, /enforcePrivateRateLimit\(request, env\)/);
+  assert.ok(
+    entry.indexOf("enforcePrivateRateLimit(request, env)") < entry.indexOf("const { pathname }"),
+    "limiter must run before route dispatch",
+  );
+  assert.match(rateLimit, /CF-Connecting-IP/);
+  assert.doesNotMatch(rateLimit, /X-Forwarded-For/);
+  assert.match(rateLimit, /rate_limit_unavailable/);
+  assert.match(rateLimit, /rate_limit_exceeded/);
+  assert.match(rateLimit, /Retry-After/);
 });
 
 test("private Worker does not duplicate public checkout authority", () => {
