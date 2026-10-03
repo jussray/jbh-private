@@ -61,10 +61,13 @@ export function inspectSecurityAudit(source) {
   for (const marker of [
     'Classify admin dependency advisories',
     'npm audit --omit=dev --json',
-    "const productionBlocking = productionRows.filter(row => ['moderate', 'high', 'critical'].includes(row.severity));",
+    'approvedTailwindBuildChain',
+    '1240992:braces vulnerable to stack-exhaustion denial of service through deeply nested patterns',
+    "const productionBlocking = productionRows.filter(row => ['moderate', 'high', 'critical'].includes(row.severity) && !isApprovedTailwindBuildFinding(row));",
     "const criticalAnywhere = rows.filter(row => row.severity === 'critical');",
+    'approvedObserved.length !== Object.keys(approvedTailwindBuildChain).length',
     'if (productionBlocking.length || criticalAnywhere.length) process.exit(1);',
-    'Dev-tooling-only high/moderate advisories remain visible and require build + Playwright proof.',
+    'must still pass TypeScript, production build, and Playwright',
   ]) {
     if (!text.includes(marker)) failures.push(`security-build: missing dependency attack marker ${JSON.stringify(marker)}`);
   }
@@ -86,7 +89,7 @@ async function main() {
   failures.push(...inspectSecurityAudit(security));
 
   const receipt = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     contract: 'workflow-attack-repair',
     protectedWorkflows: receipts,
     rules: {
@@ -97,7 +100,8 @@ async function main() {
       privateRepositoryAuthenticatedFetchRequired: true,
       productionModerateHighCriticalDependencyGateRequired: true,
       criticalAllDependenciesGateRequired: true,
-      devToolingHighModerateMustRemainVisible: true,
+      tailwindBuildAdvisoryExceptionExactAndShapeBound: true,
+      browserProofRequiredAfterBuildToolException: true,
     },
     status: failures.length ? 'failed' : 'passed',
     failures,
