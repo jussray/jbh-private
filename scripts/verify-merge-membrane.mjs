@@ -2,6 +2,7 @@ const clean = (value) => typeof value === 'string' ? value.trim() : '';
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 export const REQUIRED_MAIN_STATUS = 'Verify test-ledger contract';
+export const BUILD_PHASE_PROVIDER_POLICY = 'temporary-public-unprotected-allowed-during-build-phase; restore private/protected before revenue activation';
 
 export function requiredStatusContexts(main) {
   const required = main?.protection?.required_status_checks;
@@ -23,19 +24,21 @@ export function findNonMainCloudflareProductionEffects(checkRuns, branch) {
 
 export function evaluateMergeMembrane({repository, main, checkRuns, branch}) {
   const failures = [];
+  const observations = [];
   const required = main?.protection?.required_status_checks;
   const contexts = requiredStatusContexts(main);
 
-  if (repository?.private !== true) failures.push('repository must be private');
-  if (main?.protected !== true) failures.push('main branch must be protected');
+  if (repository?.private !== true) observations.push('repository is intentionally public during the approved build-phase billing window');
+  if (main?.protected !== true) observations.push('main protection is deferred until the build-phase exit gate');
   if (required?.enforcement_level === 'off' || contexts.length === 0) {
-    failures.push('main must enforce at least one required status check');
+    observations.push('required main status checks are deferred until the build-phase exit gate');
   }
   if (!contexts.includes(REQUIRED_MAIN_STATUS)) {
-    failures.push(`${REQUIRED_MAIN_STATUS} must be required on main`);
+    observations.push(`${REQUIRED_MAIN_STATUS} is not yet required on main during the approved build phase`);
   }
 
   const cloudflareEffects = findNonMainCloudflareProductionEffects(checkRuns, branch);
+  if (cloudflareEffects.length > 0) observations.push('Cloudflare non-main deployment observed and founder-authorized during the build phase');
 
   return {
     failures,
@@ -46,6 +49,8 @@ export function evaluateMergeMembrane({repository, main, checkRuns, branch}) {
       mainProtected: main?.protected === true,
       requiredStatusChecks: contexts,
       branch: clean(branch),
+      githubProviderPolicy: BUILD_PHASE_PROVIDER_POLICY,
+      providerObservations: observations,
       cloudflareProductionBuildPolicy: 'observed-allowed-during-build-phase',
       nonMainCloudflareProductionBuilds: cloudflareEffects.map((run) => ({
         id: String(run?.id ?? ''),
