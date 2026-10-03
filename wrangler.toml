@@ -9,5 +9,12 @@ keep_vars = true
 [build]
 command = "npm run verify:worker:cloudflare"
 
+# Broad private ingress baseline. Signed Shopify/Stripe verification and
+# Cloudflare Access authorization remain the route-specific trust gates.
+[[ratelimits]]
+name = "JBH_PRIVATE_RATE_LIMITER"
+namespace_id = "1004"
+simple = { limit = 120, period = 60 }
+
 [observability]
 enabled = true
