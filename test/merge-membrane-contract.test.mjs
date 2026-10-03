@@ -21,7 +21,7 @@ const cloudflareProduction = {
   app: {slug: 'cloudflare-workers-and-pages'},
 };
 
-test('accepts a private protected repo with the ledger required and no PR production effect', () => {
+test('accepts a private protected repo with the ledger required', () => {
   assert.deepEqual(evaluateMergeMembrane({repository: healthyRepository, main: healthyMain, checkRuns: [], branch: 'feature'}).failures, []);
 });
 
@@ -46,13 +46,15 @@ test('fails when required status checks are cosmetic or missing the ledger', () 
   assert.match(evaluateMergeMembrane({repository: healthyRepository, main: wrong, checkRuns: [], branch: 'feature'}).failures.join('\n'), /Verify test-ledger contract/);
 });
 
-test('fails closed on a non-main Cloudflare production build', () => {
+test('records intentional non-main Cloudflare production builds without blocking merge policy', () => {
   const result = evaluateMergeMembrane({repository: healthyRepository, main: healthyMain, checkRuns: [cloudflareProduction], branch: 'feature'});
-  assert.match(result.failures.join('\n'), /Cloudflare production build/);
+  assert.deepEqual(result.failures, []);
+  assert.equal(result.receipt.cloudflareProductionBuildPolicy, 'observed-allowed-during-build-phase');
+  assert.equal(result.receipt.nonMainCloudflareProductionBuilds.length, 1);
   assert.equal(findNonMainCloudflareProductionEffects([cloudflareProduction], 'feature').length, 1);
 });
 
-test('allows production-build classification on main', () => {
+test('does not classify main as a non-main Cloudflare build', () => {
   assert.equal(findNonMainCloudflareProductionEffects([cloudflareProduction], 'main').length, 0);
 });
 
