@@ -57,14 +57,17 @@ test('protects all repaired workflows, including merge and paid-order production
   assert.ok(protectedWorkflows.includes('.github/workflows/workflow-attack-repair-contract.yml'));
 });
 
-test('requires runtime moderate/high/critical blocking plus critical blocking across all dependencies', () => {
+test('requires the exact Tailwind build advisory exception while all other runtime findings remain blocking', () => {
   const secure = `
 Classify admin dependency advisories
 npm audit --omit=dev --json
-const productionBlocking = productionRows.filter(row => ['moderate', 'high', 'critical'].includes(row.severity));
+const approvedTailwindBuildChain = {};
+1240992:braces vulnerable to stack-exhaustion denial of service through deeply nested patterns
+const productionBlocking = productionRows.filter(row => ['moderate', 'high', 'critical'].includes(row.severity) && !isApprovedTailwindBuildFinding(row));
 const criticalAnywhere = rows.filter(row => row.severity === 'critical');
+if (approvedObserved.length > 0 && approvedObserved.length !== Object.keys(approvedTailwindBuildChain).length) {}
 if (productionBlocking.length || criticalAnywhere.length) process.exit(1);
-Dev-tooling-only high/moderate advisories remain visible and require build + Playwright proof.
+must still pass TypeScript, production build, and Playwright
 `;
   assert.deepEqual(inspectSecurityAudit(secure), []);
   assert.ok(inspectSecurityAudit('Classify admin dependency advisories').length > 0);
