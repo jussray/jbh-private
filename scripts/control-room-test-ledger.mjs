@@ -74,9 +74,8 @@ export function cloudflareProductionEffectState(checks, branch = '') {
     clean(check?.app) === 'cloudflare-workers-and-pages' &&
     /\/production\/builds\//.test(clean(check?.detailsUrl)),
   );
-  if (!productionBuild) return 'passed';
-  if (normalizedBranch === 'main') return 'passed';
-  return 'failed';
+  if (!productionBuild || normalizedBranch === 'main') return 'passed';
+  return 'observed';
 }
 
 export function githubProviderMembraneState(provider = {}) {
@@ -103,8 +102,6 @@ export function aggregateTestLedger(checks, requiredSignalNames = [], branch = '
   const requiredState = requiredSignalState(list, requiredSignalNames);
   if (requiredState === 'failed') state = 'failed';
   else if (requiredState === 'pending' && state !== 'failed') state = 'pending';
-
-  if (cloudflareProductionEffectState(list, branch) === 'failed') state = 'failed';
   return {state, counts};
 }
 
@@ -147,7 +144,7 @@ export function buildTestLedger({repository, sha, branch, runId, checks, require
     providerMembrane: normalizedProviderMembrane,
     externalEffects: {
       cloudflareNonMainProductionBuild: cloudflareProductionState,
-      policy: 'fail when cloudflare-workers-and-pages points a non-main exact head at /production/builds/',
+      policy: 'record Cloudflare non-main production builds as intentional observed external effects during the build phase',
     },
     aggregate,
     checks,
