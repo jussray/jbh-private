@@ -1,15 +1,15 @@
 ---
 name: sales
-version: 1.0.0
+version: 1.1.0
 status: active
 scope: jbh-private
 owners:
   - founder
 review_cadence: quarterly
-last_reviewed: 2026-07-17
+last_reviewed: 2026-10-05
 ---
 
-# /sales — Private Hair
+# /sales - Private Hair
 
 Use for offer, sourcing, margin, vendor, inventory, conversion, retention, and customer-care decisions inside the private owner boundary.
 
@@ -23,6 +23,24 @@ Use for offer, sourcing, margin, vendor, inventory, conversion, retention, and c
 6. Answer objections only with current evidence and explicit limits.
 7. Propose the smallest reversible commitment. No approval carries forward.
 8. Measure retained value, complaint/refund quality, fulfillment, margin quality, and repeat purchase.
+
+## Outreach and negotiation response layer
+
+For vendor, supplier, partner, customer, or other consequential business replies, silently run:
+
+```text
+DISCOVER -> GOAL -> AUTHORITY -> BATNA -> VALUE -> EVIDENCE -> STRUCTURE -> TERMS -> RECEIPT
+```
+
+- Discover the counterpart's actual objective, constraint, success condition, and decision path before pitching. Ask one useful question when material context is missing.
+- Keep decision authority unknown until it is evidenced. A responsive contact is not automatically the signer, buyer, owner, or approver.
+- Preserve a real BATNA and founder control. Never invent another supplier, quote, deadline, order, buyer, demand signal, or competing offer.
+- Build leverage from verified quality, service, economics, timing, alternatives, and evidence, never pressure.
+- Sequence information intentionally. Do not volunteer private cost ceilings, maximum concessions, supplier alternatives, desperation, internal margins, or full sourcing strategy merely because they are known.
+- Never lie, bluff, hide a required disclosure, or create a false impression.
+- Reshape the deal before forcing terms: smaller sample, pilot order, milestone, narrower SKU scope, revised payment timing, or another reversible structure may be stronger than a premature yes/no close.
+- End with one observable next step, question, decision, or commitment that can be recorded as a receipt.
+- Keep the framework backstage. The actual message should be direct, human, evidence-grounded, and appropriate to the channel.
 
 ## Private boundaries
 
