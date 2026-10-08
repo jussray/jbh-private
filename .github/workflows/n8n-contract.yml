@@ -36,14 +36,14 @@ jobs:
           git -c http.https://github.com/.extraheader="$auth" fetch --no-tags --depth=1 origin "$EXPECTED_HEAD_SHA"
           git checkout -q --detach FETCH_HEAD
 
-      - name: Select hosted Node 20 without setup-node
+      - name: Select hosted Node 24 without setup-node
         shell: bash
         run: |
           set -euo pipefail
-          node20_root="$(find /opt/hostedtoolcache/node -maxdepth 1 -mindepth 1 -type d -name '20.*' | sort -V | tail -1)"
-          test -n "$node20_root"
-          printf '%s\n' "$node20_root/x64/bin" >> "$GITHUB_PATH"
-          "$node20_root/x64/bin/node" --version | grep -E '^v20\.'
+          node24_root="$(find /opt/hostedtoolcache/node -maxdepth 1 -mindepth 1 -type d -name '24.*' | sort -V | tail -1)"
+          test -n "$node24_root"
+          printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
+          "$node24_root/x64/bin/node" --version | grep -E '^v24\.'
 
       - name: Validate all workflow JSON
         run: >-
