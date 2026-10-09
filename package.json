@@ -18,6 +18,7 @@
     "query:x-engagement": "npm run build:x-engagement && node .cache/x-engagement-build/x-engagement-cli.js",
     "typecheck:contact": "tsc -p contact-worker/tsconfig.json --noEmit",
     "test:contact": "node --test contact-worker/tests/contact-ingress-contract.test.mjs",
+    "test:messenger": "node --test automation/messenger/message-policy.test.mjs automation/messenger/payment-policy.test.mjs",
     "dry-run:contact": "wrangler deploy --dry-run --config contact-worker/wrangler.jsonc --outdir .wrangler/contact-dry-run",
     "verify:contact-ingress": "npm run typecheck:contact && npm run test:contact && npm run dry-run:contact",
     "deploy": "wrangler deploy",
@@ -32,6 +33,6 @@
   "devDependencies": {
     "@types/node": "20.19.27",
     "typescript": "5.6.3",
-    "wrangler": "4.143.1"
+    "wrangler": "4.149.0"
   }
 }
