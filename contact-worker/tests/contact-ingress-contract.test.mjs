@@ -5,9 +5,10 @@ import test from "node:test";
 const read = (path) => readFile(path, "utf8");
 
 test("private contact ingress preserves customer-data and abuse boundaries", async () => {
-  const [worker, migration, config, handoff, privateWorkerConfig] = await Promise.all([
+  const [worker, contactMigration, newsletterMigration, config, handoff, privateWorkerConfig] = await Promise.all([
     read("contact-worker/src/index.ts"),
     read("admin/migrations/015_contact_ingress_safety.sql"),
+    read("admin/migrations/016_newsletter_ingress.sql"),
     read("contact-worker/wrangler.jsonc"),
     read("contact-worker/README.md"),
     read("wrangler.toml"),
@@ -18,7 +19,13 @@ test("private contact ingress preserves customer-data and abuse boundaries", asy
   assert.match(worker, /ALLOWED_CONTACT_HOSTNAMES/);
   assert.match(worker, /companyWebsite: z\.string\(\)\.max\(0\)/);
   assert.match(worker, /consent: z\.literal\(true\)/);
-  assert.match(worker, /result\.action === CONTACT_ACTION/);
+  assert.match(worker, /result\.action === expectedAction/);
+  assert.match(worker, /NEWSLETTER_ACTION = "newsletter"/);
+  assert.match(worker, /const newsletterSchema = z\.object/);
+  assert.match(worker, /url\.pathname === "\/newsletter"/);
+  assert.match(worker, /INSERT INTO newsletter_subscribers/);
+  assert.match(worker, /ON CONFLICT \(email\) DO UPDATE SET/);
+  assert.match(worker, /\{ subscribed: true, receipt: storedReceipt \}/);
   assert.match(worker, /allowedHostnames\.includes\(result\.hostname\)/);
   assert.match(worker, /currentBucket - 1/);
   assert.match(worker, /created_at >= NOW\(\) - INTERVAL '10 minutes'/);
@@ -35,13 +42,22 @@ test("private contact ingress preserves customer-data and abuse boundaries", asy
   assert.doesNotMatch(worker, /vendor|supplier|margin|landed[_ -]?cost/i);
   assert.doesNotMatch(worker, /hook\.us2\.make\.com|MAKE_WEBHOOK|SLACK|GOOGLE_SHEETS/i);
 
-  assert.match(migration, /ADD COLUMN IF NOT EXISTS/);
-  assert.match(migration, /submission_fingerprint/);
-  assert.match(migration, /consent_at/);
-  assert.match(migration, /receipt_id/);
-  assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS/);
-  assert.doesNotMatch(migration, /DROP\s+(TABLE|COLUMN|INDEX)/i);
-  assert.doesNotMatch(migration, /DELETE\s+FROM/i);
+  assert.match(contactMigration, /ADD COLUMN IF NOT EXISTS/);
+  assert.match(contactMigration, /submission_fingerprint/);
+  assert.match(contactMigration, /consent_at/);
+  assert.match(contactMigration, /receipt_id/);
+  assert.match(contactMigration, /CREATE UNIQUE INDEX IF NOT EXISTS/);
+  assert.doesNotMatch(contactMigration, /DROP\s+(TABLE|COLUMN|INDEX)/i);
+  assert.doesNotMatch(contactMigration, /DELETE\s+FROM/i);
+
+  assert.match(newsletterMigration, /CREATE TABLE IF NOT EXISTS newsletter_subscribers/);
+  assert.match(newsletterMigration, /email TEXT PRIMARY KEY/);
+  assert.match(newsletterMigration, /consent_at TIMESTAMPTZ NOT NULL/);
+  assert.match(newsletterMigration, /subscribed BOOLEAN NOT NULL DEFAULT TRUE/);
+  assert.match(newsletterMigration, /unsubscribed_at TIMESTAMPTZ/);
+  assert.match(newsletterMigration, /CREATE UNIQUE INDEX IF NOT EXISTS newsletter_subscribers_receipt_idx/);
+  assert.doesNotMatch(newsletterMigration, /DROP\s+(TABLE|COLUMN|INDEX)/i);
+  assert.doesNotMatch(newsletterMigration, /DELETE\s+FROM/i);
 
   const contactManifest = JSON.parse(config);
   const privateManifestName = privateWorkerConfig.match(/^name\s*=\s*"([^"]+)"/m)?.[1];
@@ -54,10 +70,11 @@ test("private contact ingress preserves customer-data and abuse boundaries", asy
   assert.equal(contactManifest.vars, undefined);
 
   assert.match(handoff, /Intended private operations repository: `jussray\/jbh-private`/);
-  assert.match(handoff, /visibility: public/);
+  assert.match(handoff, /visibility: private/);
   assert.match(handoff, /main` is not protected/);
   assert.match(handoff, /Merge authority is blocked/);
   assert.match(handoff, /015_contact_ingress_safety\.sql/);
+  assert.match(handoff, /016_newsletter_ingress\.sql/);
   assert.match(handoff, /Make remains downstream and disabled/);
   assert.match(handoff, /startup_failure/);
 });
@@ -103,6 +120,7 @@ test("production contact deployment is manual, exact-head, locked, private-compa
   assert.doesNotMatch(workflow, /echo .*DATABASE_URL|echo .*TURNSTILE_SECRET_KEY/);
 
   assert.match(exactHeadWorkflow, /admin\/migrations\/015_contact_ingress_safety\.sql/);
+  assert.match(exactHeadWorkflow, /admin\/migrations\/016_newsletter_ingress\.sql/);
   assert.match(exactHeadWorkflow, /Record approved build-phase provider state/);
   assert.match(exactHeadWorkflow, /MERGE_MEMBRANE_OBSERVATION_MS: "0"/);
   assert.match(exactHeadWorkflow, /node scripts\/verify-merge-membrane\.mjs/);
