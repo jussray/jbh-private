@@ -11,7 +11,10 @@
       {
         "id": "paid-order-exact-head",
         "name": "Verify private paid-order reconciliation",
-        "required": true
+        "required": true,
+        "scope": {
+          "workflowPath": ".github/workflows/paid-order-reconciliation-exact-head.yml"
+        }
       }
     ],
     "testCatalog": [
