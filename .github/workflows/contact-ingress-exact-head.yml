@@ -5,6 +5,7 @@ on:
     paths:
       - "contact-worker/**"
       - "admin/migrations/015_contact_ingress_safety.sql"
+      - "admin/migrations/016_newsletter_ingress.sql"
       - "package.json"
       - "package-lock.json"
       - "wrangler.toml"
@@ -86,9 +87,14 @@ jobs:
         run: |
           set -euo pipefail
           test -f admin/migrations/015_contact_ingress_safety.sql
+          test -f admin/migrations/016_newsletter_ingress.sql
           grep -q 'ADD COLUMN IF NOT EXISTS' admin/migrations/015_contact_ingress_safety.sql
           grep -q 'CREATE UNIQUE INDEX IF NOT EXISTS' admin/migrations/015_contact_ingress_safety.sql
-          ! grep -Eiq 'DROP[[:space:]]+(TABLE|COLUMN|INDEX)|DELETE[[:space:]]+FROM' admin/migrations/015_contact_ingress_safety.sql
+          grep -q 'CREATE TABLE IF NOT EXISTS newsletter_subscribers' admin/migrations/016_newsletter_ingress.sql
+          grep -q 'CREATE UNIQUE INDEX IF NOT EXISTS newsletter_subscribers_receipt_idx' admin/migrations/016_newsletter_ingress.sql
+          for migration in admin/migrations/015_contact_ingress_safety.sql admin/migrations/016_newsletter_ingress.sql; do
+            ! grep -Eiq 'DROP[[:space:]]+(TABLE|COLUMN|INDEX)|DELETE[[:space:]]+FROM' "$migration"
+          done
           node --input-type=module <<'NODE'
           import {readdirSync} from "node:fs";
           const names = readdirSync("admin/migrations")
