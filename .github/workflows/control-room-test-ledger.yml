@@ -11,6 +11,7 @@ permissions:
   contents: read
   checks: read
   pull-requests: read
+  actions: read
 
 env:
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
