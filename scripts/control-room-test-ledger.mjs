@@ -92,14 +92,19 @@ export function githubProviderMembraneState(provider = {}) {
 // ---------------------------------------------------------------------------
 const escapeRegex = (value) => value.replace(/[.+^${}()|[\]\\]/g, '\\$&');
 
+// Glob syntax the matcher implements exactly: `*`, `**`, `**/`, leading `!`. Anything else
+// (`?`, `+`, `[...]`) makes the decision fail closed rather than risk matching less than GitHub.
+const UNSUPPORTED_GLOB = /[?+[\]]/u;
+
 export function workflowGlobMatches(file, pattern) {
   const target = clean(file).replace(/^\.\//, '');
   const glob = clean(pattern).replace(/^\.\//, '');
   if (!target || !glob) return false;
   const source = escapeRegex(glob)
+    .replace(/\*\*\//g, '\u0001')
     .replace(/\*\*/g, '\u0000')
     .replace(/\*/g, '[^/]*')
-    .replace(/\?/g, '[^/]')
+    .replace(/\u0001/g, '(?:.*/)?')
     .replace(/\u0000/g, '.*');
   return new RegExp(`^${source}$`).test(target);
 }
@@ -152,10 +157,14 @@ export function parseWorkflowTriggers(workflowSource) {
       }  // paths-ignore / branches leave `paths` null => treated as always required (conservative)
       continue;
     }
-    const itemMatch = line.match(/^ {6}-\s+['"]?(.+?)['"]?\s*$/u);
-    if (itemMatch && collecting === 'paths') current.paths.push(itemMatch[1]);
+    if (collecting === 'paths') {
+      const itemMatch = line.match(/^ {4,}-\s+['"]?(.+?)['"]?\s*$/u);
+      if (!itemMatch || /^[>|]/u.test(itemMatch[1])) return {ok: false, triggers: new Map()};
+      current.paths.push(itemMatch[1]);
+    }
   }
-  return {ok: triggers.size > 0, triggers};
+  const emptyFilter = [...triggers.values()].some((trigger) => Array.isArray(trigger.paths) && trigger.paths.length === 0);
+  return {ok: triggers.size > 0 && !emptyFilter, triggers};
 }
 
 export function requiredSignalScopeDecision({event, triggers, workflowPath, changedFiles, changedFilesComplete}) {
@@ -165,6 +174,8 @@ export function requiredSignalScopeDecision({event, triggers, workflowPath, chan
   if (!triggers.triggers.has(eventName)) return {required: false, reason: `${workflowPath} has no ${eventName || 'unknown'} trigger`};
   const trigger = triggers.triggers.get(eventName);
   if (!Array.isArray(trigger.paths)) return required(`${workflowPath} runs on every ${eventName}`);
+  const unsupported = trigger.paths.find((pattern) => UNSUPPORTED_GLOB.test(clean(pattern).replace(/^!/u, '')));
+  if (unsupported) return required(`trusted paths use glob syntax the ledger does not narrow (${unsupported})`);
   if (changedFilesComplete !== true) return required('changed-file list unavailable or truncated');
   const files = Array.isArray(changedFiles) ? changedFiles.map(clean).filter(Boolean) : [];
   if (files.includes(workflowPath)) return required(`${workflowPath} itself changed`);
@@ -173,11 +184,25 @@ export function requiredSignalScopeDecision({event, triggers, workflowPath, chan
   return {required: false, reason: `change is outside the trusted ${eventName} paths of ${workflowPath}`};
 }
 
-export function resolveRequiredSignalNames(signals, decisions = {}, checks = []) {
+export function resolveRequiredSignalNames(signals, decisions = {}, checks = [], {workflowRunPaths} = {}) {
   const present = new Set((Array.isArray(checks) ? checks : []).map((check) => clean(check?.name)));
+  // workflowRunPaths: undefined = not consulted; null = lookup failed (fail closed); array = run paths on this commit.
+  const runStarted = (workflowPath) => workflowRunPaths === null || (Array.isArray(workflowRunPaths) &&
+    workflowRunPaths.some((runPath) => clean(runPath) === workflowPath || clean(runPath).startsWith(`${workflowPath}@`)));
   return (Array.isArray(signals) ? signals : [])
-    .filter((signal) => !signal.scopeWorkflowPath || decisions?.[signal.name]?.required !== false || present.has(signal.name))
+    .filter((signal) => !signal.scopeWorkflowPath || decisions?.[signal.name]?.required !== false ||
+      present.has(signal.name) || runStarted(signal.scopeWorkflowPath))
     .map((signal) => signal.name);
+}
+
+/** Final verdict: null when the ledger may pass, otherwise the fail-closed reason. */
+export function ledgerFailure(ledger) {
+  const state = clean(ledger?.aggregate?.state);
+  if (!(ledger?.aggregate?.counts?.total > 0)) return 'No exact-head checks were discovered.';
+  if (clean(ledger?.providerMembrane?.state) === 'failed') return 'GitHub provider membrane failed.';
+  if (state === 'failed') return 'Exact-head ledger failed closed.';
+  if (state === 'pending' || state === 'unknown') return `Exact-head ledger did not settle (state=${state}, observer=${clean(ledger?.runner?.observerState) || 'unknown'}).`;
+  return null;
 }
 
 export function aggregateTestLedger(checks, requiredSignalNames = [], branch = '') {
@@ -320,19 +345,39 @@ async function fetchChangedFiles({repository, event, prNumber, beforeSha, sha, t
   if (event === 'pull_request' && /^\d+$/u.test(prNumber)) {
     const pull = await githubJson(`https://api.github.com/repos/${repository}/pulls/${prNumber}`, token);
     const files = [];
+    let rowCount = 0;
     for (let page = 1; page <= 30; page += 1) {
       const rows = await githubJson(`https://api.github.com/repos/${repository}/pulls/${prNumber}/files?per_page=100&page=${page}`, token);
-      files.push(...(Array.isArray(rows) ? rows : []).map((row) => clean(row?.filename)).filter(Boolean));
-      if (!Array.isArray(rows) || rows.length < 100) break;
+      const list = Array.isArray(rows) ? rows : [];
+      rowCount += list.length;
+      files.push(...list.flatMap((row) => [clean(row?.filename), clean(row?.previous_filename)]).filter(Boolean));
+      if (list.length < 100) break;
     }
-    return {files, complete: Number.isInteger(pull?.changed_files) && pull.changed_files === files.length && files.length < 3000};
+    // Completeness counts listed rows (one per changed file); renames add their old path as well.
+    return {files: [...new Set(files)], complete: Number.isInteger(pull?.changed_files) && pull.changed_files === rowCount && rowCount < 3000};
   }
   if (event === 'push' && /^[0-9a-f]{40}$/u.test(beforeSha) && !/^0+$/u.test(beforeSha)) {
     const compare = await githubJson(`https://api.github.com/repos/${repository}/compare/${beforeSha}...${sha}`, token);
-    const files = (Array.isArray(compare?.files) ? compare.files : []).map((row) => clean(row?.filename)).filter(Boolean);
-    return {files, complete: files.length < 300};
+    const rows = Array.isArray(compare?.files) ? compare.files : [];
+    const files = rows.flatMap((row) => [clean(row?.filename), clean(row?.previous_filename)]).filter(Boolean);
+    return {files, complete: rows.length < 300};
   }
   return {files: [], complete: false};
+}
+
+async function fetchWorkflowRunPaths({repository, sha, token}) {
+  try {
+    const paths = [];
+    for (let page = 1; page <= 10; page += 1) {
+      const payload = await githubJson(`https://api.github.com/repos/${repository}/actions/runs?head_sha=${sha}&per_page=100&page=${page}`, token);
+      const runs = Array.isArray(payload?.workflow_runs) ? payload.workflow_runs : [];
+      paths.push(...runs.map((run) => clean(run?.path)).filter(Boolean));
+      if (runs.length < 100) break;
+    }
+    return paths;
+  } catch {
+    return null;
+  }
 }
 
 async function decideSignalScopes({signals, repository, event, prNumber, baseSha, beforeSha, sha, token}) {
@@ -345,6 +390,8 @@ async function decideSignalScopes({signals, repository, event, prNumber, baseSha
   } catch (error) {
     changed = {files: [], complete: false, error: error instanceof Error ? error.message : String(error)};
   }
+  // pull_request: the PR base (main) is trusted, never the PR head. push: the pushed main commit is what
+  // GitHub itself evaluates triggers from; it is trusted only because changes reach main through review.
   const trustedRef = event === 'pull_request' ? baseSha : sha;
   for (const signal of scoped) {
     try {
@@ -389,7 +436,8 @@ export async function observeExactHeadChecks(env = process.env) {
   let reachedStableTerminal = false;
   while (Date.now() - startedAt < timeoutMs) {
     checks = selectLatestChecks(await fetchAllCheckRuns({repository, sha, token}), sha, observerCheckName);
-    requiredSignalNames = resolveRequiredSignalNames(requiredSignals, requiredSignalDecisions, checks);
+    const workflowRunPaths = await fetchWorkflowRunPaths({repository, sha, token});
+    requiredSignalNames = resolveRequiredSignalNames(requiredSignals, requiredSignalDecisions, checks, {workflowRunPaths});
     writeLedger(outputPath, buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, requiredSignalDecisions, providerMembrane}));
     const fingerprint = JSON.stringify(checks.map((check) => [check.app, check.name, check.state, check.detailsUrl]));
     const terminal = !checks.some((check) => check.state === 'queued' || check.state === 'running');
@@ -402,9 +450,8 @@ export async function observeExactHeadChecks(env = process.env) {
 
   const ledger = buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, requiredSignalDecisions, providerMembrane, observerState: reachedStableTerminal ? 'stable' : 'window-expired'});
   writeLedger(outputPath, ledger);
-  if (ledger.aggregate.counts.total === 0) throw new Error(`No exact-head checks were discovered. Evidence: ${outputPath}`);
-  if (ledger.providerMembrane.state === 'failed') throw new Error(`GitHub provider membrane failed: repositoryPrivate=${ledger.providerMembrane.repositoryPrivate} mainProtected=${ledger.providerMembrane.mainProtected}. Evidence: ${outputPath}`);
-  if (ledger.aggregate.state === 'failed') throw new Error(`Exact-head ledger failed closed. Evidence: ${outputPath}`);
+  const failure = ledgerFailure(ledger);
+  if (failure) throw new Error(`${failure} repositoryPrivate=${ledger.providerMembrane.repositoryPrivate} mainProtected=${ledger.providerMembrane.mainProtected}. Evidence: ${outputPath}`);
   console.log(JSON.stringify(ledger, null, 2));
   return ledger;
 }

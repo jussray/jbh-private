@@ -145,8 +145,6 @@ test('applies GitHub path-filter semantics including ordered negation', () => {
   assert.equal(fileMatchesPathFilter('admin/payment-worker/src/index.ts', patterns), true);
   assert.equal(fileMatchesPathFilter('admin/payment-worker/README.md', patterns), false);
   assert.equal(fileMatchesPathFilter('admin/tests/x.test.mjs', patterns), false);
-  assert.equal(fileMatchesPathFilter('a/b.ts', ['a/?.ts']), true);
-  assert.equal(fileMatchesPathFilter('a/bc.ts', ['a/?.ts']), false);
 });
 
 test('a change outside the trusted pull_request paths does not require the scoped signal', () => {
@@ -206,6 +204,46 @@ test('the manifest scopes the paid-order signal to its own workflow', () => {
 
 test('the ledger workflow hands trusted scope inputs to the observer', () => {
   assert.match(workflow, /pull-requests: read/);
+  assert.match(workflow, /actions: read/);
   assert.match(workflow, /TRUSTED_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
   assert.match(workflow, /PR_NUMBER: \$\{\{ github\.event\.pull_request\.number \}\}/);
+});
+
+// --- Hardening from independent review (latent false-green paths). ---
+import {ledgerFailure} from '../scripts/control-room-test-ledger.mjs';
+
+test('parser accepts any valid list indentation and refuses shapes it cannot read', () => {
+  const at = (indent) => parseWorkflowTriggers(`on:\n  pull_request:\n    paths:\n${' '.repeat(indent)}- "admin/**"\n`);
+  assert.deepEqual(at(4).triggers.get('pull_request').paths, ['admin/**']);
+  assert.deepEqual(at(8).triggers.get('pull_request').paths, ['admin/**']);
+  assert.equal(parseWorkflowTriggers('on:\n  pull_request:\n    paths:\n      - >-\n        admin/**\n').ok, false, 'folded scalar');
+  assert.equal(parseWorkflowTriggers('on:\n  pull_request:\n    paths:\n  workflow_dispatch:\n').ok, false, 'empty paths');
+  assert.equal(parseWorkflowTriggers('on:\n  pull_request:\n    paths:\n      - "a/**"\n      junk line\n').ok, false, 'unreadable line in paths');
+});
+
+test('globs never match less than GitHub: **/ spans zero dirs; unsupported syntax fails closed', () => {
+  assert.equal(fileMatchesPathFilter('README.md', ['**/README.md']), true);
+  assert.equal(fileMatchesPathFilter('admin/x.ts', ['admin/**/*.ts']), true);
+  assert.equal(fileMatchesPathFilter('admin/a/b/x.ts', ['admin/**/*.ts']), true);
+  for (const pattern of ['admin/tests?/x', 'admin/[ab].ts', 'admin/a+.ts']) {
+    const triggers = parseWorkflowTriggers(`on:\n  pull_request:\n    paths:\n      - "${pattern}"\n`);
+    assert.equal(decide({triggers, changedFiles: ['docs/unrelated.md']}).required, true, `unsupported glob ${pattern} must fail closed`);
+  }
+});
+
+test('a run of the scoped workflow on this commit enforces the signal even before its check-run exists', () => {
+  const signals = [{name: PAID_SIGNAL, scopeWorkflowPath: PAID_ORDER}];
+  const outOfScope = {[PAID_SIGNAL]: {required: false, reason: 'outside'}};
+  assert.deepEqual(resolveRequiredSignalNames(signals, outOfScope, [], {workflowRunPaths: [PAID_ORDER]}), [PAID_SIGNAL]);
+  assert.deepEqual(resolveRequiredSignalNames(signals, outOfScope, [], {workflowRunPaths: [`${PAID_ORDER}@refs/pull/1/merge`]}), [PAID_SIGNAL]);
+  assert.deepEqual(resolveRequiredSignalNames(signals, outOfScope, [], {workflowRunPaths: null}), [PAID_SIGNAL], 'unknown runs fail closed');
+  assert.deepEqual(resolveRequiredSignalNames(signals, outOfScope, [], {workflowRunPaths: []}), []);
+});
+
+test('a pending or unknown ledger at window expiry fails instead of exiting green', () => {
+  const base = {aggregate: {state: 'passed', counts: {total: 3}}, providerMembrane: {state: 'observed'}, runner: {observerState: 'stable'}};
+  assert.equal(ledgerFailure(base), null);
+  assert.match(ledgerFailure({...base, aggregate: {state: 'pending', counts: {total: 3}}, runner: {observerState: 'window-expired'}}), /did not settle/);
+  assert.match(ledgerFailure({...base, aggregate: {state: 'failed', counts: {total: 3}}}), /failed closed/);
+  assert.match(ledgerFailure({...base, aggregate: {state: 'passed', counts: {total: 0}}}), /No exact-head checks/);
 });
