@@ -286,18 +286,14 @@ async function handleNewsletter(request: Request, env: Env): Promise<Response> {
         NOW()
       )
       ON CONFLICT (email) DO UPDATE SET
-        receipt_id = EXCLUDED.receipt_id,
-        consent_at = EXCLUDED.consent_at,
-        source = EXCLUDED.source,
-        subscribed = TRUE,
-        unsubscribed_at = NULL,
-        updated_at = NOW()
+        updated_at = newsletter_subscribers.updated_at
+      WHERE newsletter_subscribers.subscribed = TRUE
       RETURNING receipt_id
     `;
 
     const storedReceipt = upserted[0]?.receipt_id as string | undefined;
     if (!storedReceipt) {
-      return json({ error: "We couldn't save your signup" }, 500, origin);
+      return json({ error: "Existing opt-out requires verified email confirmation" }, 409, origin);
     }
 
     return json({ subscribed: true, receipt: storedReceipt }, 201, origin);
