@@ -83,6 +83,103 @@ export function githubProviderMembraneState(provider = {}) {
   return provider?.repositoryPrivate === true && provider?.mainProtected === true ? 'passed' : 'observed';
 }
 
+// ---------------------------------------------------------------------------
+// Scoped required signals.
+// A manifest signal may declare `scope.workflowPath`: it is then required only when
+// GitHub would run that workflow for this change, judged from the TRUSTED copy of the
+// workflow (PR base / pushed main), never the PR head. Every uncertain branch fails closed.
+// A scoped signal whose lane is present on the commit is always enforced.
+// ---------------------------------------------------------------------------
+const escapeRegex = (value) => value.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+
+export function workflowGlobMatches(file, pattern) {
+  const target = clean(file).replace(/^\.\//, '');
+  const glob = clean(pattern).replace(/^\.\//, '');
+  if (!target || !glob) return false;
+  const source = escapeRegex(glob)
+    .replace(/\*\*/g, '\u0000')
+    .replace(/\*/g, '[^/]*')
+    .replace(/\?/g, '[^/]')
+    .replace(/\u0000/g, '.*');
+  return new RegExp(`^${source}$`).test(target);
+}
+
+/** GitHub `paths` semantics: patterns apply in order; a `!pattern` un-matches. */
+export function fileMatchesPathFilter(file, patterns) {
+  let matched = false;
+  for (const raw of Array.isArray(patterns) ? patterns : []) {
+    const negated = clean(raw).startsWith('!');
+    if (workflowGlobMatches(file, negated ? clean(raw).slice(1) : raw)) matched = !negated;
+  }
+  return matched;
+}
+
+/** Minimal, conservative parser for a workflow's `on:` block. Unknown shapes => ok:false. */
+export function parseWorkflowTriggers(workflowSource) {
+  const lines = String(workflowSource ?? '').split(/\r?\n/u);
+  const onIndex = lines.findIndex((line) => /^(?:on|"on"|'on'):/u.test(line));
+  if (onIndex === -1) return {ok: false, triggers: new Map()};
+  const triggers = new Map();
+  const inline = lines[onIndex].replace(/^(?:on|"on"|'on'):/u, '').replace(/#.*$/u, '').trim();
+  if (inline) {
+    for (const name of inline.replace(/^\[|\]$/gu, '').split(',').map((item) => clean(item.replace(/['"]/g, '')))) {
+      if (!/^[a-z_]+$/u.test(name)) return {ok: false, triggers: new Map()};
+      triggers.set(name, {paths: null});
+    }
+    return {ok: triggers.size > 0, triggers};
+  }
+  let current = null;
+  let collecting = null;
+  for (let index = onIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index].replace(/\s+#.*$/u, '');
+    if (!line.trim()) continue;
+    if (/^\S/u.test(line)) break;
+    const eventMatch = line.match(/^ {2}([a-z_]+):\s*(.*)$/u);
+    if (eventMatch) {
+      current = {paths: null};
+      triggers.set(eventMatch[1], current);
+      collecting = null;
+      continue;
+    }
+    if (!current) return {ok: false, triggers: new Map()};
+    const keyMatch = line.match(/^ {4}([a-z_-]+):\s*(.*)$/u);
+    if (keyMatch) {
+      collecting = null;
+      if (keyMatch[1] === 'paths') {
+        if (keyMatch[2]) return {ok: false, triggers: new Map()};
+        current.paths = [];
+        collecting = 'paths';
+      }  // paths-ignore / branches leave `paths` null => treated as always required (conservative)
+      continue;
+    }
+    const itemMatch = line.match(/^ {6}-\s+['"]?(.+?)['"]?\s*$/u);
+    if (itemMatch && collecting === 'paths') current.paths.push(itemMatch[1]);
+  }
+  return {ok: triggers.size > 0, triggers};
+}
+
+export function requiredSignalScopeDecision({event, triggers, workflowPath, changedFiles, changedFilesComplete}) {
+  const required = (reason) => ({required: true, reason});
+  if (!triggers?.ok) return required(`trusted triggers of ${workflowPath} could not be parsed`);
+  const eventName = clean(event);
+  if (!triggers.triggers.has(eventName)) return {required: false, reason: `${workflowPath} has no ${eventName || 'unknown'} trigger`};
+  const trigger = triggers.triggers.get(eventName);
+  if (!Array.isArray(trigger.paths)) return required(`${workflowPath} runs on every ${eventName}`);
+  if (changedFilesComplete !== true) return required('changed-file list unavailable or truncated');
+  const files = Array.isArray(changedFiles) ? changedFiles.map(clean).filter(Boolean) : [];
+  if (files.includes(workflowPath)) return required(`${workflowPath} itself changed`);
+  const hit = files.find((file) => fileMatchesPathFilter(file, trigger.paths));
+  if (hit) return required(`change touches trusted ${eventName} paths (${hit})`);
+  return {required: false, reason: `change is outside the trusted ${eventName} paths of ${workflowPath}`};
+}
+
+export function resolveRequiredSignalNames(signals, decisions = {}, checks = []) {
+  const present = new Set((Array.isArray(checks) ? checks : []).map((check) => clean(check?.name)));
+  return (Array.isArray(signals) ? signals : [])
+    .filter((signal) => !signal.scopeWorkflowPath || decisions?.[signal.name]?.required !== false || present.has(signal.name))
+    .map((signal) => signal.name);
+}
+
 export function aggregateTestLedger(checks, requiredSignalNames = [], branch = '') {
   const list = Array.isArray(checks) ? checks : [];
   const counts = {
@@ -130,7 +227,7 @@ function normalizeProviderMembrane(providerMembrane) {
   };
 }
 
-export function buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames = [], providerMembrane = null, observerState = 'observing', observedAt = new Date()}) {
+export function buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames = [], requiredSignalDecisions = {}, providerMembrane = null, observerState = 'observing', observedAt = new Date()}) {
   const normalizedBranch = clean(branch) || null;
   const cloudflareProductionState = cloudflareProductionEffectState(checks, normalizedBranch || '');
   const normalizedProviderMembrane = normalizeProviderMembrane(providerMembrane);
@@ -150,6 +247,12 @@ export function buildTestLedger({repository, sha, branch, runId, checks, require
       policy: 'record Cloudflare non-main production builds as intentional observed external effects during the build phase',
     },
     aggregate,
+    requiredSignals: Object.entries(requiredSignalDecisions ?? {}).map(([name, decision]) => ({
+      name,
+      enforced: requiredSignalNames.includes(name),
+      required: decision?.required !== false,
+      reason: clean(decision?.reason) || null,
+    })),
     checks,
   };
 }
@@ -196,12 +299,64 @@ function writeLedger(outputPath, ledger) {
   fs.writeFileSync(outputPath, `${JSON.stringify(ledger, null, 2)}\n`, 'utf8');
 }
 
-function loadRequiredSignalNames(manifestPath = REPOSITORY_MANIFEST_PATH) {
+function loadRequiredSignals(manifestPath = REPOSITORY_MANIFEST_PATH) {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   const requiredSignals = Array.isArray(manifest?.verification?.requiredSignals) ? manifest.verification.requiredSignals : [];
-  const names = requiredSignals.filter((signal) => signal?.required === true).map((signal) => clean(signal?.name)).filter(Boolean);
-  if (names.length === 0) throw new Error('Repository control-room manifest must declare at least one required verification signal.');
-  return names;
+  const signals = requiredSignals
+    .filter((signal) => signal?.required === true && clean(signal?.name))
+    .map((signal) => ({name: clean(signal.name), scopeWorkflowPath: clean(signal?.scope?.workflowPath) || null}));
+  if (signals.length === 0) throw new Error('Repository control-room manifest must declare at least one required verification signal.');
+  return signals;
+}
+
+async function fetchTrustedFile({repository, filePath, ref, token}) {
+  const encoded = filePath.split('/').map(encodeURIComponent).join('/');
+  const payload = await githubJson(`https://api.github.com/repos/${repository}/contents/${encoded}?ref=${encodeURIComponent(ref)}`, token);
+  if (payload?.type !== 'file' || payload?.encoding !== 'base64') throw new Error(`trusted file unavailable: ${filePath}@${ref}`);
+  return Buffer.from(String(payload.content).replace(/\s+/g, ''), 'base64').toString('utf8');
+}
+
+async function fetchChangedFiles({repository, event, prNumber, beforeSha, sha, token}) {
+  if (event === 'pull_request' && /^\d+$/u.test(prNumber)) {
+    const pull = await githubJson(`https://api.github.com/repos/${repository}/pulls/${prNumber}`, token);
+    const files = [];
+    for (let page = 1; page <= 30; page += 1) {
+      const rows = await githubJson(`https://api.github.com/repos/${repository}/pulls/${prNumber}/files?per_page=100&page=${page}`, token);
+      files.push(...(Array.isArray(rows) ? rows : []).map((row) => clean(row?.filename)).filter(Boolean));
+      if (!Array.isArray(rows) || rows.length < 100) break;
+    }
+    return {files, complete: Number.isInteger(pull?.changed_files) && pull.changed_files === files.length && files.length < 3000};
+  }
+  if (event === 'push' && /^[0-9a-f]{40}$/u.test(beforeSha) && !/^0+$/u.test(beforeSha)) {
+    const compare = await githubJson(`https://api.github.com/repos/${repository}/compare/${beforeSha}...${sha}`, token);
+    const files = (Array.isArray(compare?.files) ? compare.files : []).map((row) => clean(row?.filename)).filter(Boolean);
+    return {files, complete: files.length < 300};
+  }
+  return {files: [], complete: false};
+}
+
+async function decideSignalScopes({signals, repository, event, prNumber, baseSha, beforeSha, sha, token}) {
+  const decisions = {};
+  const scoped = signals.filter((signal) => signal.scopeWorkflowPath);
+  if (scoped.length === 0) return decisions;
+  let changed = {files: [], complete: false};
+  try {
+    changed = await fetchChangedFiles({repository, event, prNumber, beforeSha, sha, token});
+  } catch (error) {
+    changed = {files: [], complete: false, error: error instanceof Error ? error.message : String(error)};
+  }
+  const trustedRef = event === 'pull_request' ? baseSha : sha;
+  for (const signal of scoped) {
+    try {
+      if (!/^[0-9a-f]{40}$/u.test(trustedRef)) throw new Error('no trusted ref for this event');
+      const source = await fetchTrustedFile({repository, filePath: signal.scopeWorkflowPath, ref: trustedRef, token});
+      decisions[signal.name] = requiredSignalScopeDecision({event, triggers: parseWorkflowTriggers(source),
+        workflowPath: signal.scopeWorkflowPath, changedFiles: changed.files, changedFilesComplete: changed.complete});
+    } catch (error) {
+      decisions[signal.name] = {required: true, reason: `scope unresolved, failing closed: ${error instanceof Error ? error.message : String(error)}`};
+    }
+  }
+  return decisions;
 }
 
 export async function observeExactHeadChecks(env = process.env) {
@@ -216,7 +371,15 @@ export async function observeExactHeadChecks(env = process.env) {
   const pollMs = Number(env.CONTROL_ROOM_LEDGER_POLL_MS || 10_000);
   const minimumObservationMs = Number(env.CONTROL_ROOM_LEDGER_MINIMUM_MS || 30_000);
   if (!repository || !sha || !token) throw new Error('GITHUB_REPOSITORY, EXPECTED_HEAD_SHA/GITHUB_SHA, and GITHUB_TOKEN are required.');
-  const requiredSignalNames = loadRequiredSignalNames();
+  const requiredSignals = loadRequiredSignals();
+  const requiredSignalDecisions = await decideSignalScopes({
+    signals: requiredSignals, repository, sha, token,
+    event: clean(env.GITHUB_EVENT_NAME),
+    prNumber: clean(env.PR_NUMBER),
+    baseSha: normalizeSha(env.TRUSTED_BASE_SHA),
+    beforeSha: normalizeSha(env.PUSH_BEFORE_SHA),
+  });
+  let requiredSignalNames = resolveRequiredSignalNames(requiredSignals, requiredSignalDecisions, []);
   const providerMembrane = await fetchGithubProviderMembrane({repository, token});
 
   const startedAt = Date.now();
@@ -226,7 +389,8 @@ export async function observeExactHeadChecks(env = process.env) {
   let reachedStableTerminal = false;
   while (Date.now() - startedAt < timeoutMs) {
     checks = selectLatestChecks(await fetchAllCheckRuns({repository, sha, token}), sha, observerCheckName);
-    writeLedger(outputPath, buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, providerMembrane}));
+    requiredSignalNames = resolveRequiredSignalNames(requiredSignals, requiredSignalDecisions, checks);
+    writeLedger(outputPath, buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, requiredSignalDecisions, providerMembrane}));
     const fingerprint = JSON.stringify(checks.map((check) => [check.app, check.name, check.state, check.detailsUrl]));
     const terminal = !checks.some((check) => check.state === 'queued' || check.state === 'running');
     const oldEnough = Date.now() - startedAt >= minimumObservationMs;
@@ -236,7 +400,7 @@ export async function observeExactHeadChecks(env = process.env) {
     await sleep(pollMs);
   }
 
-  const ledger = buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, providerMembrane, observerState: reachedStableTerminal ? 'stable' : 'window-expired'});
+  const ledger = buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, requiredSignalDecisions, providerMembrane, observerState: reachedStableTerminal ? 'stable' : 'window-expired'});
   writeLedger(outputPath, ledger);
   if (ledger.aggregate.counts.total === 0) throw new Error(`No exact-head checks were discovered. Evidence: ${outputPath}`);
   if (ledger.providerMembrane.state === 'failed') throw new Error(`GitHub provider membrane failed: repositoryPrivate=${ledger.providerMembrane.repositoryPrivate} mainProtected=${ledger.providerMembrane.mainProtected}. Evidence: ${outputPath}`);
