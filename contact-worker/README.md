@@ -6,7 +6,7 @@ Ray/Juss is the founder and data decision owner. Storefront visitors may submit 
 
 ## What
 
-A narrowly scoped Cloudflare Worker receives `POST /contact` and `POST /newsletter`. Both routes verify Cloudflare Turnstile, reject the honeypot field, and require explicit consent. Contact submissions use the existing rolling ten-minute duplicate contract; newsletter signups normalize email addresses and upsert one private subscriber row per email so a later explicit re-subscribe can restore consent without creating duplicate subscriber records.
+A narrowly scoped Cloudflare Worker receives `POST /contact` and `POST /newsletter`. Both routes verify Cloudflare Turnstile, reject the honeypot field, and require explicit consent. Contact submissions use the existing rolling ten-minute duplicate contract; newsletter signups normalize email addresses and upsert one private subscriber row per email without reactivating an opted-out address or overwriting an existing receipt. Re-subscription requires separately verified mailbox authorization.
 
 This is the current-main port of the hardened historical contact stack. The historical candidate at `29e38dfafa9809277f98a4c72fb86ff7de998c69` diverged materially from current main and is not a safe production base.
 
@@ -16,7 +16,7 @@ Intended private operations repository: `jussray/jbh-private`.
 
 **Current governance blocker:** fresh GitHub provider readback reports this repository as `visibility: private`, but `main` is not protected. The visibility defect is closed; branch protection remains unsatisfied and must be reconciled before production deployment authority can be granted.
 
-Public caller: `jussray/jussbeautifulhair-site` through the approved private ingress origin identified by `VITE_CONTACT_API_URL`. The contact form uses `/contact`; newsletter signup derives the sibling `/newsletter` path on that same HTTPS origin. The public storefront Worker must not contain `DATABASE_URL`, contact/newsletter persistence, customer-message logs, subscriber lists, vendor data, sourcing records, or owner controls.
+Public caller: `jussray/jussbeautifulhair-site` through the approved private ingress origin identified by `VITE_CONTACT_API_URL`. The contact form uses `/contact` through `VITE_CONTACT_API_URL`; newsletter signup requires a separate explicit `VITE_NEWSLETTER_API_URL` ending in `/newsletter`. The public storefront Worker must not contain `DATABASE_URL`, contact/newsletter persistence, customer-message logs, subscriber lists, vendor data, sourcing records, or owner controls.
 
 The earlier source in `jussray/jussbeautifulhair1/contact-worker` is transitional history only and must not remain a production deployment authority.
 
@@ -28,7 +28,7 @@ Activate the isolated contact Worker only after:
 2. `admin/migrations/001_init.sql`, `admin/migrations/015_contact_ingress_safety.sql`, and `admin/migrations/016_newsletter_ingress.sql` are applied to the intended private Neon database through a separately approved migration action;
 3. Cloudflare secrets `DATABASE_URL` and `TURNSTILE_SECRET_KEY` are configured on `jbh-contact-ingress`;
 4. variables `ALLOWED_CONTACT_ORIGINS` and `ALLOWED_CONTACT_HOSTNAMES` exactly match approved storefront hosts;
-5. the public storefront has `VITE_CONTACT_API_URL` and `VITE_TURNSTILE_SITE_KEY` configured, and the same private ingress origin serves both `/contact` and `/newsletter`;
+5. the public storefront has `VITE_CONTACT_API_URL` and `VITE_TURNSTILE_SITE_KEY` configured, and the separately configured private ingress endpoints serve `/contact` and `/newsletter`;
 6. exact-head typecheck, contract tests, migration checks, dependency gates, and Wrangler dry-run pass on the current candidate;
 7. the Control Room ledger proves no non-main Cloudflare check crossed a `/production/builds/` boundary;
 8. a real browser submission returns a receipt and creates exactly one database row;
