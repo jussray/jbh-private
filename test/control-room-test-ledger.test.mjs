@@ -118,3 +118,94 @@ test('keeps the always-on ledger on one GitHub runner', () => {
   const observeIndex = workflow.indexOf('Observe every exact-head check lane');
   assert.ok(contractIndex >= 0 && observeIndex > contractIndex);
 });
+
+// --- Scoped required signals: required only when the change is in the trusted trigger scope. ---
+import {fileMatchesPathFilter, parseWorkflowTriggers, requiredSignalScopeDecision, resolveRequiredSignalNames} from '../scripts/control-room-test-ledger.mjs';
+
+const PAID_ORDER = '.github/workflows/paid-order-reconciliation-exact-head.yml';
+const PAID_SIGNAL = 'Verify private paid-order reconciliation';
+const trustedPaidOrder = `name: Paid Order\non:\n  pull_request:\n    paths:\n      - "admin/payment-worker/**"\n      - "package.json"\n      - "!admin/payment-worker/README.md"\n      - "${PAID_ORDER}"\n  workflow_dispatch:\n\npermissions:\n  contents: read\n`;
+const decide = (overrides = {}) => requiredSignalScopeDecision({
+  event: 'pull_request', triggers: parseWorkflowTriggers(trustedPaidOrder), workflowPath: PAID_ORDER,
+  changedFiles: ['README.md'], changedFilesComplete: true, ...overrides,
+});
+
+test('parses trusted workflow triggers and their path filters', () => {
+  const parsed = parseWorkflowTriggers(trustedPaidOrder);
+  assert.equal(parsed.ok, true);
+  assert.deepEqual([...parsed.triggers.keys()].sort(), ['pull_request', 'workflow_dispatch']);
+  assert.deepEqual(parsed.triggers.get('pull_request').paths, ['admin/payment-worker/**', 'package.json', '!admin/payment-worker/README.md', PAID_ORDER]);
+  assert.equal(parsed.triggers.get('workflow_dispatch').paths, null);
+  assert.equal(parseWorkflowTriggers('name: x\non: [push, pull_request]\n').triggers.has('push'), true);
+  assert.equal(parseWorkflowTriggers('name: no triggers\n').ok, false);
+});
+
+test('applies GitHub path-filter semantics including ordered negation', () => {
+  const patterns = ['admin/payment-worker/**', '!admin/payment-worker/README.md'];
+  assert.equal(fileMatchesPathFilter('admin/payment-worker/src/index.ts', patterns), true);
+  assert.equal(fileMatchesPathFilter('admin/payment-worker/README.md', patterns), false);
+  assert.equal(fileMatchesPathFilter('admin/tests/x.test.mjs', patterns), false);
+  assert.equal(fileMatchesPathFilter('a/b.ts', ['a/?.ts']), true);
+  assert.equal(fileMatchesPathFilter('a/bc.ts', ['a/?.ts']), false);
+});
+
+test('a change outside the trusted pull_request paths does not require the scoped signal', () => {
+  const decision = decide({changedFiles: ['.github/workflows/agent-contract-v1.yml', 'admin/payment-worker/README.md']});
+  assert.equal(decision.required, false);
+  assert.match(decision.reason, /outside/);
+});
+
+test('a change inside the trusted paths, or to the workflow itself, requires the signal', () => {
+  assert.equal(decide({changedFiles: ['admin/payment-worker/src/index.ts']}).required, true);
+  assert.equal(decide({changedFiles: [PAID_ORDER]}).required, true);
+  const selfless = parseWorkflowTriggers('on:\n  pull_request:\n    paths:\n      - "admin/payment-worker/**"\n');
+  assert.equal(decide({triggers: selfless, changedFiles: [PAID_ORDER]}).required, true, 'editing the scope definition always requires the signal');
+});
+
+test('the scoped signal is not applicable on an event its workflow never triggers on', () => {
+  const decision = decide({event: 'push', changedFiles: ['admin/payment-worker/src/index.ts']});
+  assert.equal(decision.required, false);
+  assert.match(decision.reason, /no push trigger/);
+});
+
+test('scope resolution fails closed', () => {
+  assert.equal(decide({changedFilesComplete: false}).required, true, 'truncated/unknown changed files');
+  assert.equal(decide({triggers: parseWorkflowTriggers('garbage')}).required, true, 'unparseable trusted workflow');
+  assert.equal(decide({event: 'workflow_dispatch'}).required, true, 'trigger without path filter');
+  assert.equal(decide({triggers: parseWorkflowTriggers('on:\n  pull_request:\n    paths-ignore:\n      - "docs/**"\n')}).required, true, 'paths-ignore is not narrowed');
+});
+
+test('resolves enforced signals: unscoped always, scoped when in scope or when the lane is present', () => {
+  const signals = [{name: 'Always Required', scopeWorkflowPath: null}, {name: PAID_SIGNAL, scopeWorkflowPath: PAID_ORDER}];
+  const outOfScope = {[PAID_SIGNAL]: {required: false, reason: 'outside'}};
+  assert.deepEqual(resolveRequiredSignalNames(signals, outOfScope, []), ['Always Required']);
+  const present = [{name: PAID_SIGNAL, app: 'github-actions', state: 'failed'}];
+  assert.deepEqual(resolveRequiredSignalNames(signals, outOfScope, present), ['Always Required', PAID_SIGNAL]);
+  assert.equal(aggregateTestLedger(present, resolveRequiredSignalNames(signals, outOfScope, present)).state, 'failed');
+  assert.deepEqual(resolveRequiredSignalNames(signals, {}, []), ['Always Required', PAID_SIGNAL], 'missing decision fails closed');
+});
+
+test('an out-of-scope change with every lane green passes the ledger and records why', () => {
+  const signals = [{name: PAID_SIGNAL, scopeWorkflowPath: PAID_ORDER}];
+  const decisions = {[PAID_SIGNAL]: decide({changedFiles: ['scripts/scan_history.py']})};
+  const checks = [{name: 'Secret History Scan', app: 'github-actions', state: 'passed'}];
+  const ledger = buildTestLedger({repository: 'jussray/jbh-private', sha: SHA, branch: 'fix/x', runId: '1', checks,
+    requiredSignalNames: resolveRequiredSignalNames(signals, decisions, checks), requiredSignalDecisions: decisions,
+    providerMembrane: {repositoryPrivate: true, visibility: 'private', mainProtected: false}});
+  assert.equal(ledger.aggregate.state, 'passed');
+  assert.equal(ledger.requiredSignals[0].name, PAID_SIGNAL);
+  assert.equal(ledger.requiredSignals[0].required, false);
+});
+
+test('the manifest scopes the paid-order signal to its own workflow', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../.control-room/repository.manifest.json', import.meta.url), 'utf8'));
+  const signal = manifest.verification.requiredSignals.find((item) => item.name === PAID_SIGNAL);
+  assert.equal(signal?.required, true);
+  assert.equal(signal?.scope?.workflowPath, PAID_ORDER);
+});
+
+test('the ledger workflow hands trusted scope inputs to the observer', () => {
+  assert.match(workflow, /pull-requests: read/);
+  assert.match(workflow, /TRUSTED_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
+  assert.match(workflow, /PR_NUMBER: \$\{\{ github\.event\.pull_request\.number \}\}/);
+});

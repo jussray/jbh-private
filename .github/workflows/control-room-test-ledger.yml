@@ -10,12 +10,17 @@ on:
 permissions:
   contents: read
   checks: read
+  pull-requests: read
 
 env:
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
   GH_TOKEN: ${{ github.token }}
   CONTROL_ROOM_LEDGER_SELF_CHECK: Verify test-ledger contract
   CONTROL_ROOM_TEST_LEDGER_PATH: artifacts/control-room-test-ledger.json
+  # Trusted scope inputs for manifest signals that declare scope.workflowPath.
+  PR_NUMBER: ${{ github.event.pull_request.number }}
+  TRUSTED_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+  PUSH_BEFORE_SHA: ${{ github.event.before }}
 
 concurrency:
   group: control-room-test-ledger-${{ github.event.pull_request.number || github.ref }}
