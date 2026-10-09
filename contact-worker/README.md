@@ -25,11 +25,11 @@ The earlier source in `jussray/jussbeautifulhair1/contact-worker` is transitiona
 Activate the isolated contact Worker only after:
 
 1. repository visibility matches the approved private operations boundary and `main` is protected by a load-bearing merge membrane;
-2. `admin/migrations/001_init.sql`, `admin/migrations/015_contact_ingress_safety.sql`, and `admin/migrations/016_newsletter_ingress.sql` are applied to the intended private Neon database through a separately approved migration action;
+2. `admin/migrations/001_init.sql`, `admin/migrations/015_contact_ingress_safety.sql`, and `admin/migrations/016_newsletter_ingress.sql` are applied to the intended private Neon database through a separately approved migration action; migration 016 must extend the existing `newsletter` table and must fail closed on duplicate normalized emails;
 3. Cloudflare secrets `DATABASE_URL` and `TURNSTILE_SECRET_KEY` are configured on `jbh-contact-ingress`;
 4. variables `ALLOWED_CONTACT_ORIGINS` and `ALLOWED_CONTACT_HOSTNAMES` exactly match approved storefront hosts;
 5. the public storefront has `VITE_CONTACT_API_URL` and `VITE_TURNSTILE_SITE_KEY` configured, and the separately configured private ingress endpoints serve `/contact` and `/newsletter`;
-6. exact-head typecheck, contract tests, migration checks, dependency gates, and Wrangler dry-run pass on the current candidate;
+6. exact-head typecheck, contract tests, migration checks, dependency gates, and Wrangler dry-run pass on the current candidate; the production deploy workflow must then read back the canonical newsletter schema from the intended `DATABASE_URL` before any Wrangler deploy;
 7. the Control Room ledger proves no non-main Cloudflare check crossed a `/production/builds/` boundary;
 8. a real browser submission returns a receipt and creates exactly one database row;
 9. duplicate, invalid-origin, invalid-hostname, invalid-consent, honeypot, oversized-body, and invalid-Turnstile cases fail closed;
@@ -46,7 +46,7 @@ The historical contact candidate was hardened correctly but was merged into an o
 
 - exact origin allowlist, never wildcard CORS;
 - exact Turnstile action and hostname verification (`contact` for messages, `newsletter` for marketing opt-in);
-- minimum contact fields (name, email, message, consent, receipt, source, duplicate fingerprint) and minimum newsletter fields (normalized email, consent timestamp, receipt, source, subscribed state);
+- minimum contact fields (name, email, message, consent, receipt, source, duplicate fingerprint) and minimum newsletter fields on the existing canonical `newsletter` table (normalized email identity, consent timestamp, receipt, source, subscribed state); legacy rows remain unverified rather than silently marketable;
 - no IP persistence and no message contents in logs;
 - rolling ten-minute duplicate detection using current/previous SHA-256 bucket fingerprints plus a server-time `created_at` cutoff;
 - `workers_dev` and preview URLs disabled;
@@ -71,7 +71,7 @@ The historical contact candidate was hardened correctly but was merged into an o
 - Repository workflow bootstraps that exhibited the startup-failure class were migrated to the proven exact-SHA shell bootstrap and protected by regression contracts.
 - The admin dependency graph was reduced to 0 critical, 0 high, 0 moderate, and one classified low transitive Vite/esbuild advisory. Production build and desktop/mobile browser witnesses pass independently of that low finding.
 - Root `apify-client` is intentionally pinned at `2.20.0`. A controlled challenge of main's `2.24.0` passed the X engagement contract 9/9 but produced five current high-severity npm advisories through `proxy-agent -> pac-proxy-agent -> get-uri -> basic-ftp`; npm's own force remediation points back to `2.20.0`. The 2.24 lock candidate was therefore rejected and never committed.
-- `admin/migrations/001_init.sql` defines `contact_messages`; `015_contact_ingress_safety.sql` hardens contact ingress; `016_newsletter_ingress.sql` additively creates the private normalized subscriber record. Source merge does not authorize applying either production migration.
+- `admin/migrations/001_init.sql` defines `contact_messages`; `015_contact_ingress_safety.sql` hardens contact ingress; `016_newsletter_ingress.sql` additively extends the existing canonical `newsletter` table with consent, receipt, subscription-state, and normalized-email controls. It deliberately does not create a second subscriber table. Source merge does not authorize applying either production migration.
 - The public storefront source implements consent, honeypot, Turnstile, HTTPS endpoint validation, fail-closed configuration behavior, and private-ingress receipts for contact/newsletter paths.
 - Cloudflare's Git integration has posted successful production-build receipts for non-main PR commits under service `jbh-private`. This is a real external deployment effect and must not be described as preview-only.
 
@@ -82,7 +82,7 @@ The historical contact candidate was hardened correctly but was merged into an o
 - Whether Cloudflare's `jbh-private` Git-integration deployment changed only the existing repository service or activated any contact-ingress resource. Repository evidence does not establish that the isolated `jbh-contact-ingress` Worker, route, contact secrets, or contact migration were activated.
 - The production private-ingress hostname and whether both `/contact` and `/newsletter` are attached to the intended `jbh-contact-ingress` Worker.
 - Whether required Cloudflare and Neon contact secrets are configured.
-- Whether the contact migration has been applied to production.
+- Whether the contact/newsletter migrations have been applied to production. The deploy workflow now performs a read-only newsletter schema preflight and will refuse deployment if migration 016 is absent, incomplete, or a shadow `newsletter_subscribers` table exists.
 - The intended contact-message retention period.
 - Who reviews the inquiry queue and at what cadence.
 - The final approved downstream automation destinations after Make OAuth completes.
