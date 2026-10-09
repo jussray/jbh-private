@@ -268,7 +268,7 @@ async function handleNewsletter(request: Request, env: Env): Promise<Response> {
   try {
     const sql = neon(env.DATABASE_URL);
     const upserted = await sql`
-      INSERT INTO newsletter_subscribers (
+      INSERT INTO newsletter (
         email,
         receipt_id,
         consent_at,
@@ -285,15 +285,15 @@ async function handleNewsletter(request: Request, env: Env): Promise<Response> {
         NULL,
         NOW()
       )
-      ON CONFLICT (email) DO UPDATE SET
-        updated_at = newsletter_subscribers.updated_at
-      WHERE newsletter_subscribers.subscribed = TRUE
+      ON CONFLICT (lower(email)) DO UPDATE SET
+        updated_at = newsletter.updated_at
+      WHERE newsletter.subscribed IS TRUE
       RETURNING receipt_id
     `;
 
     const storedReceipt = upserted[0]?.receipt_id as string | undefined;
     if (!storedReceipt) {
-      return json({ error: "Existing opt-out requires verified email confirmation" }, 409, origin);
+      return json({ error: "Existing address requires verified email confirmation" }, 409, origin);
     }
 
     return json({ subscribed: true, receipt: storedReceipt }, 201, origin);
