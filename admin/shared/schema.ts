@@ -8,6 +8,7 @@ import {
   integer,
   boolean,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -169,7 +170,7 @@ export type VendorRoutingException = typeof vendorRoutingExceptions.$inferSelect
 export const newsletter = pgTable("newsletter", {
   id: serial("id").primaryKey(),
   email: text("email").notNull(),
-  receiptId: text("receipt_id"),
+  receiptId: uuid("receipt_id"),
   consentAt: timestamp("consent_at", { withTimezone: true }),
   source: text("source"),
   subscribed: boolean("subscribed"),
