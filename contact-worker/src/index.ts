@@ -17,12 +17,20 @@ interface TurnstileResult {
 
 const MAX_BODY_BYTES = 12_000;
 const CONTACT_ACTION = "contact";
+const NEWSLETTER_ACTION = "newsletter";
 const DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 
 const contactSchema = z.object({
   name: z.string().trim().min(1).max(100),
   email: z.string().trim().email().max(254),
   message: z.string().trim().min(2).max(5000),
+  consent: z.literal(true),
+  turnstileToken: z.string().min(1).max(4096),
+  companyWebsite: z.string().max(0).optional().default(""),
+});
+
+const newsletterSchema = z.object({
+  email: z.string().trim().email().max(254),
   consent: z.literal(true),
   turnstileToken: z.string().min(1).max(4096),
   companyWebsite: z.string().max(0).optional().default(""),
@@ -84,6 +92,7 @@ async function readJson(request: Request, origin: string): Promise<unknown | Res
 
 async function verifyTurnstile(
   token: string,
+  expectedAction: string,
   request: Request,
   env: Env,
 ): Promise<boolean> {
@@ -106,7 +115,7 @@ async function verifyTurnstile(
     const allowedHostnames = splitList(env.ALLOWED_CONTACT_HOSTNAMES);
     return Boolean(
       result.success &&
-        result.action === CONTACT_ACTION &&
+        result.action === expectedAction &&
         result.hostname &&
         allowedHostnames.includes(result.hostname),
     );
@@ -153,6 +162,7 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
 
   const challengePassed = await verifyTurnstile(
     parsed.data.turnstileToken,
+    CONTACT_ACTION,
     request,
     env,
   );
@@ -221,10 +231,88 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
   }
 }
 
+async function handleNewsletter(request: Request, env: Env): Promise<Response> {
+  const origin = approvedOrigin(request, env);
+  if (!origin) return json({ error: "Origin not allowed" }, 403);
+  if (request.method === "OPTIONS") return options(origin);
+  if (request.method !== "POST") {
+    const headers = responseHeaders(origin);
+    headers.set("Allow", "POST, OPTIONS");
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers,
+    });
+  }
+
+  if (!env.DATABASE_URL || !env.TURNSTILE_SECRET_KEY) {
+    return json({ error: "Newsletter service unavailable" }, 503, origin);
+  }
+
+  const body = await readJson(request, origin);
+  if (body instanceof Response) return body;
+
+  const parsed = newsletterSchema.safeParse(body);
+  if (!parsed.success) return json({ error: "Invalid newsletter signup" }, 400, origin);
+
+  const challengePassed = await verifyTurnstile(
+    parsed.data.turnstileToken,
+    NEWSLETTER_ACTION,
+    request,
+    env,
+  );
+  if (!challengePassed) return json({ error: "Verification failed" }, 403, origin);
+
+  const receipt = crypto.randomUUID();
+  const email = parsed.data.email.toLowerCase();
+
+  try {
+    const sql = neon(env.DATABASE_URL);
+    const upserted = await sql`
+      INSERT INTO newsletter_subscribers (
+        email,
+        receipt_id,
+        consent_at,
+        source,
+        subscribed,
+        unsubscribed_at,
+        updated_at
+      ) VALUES (
+        ${email},
+        ${receipt},
+        NOW(),
+        'jussbeautifulhair.com',
+        TRUE,
+        NULL,
+        NOW()
+      )
+      ON CONFLICT (email) DO UPDATE SET
+        receipt_id = EXCLUDED.receipt_id,
+        consent_at = EXCLUDED.consent_at,
+        source = EXCLUDED.source,
+        subscribed = TRUE,
+        unsubscribed_at = NULL,
+        updated_at = NOW()
+      RETURNING receipt_id
+    `;
+
+    const storedReceipt = upserted[0]?.receipt_id as string | undefined;
+    if (!storedReceipt) {
+      return json({ error: "We couldn't save your signup" }, 500, origin);
+    }
+
+    return json({ subscribed: true, receipt: storedReceipt }, 201, origin);
+  } catch (error) {
+    const errorType = error instanceof Error ? error.name : "UnknownError";
+    console.error(`[NEWSLETTER_INGRESS] persistence_failed type=${errorType}`);
+    return json({ error: "We couldn't save your signup" }, 500, origin);
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    if (url.pathname !== "/contact") return json({ error: "Not found" }, 404);
-    return handleContact(request, env);
+    if (url.pathname === "/contact") return handleContact(request, env);
+    if (url.pathname === "/newsletter") return handleNewsletter(request, env);
+    return json({ error: "Not found" }, 404);
   },
 };
