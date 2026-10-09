@@ -72,7 +72,7 @@ test("private contact ingress preserves customer-data and abuse boundaries", asy
   assert.match(handoff, /Intended private operations repository: `jussray\/jbh-private`/);
   assert.match(handoff, /visibility: private/);
   assert.match(handoff, /main` is not protected/);
-  assert.match(handoff, /Merge authority is blocked/);
+  assert.match(handoff, /Production deployment authority is additionally blocked/);
   assert.match(handoff, /015_contact_ingress_safety\.sql/);
   assert.match(handoff, /016_newsletter_ingress\.sql/);
   assert.match(handoff, /Make remains downstream and disabled/);
