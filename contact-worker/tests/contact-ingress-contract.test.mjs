@@ -5,10 +5,12 @@ import test from "node:test";
 const read = (path) => readFile(path, "utf8");
 
 test("private contact ingress preserves customer-data and abuse boundaries", async () => {
-  const [worker, contactMigration, newsletterMigration, config, handoff, privateWorkerConfig] = await Promise.all([
+  const [worker, contactMigration, newsletterMigration, legacyNewsletterApi, storage, config, handoff, privateWorkerConfig] = await Promise.all([
     read("contact-worker/src/index.ts"),
     read("admin/migrations/015_contact_ingress_safety.sql"),
     read("admin/migrations/016_newsletter_ingress.sql"),
+    read("admin/api/newsletter.ts"),
+    read("admin/api/_lib/storage.ts"),
     read("contact-worker/wrangler.jsonc"),
     read("contact-worker/README.md"),
     read("wrangler.toml"),
@@ -23,8 +25,9 @@ test("private contact ingress preserves customer-data and abuse boundaries", asy
   assert.match(worker, /NEWSLETTER_ACTION = "newsletter"/);
   assert.match(worker, /const newsletterSchema = z\.object/);
   assert.match(worker, /url\.pathname === "\/newsletter"/);
-  assert.match(worker, /INSERT INTO newsletter_subscribers/);
-  assert.match(worker, /ON CONFLICT \(email\) DO UPDATE SET/);
+  assert.match(worker, /INSERT INTO newsletter \(/);
+  assert.match(worker, /ON CONFLICT \(lower\(email\)\) DO UPDATE SET/);
+  assert.doesNotMatch(worker, /newsletter_subscribers/);
   assert.match(worker, /\{ subscribed: true, receipt: storedReceipt \}/);
   assert.match(worker, /allowedHostnames\.includes\(result\.hostname\)/);
   assert.match(worker, /currentBucket - 1/);
@@ -50,14 +53,23 @@ test("private contact ingress preserves customer-data and abuse boundaries", asy
   assert.doesNotMatch(contactMigration, /DROP\s+(TABLE|COLUMN|INDEX)/i);
   assert.doesNotMatch(contactMigration, /DELETE\s+FROM/i);
 
-  assert.match(newsletterMigration, /CREATE TABLE IF NOT EXISTS newsletter_subscribers/);
-  assert.match(newsletterMigration, /email TEXT PRIMARY KEY/);
-  assert.match(newsletterMigration, /consent_at TIMESTAMPTZ NOT NULL/);
-  assert.match(newsletterMigration, /subscribed BOOLEAN NOT NULL DEFAULT TRUE/);
-  assert.match(newsletterMigration, /unsubscribed_at TIMESTAMPTZ/);
-  assert.match(newsletterMigration, /CREATE UNIQUE INDEX IF NOT EXISTS newsletter_subscribers_receipt_idx/);
+  assert.match(newsletterMigration, /ALTER TABLE newsletter/);
+  assert.match(newsletterMigration, /ADD COLUMN IF NOT EXISTS receipt_id UUID/);
+  assert.match(newsletterMigration, /ADD COLUMN IF NOT EXISTS consent_at TIMESTAMPTZ/);
+  assert.match(newsletterMigration, /ADD COLUMN IF NOT EXISTS subscribed BOOLEAN/);
+  assert.match(newsletterMigration, /ADD COLUMN IF NOT EXISTS unsubscribed_at TIMESTAMPTZ/);
+  assert.match(newsletterMigration, /newsletter_duplicate_emails_require_reconciliation/);
+  assert.match(newsletterMigration, /CREATE UNIQUE INDEX IF NOT EXISTS newsletter_email_normalized_idx/);
+  assert.match(newsletterMigration, /CREATE UNIQUE INDEX IF NOT EXISTS newsletter_receipt_idx/);
+  assert.match(newsletterMigration, /newsletter_subscription_state/);
+  assert.doesNotMatch(newsletterMigration, /newsletter_subscribers/);
   assert.doesNotMatch(newsletterMigration, /DROP\s+(TABLE|COLUMN|INDEX)/i);
   assert.doesNotMatch(newsletterMigration, /DELETE\s+FROM/i);
+
+  assert.match(legacyNewsletterApi, /status\(503\)/);
+  assert.match(legacyNewsletterApi, /temporarily unavailable/);
+  assert.doesNotMatch(legacyNewsletterApi, /storage\.addNewsletter/);
+  assert.doesNotMatch(storage, /addNewsletter\s*\(/);
 
   const contactManifest = JSON.parse(config);
   const privateManifestName = privateWorkerConfig.match(/^name\s*=\s*"([^"]+)"/m)?.[1];
@@ -80,9 +92,10 @@ test("private contact ingress preserves customer-data and abuse boundaries", asy
 });
 
 test("production contact deployment is manual, exact-head, locked, private-compatible, and fail-closed", async () => {
-  const [workflow, exactHeadWorkflow, packageManifest, packageLockManifest] = await Promise.all([
+  const [workflow, exactHeadWorkflow, schemaPreflight, packageManifest, packageLockManifest] = await Promise.all([
     read(".github/workflows/deploy-contact-ingress.yml"),
     read(".github/workflows/contact-ingress-exact-head.yml"),
+    read("scripts/verify-newsletter-schema-preflight.mjs"),
     read("package.json"),
     read("package-lock.json"),
   ]);
@@ -103,6 +116,7 @@ test("production contact deployment is manual, exact-head, locked, private-compa
   assert.match(workflow, /EXPECTED_NPM_VERSION: "10\.9\.2"/);
   assert.match(workflow, /npx --yes \"npm@\$\{EXPECTED_NPM_VERSION\}\" ci/);
   assert.match(workflow, /npm run verify:contact-ingress/);
+  assert.match(workflow, /node scripts\/verify-newsletter-schema-preflight\.mjs/);
   assert.match(workflow, /invalid_route_pattern/);
   assert.match(workflow, /route_outside_zone/);
   assert.match(workflow, /invalid_allowed_origin/);
@@ -113,6 +127,11 @@ test("production contact deployment is manual, exact-head, locked, private-compa
   assert.match(workflow, /CONTACT_WRANGLER_CONFIG: contact-worker\/wrangler\.production\.json/);
   assert.match(workflow, /deployments list --config \"\$CONTACT_WRANGLER_CONFIG\"/);
   assert.match(workflow, /deploy --strict --secrets-file \"\$RUNNER_TEMP\/contact-secrets\.json\" --config \"\$CONTACT_WRANGLER_CONFIG\"/);
+  assert.ok(
+    workflow.indexOf("verify-newsletter-schema-preflight.mjs") <
+      workflow.indexOf("wrangler deploy --strict"),
+    "newsletter schema preflight must run before Wrangler deploy",
+  );
   assert.doesNotMatch(workflow, /push:/);
   assert.doesNotMatch(workflow, /pull_request:/);
   assert.doesNotMatch(workflow, /\buses:/);
@@ -121,6 +140,7 @@ test("production contact deployment is manual, exact-head, locked, private-compa
 
   assert.match(exactHeadWorkflow, /admin\/migrations\/015_contact_ingress_safety\.sql/);
   assert.match(exactHeadWorkflow, /admin\/migrations\/016_newsletter_ingress\.sql/);
+  assert.match(exactHeadWorkflow, /scripts\/verify-newsletter-schema-preflight\.mjs/);
   assert.match(exactHeadWorkflow, /Record approved build-phase provider state/);
   assert.match(exactHeadWorkflow, /MERGE_MEMBRANE_OBSERVATION_MS: "0"/);
   assert.match(exactHeadWorkflow, /node scripts\/verify-merge-membrane\.mjs/);
@@ -139,6 +159,14 @@ test("production contact deployment is manual, exact-head, locked, private-compa
   assert.match(exactHeadWorkflow, /sha256sum/);
   assert.doesNotMatch(exactHeadWorkflow, /\buses:/);
   assert.doesNotMatch(exactHeadWorkflow, /actions\/checkout|actions\/setup-node|actions\/upload-artifact/);
+
+  assert.match(schemaPreflight, /DATABASE_URL/);
+  assert.match(schemaPreflight, /to_regclass\('public\.newsletter_subscribers'\)/);
+  assert.match(schemaPreflight, /information_schema\.columns/);
+  assert.match(schemaPreflight, /newsletter_email_normalized_idx/);
+  assert.match(schemaPreflight, /newsletter_receipt_idx/);
+  assert.match(schemaPreflight, /newsletter_subscription_state/);
+  assert.match(schemaPreflight, /canonicalStore: true/);
 
   const packageJson = JSON.parse(packageManifest);
   const packageLock = JSON.parse(packageLockManifest);
