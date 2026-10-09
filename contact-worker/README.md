@@ -89,7 +89,7 @@ The historical contact candidate was hardened correctly but was merged into an o
 
 ## Blocked
 
-**Production deployment authority is blocked while `main` is unprotected or a non-main PR head can cross a Cloudflare production-build boundary.** Repository visibility is now private. The exact-head workflow and Control Room ledger intentionally fail closed on the remaining provider states.
+**Merge authority is blocked until the exact source candidate passes its required proof and receives the applicable founder approval. Production deployment authority is additionally blocked while `main` is unprotected or a non-main PR head can cross a Cloudflare production-build boundary.** Repository visibility is now private. The exact-head workflow and Control Room ledger intentionally fail closed on the remaining provider states.
 
 Source proof and repository CI are separate from production contact activation. Contact activation remains blocked until the intended database, migration, isolated Worker identity, route, secrets, public environment variables, and real browser/database witness are proven together.
 
