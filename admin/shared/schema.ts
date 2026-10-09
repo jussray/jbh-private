@@ -8,6 +8,7 @@ import {
   integer,
   boolean,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -169,15 +170,15 @@ export type VendorRoutingException = typeof vendorRoutingExceptions.$inferSelect
 export const newsletter = pgTable("newsletter", {
   id: serial("id").primaryKey(),
   email: text("email").notNull(),
+  receiptId: uuid("receipt_id"),
+  consentAt: timestamp("consent_at", { withTimezone: true }),
+  source: text("source"),
+  subscribed: boolean("subscribed"),
+  unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const insertNewsletterSchema = createInsertSchema(newsletter).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertNewsletter = z.infer<typeof insertNewsletterSchema>;
 export type Newsletter = typeof newsletter.$inferSelect;
 
 // Contact form messages

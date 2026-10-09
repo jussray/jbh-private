@@ -155,6 +155,9 @@ jobs:
       - name: Verify private ingress contract
         run: npm run verify:contact-ingress
 
+      - name: Prove canonical newsletter schema on intended private database
+        run: node scripts/verify-newsletter-schema-preflight.mjs
+
       - name: Validate route, origins, and Turnstile hostnames
         shell: bash
         run: |

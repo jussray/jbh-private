@@ -4,8 +4,6 @@ import { db, schema } from "./db";
 import type {
   Order,
   InsertOrder,
-  Newsletter,
-  InsertNewsletter,
   ContactMessage,
   InsertContact,
   ProcessedStripeEvent,
@@ -22,7 +20,6 @@ const {
   vendorFulfillmentGroups,
   vendorDispatchJobs,
   vendorRoutingExceptions,
-  newsletter,
   contactMessages,
   processedStripeEvents,
   failedWebhookEvents,
@@ -447,12 +444,7 @@ export const storage = {
     return group;
   },
 
-  // ─── Newsletter & Contact ──────────────────────────────────────────────
-
-  async addNewsletter(entry: InsertNewsletter): Promise<Newsletter> {
-    const [row] = await db.insert(newsletter).values(entry).returning();
-    return row;
-  },
+  // ─── Contact ───────────────────────────────────────────────────────────
 
   async addContact(entry: InsertContact): Promise<ContactMessage> {
     const [row] = await db.insert(contactMessages).values(entry).returning();
