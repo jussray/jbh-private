@@ -252,7 +252,7 @@ function normalizeProviderMembrane(providerMembrane) {
   };
 }
 
-export function buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames = [], requiredSignalDecisions = {}, providerMembrane = null, observerState = 'observing', observedAt = new Date()}) {
+export function buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames = [], requiredSignalDecisions = {}, providerMembrane = null, observerState = 'observing', observedAt = new Date(), runtimeState = null}) {
   const normalizedBranch = clean(branch) || null;
   const cloudflareProductionState = cloudflareProductionEffectState(checks, normalizedBranch || '');
   const normalizedProviderMembrane = normalizeProviderMembrane(providerMembrane);
@@ -264,6 +264,7 @@ export function buildTestLedger({repository, sha, branch, runId, checks, require
     commitSha: normalizeSha(sha),
     branch: normalizedBranch,
     generatedAt: observedAt.toISOString(),
+    ...(runtimeState ? {runtimeState} : {}),
     source: {provider: 'github-check-runs', exactRef: 'commit-sha', dedupe: 'latest-by-app-and-name', includesAllDiscoveredChecks: true, excludesObserverCheck: true},
     runner: {provider: 'github-actions', runId: clean(runId) || null, observerState, authoritativeForMerge: false},
     providerMembrane: normalizedProviderMembrane,
@@ -414,6 +415,13 @@ export async function observeExactHeadChecks(env = process.env) {
   const runId = clean(env.GITHUB_RUN_ID);
   const observerCheckName = clean(env.CONTROL_ROOM_LEDGER_SELF_CHECK || 'Publish exact-head test ledger');
   const outputPath = clean(env.CONTROL_ROOM_TEST_LEDGER_PATH) || 'artifacts/control-room-test-ledger.json';
+  const runtimeStatePath = clean(env.CONTROL_ROOM_RUNTIME_STATE_PATH);
+  const runtimeState = runtimeStatePath ? JSON.parse(fs.readFileSync(runtimeStatePath, 'utf8')) : null;
+  if (runtimeState) {
+    if (clean(runtimeState.repository) !== repository) throw new Error('Runtime-state receipt repository does not match the ledger repository.');
+    if (normalizeSha(runtimeState.sourceSha) !== sha) throw new Error('Runtime-state receipt sourceSha does not match the exact ledger head.');
+    if (!/^sha256:[0-9a-f]{64}$/u.test(clean(runtimeState?.trackedConfig?.sha256))) throw new Error('Runtime-state receipt is missing a valid tracked-config fingerprint.');
+  }
   const timeoutMs = Number(env.CONTROL_ROOM_LEDGER_TIMEOUT_MS || 20 * 60 * 1000);
   const pollMs = Number(env.CONTROL_ROOM_LEDGER_POLL_MS || 10_000);
   const minimumObservationMs = Number(env.CONTROL_ROOM_LEDGER_MINIMUM_MS || 30_000);
@@ -438,7 +446,7 @@ export async function observeExactHeadChecks(env = process.env) {
     checks = selectLatestChecks(await fetchAllCheckRuns({repository, sha, token}), sha, observerCheckName);
     const workflowRunPaths = await fetchWorkflowRunPaths({repository, sha, token});
     requiredSignalNames = resolveRequiredSignalNames(requiredSignals, requiredSignalDecisions, checks, {workflowRunPaths});
-    writeLedger(outputPath, buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, requiredSignalDecisions, providerMembrane}));
+    writeLedger(outputPath, buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, requiredSignalDecisions, providerMembrane, runtimeState}));
     const fingerprint = JSON.stringify(checks.map((check) => [check.app, check.name, check.state, check.detailsUrl]));
     const terminal = !checks.some((check) => check.state === 'queued' || check.state === 'running');
     const oldEnough = Date.now() - startedAt >= minimumObservationMs;
@@ -448,7 +456,7 @@ export async function observeExactHeadChecks(env = process.env) {
     await sleep(pollMs);
   }
 
-  const ledger = buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, requiredSignalDecisions, providerMembrane, observerState: reachedStableTerminal ? 'stable' : 'window-expired'});
+  const ledger = buildTestLedger({repository, sha, branch, runId, checks, requiredSignalNames, requiredSignalDecisions, providerMembrane, observerState: reachedStableTerminal ? 'stable' : 'window-expired', runtimeState});
   writeLedger(outputPath, ledger);
   const failure = ledgerFailure(ledger);
   if (failure) throw new Error(`${failure} repositoryPrivate=${ledger.providerMembrane.repositoryPrivate} mainProtected=${ledger.providerMembrane.mainProtected}. Evidence: ${outputPath}`);
