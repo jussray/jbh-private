@@ -43,7 +43,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  runtime-state-contract:
+    name: Runtime-state proof contract
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch exact head for runtime-state contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          git init .
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
+          git checkout --detach FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"
+      - name: Select hosted Node 24 for runtime-state contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node24_root="$(find /opt/hostedtoolcache/node -maxdepth 1 -mindepth 1 -type d -name '24.*' | sort -V | tail -1)"
+          test -x "$node24_root/x64/bin/node"
+          printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
+      - name: Prove runtime-state invalidation contract before ledger observation
+        run: node --test test/control-room-runtime-state.test.mjs
+
   ledger:
+    needs: runtime-state-contract
     name: Verify test-ledger contract
     runs-on: ubuntu-22.04
     timeout-minutes: 30
