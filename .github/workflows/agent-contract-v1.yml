@@ -23,12 +23,18 @@ jobs:
   verify-agent-contract:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out exact proof subject
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: ${{ env.EXPECTED_HEAD_SHA }}
-          fetch-depth: 1
-          persist-credentials: false
+      - name: Fetch exact proof subject without reusable actions
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          git init -q .
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.https://github.com/.extraheader="$auth" fetch --no-tags --depth=1 origin "$EXPECTED_HEAD_SHA"
+          git checkout -q --detach FETCH_HEAD
       - name: Verify exact head
         shell: bash
         run: |
