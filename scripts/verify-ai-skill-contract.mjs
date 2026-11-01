@@ -44,7 +44,7 @@ for (const value of [
 ]) requireText('AGENTS exact-fix contract', files.agents, value);
 
 for (const [label, source, metadata] of [
-  ['sales', files.sales, ['name: sales', 'version: 1.0.0', 'status: active', 'scope: jbh-private']],
+  ['sales', files.sales, ['name: sales', 'version: 1.1.0', 'status: active', 'scope: jbh-private']],
   ['devil', files.devil, ['name: devil', 'version: 1.0.0', 'status: active', 'scope: jbh-private']],
 ]) for (const field of metadata) requireText(`${label} metadata`, source, field);
 
