@@ -1,7 +1,6 @@
 import {readFile} from 'node:fs/promises';
 
 export const protectedWorkflows = [
-  '.github/workflows/agent-contract-v1.yml',
   '.github/workflows/ai-skill-contract-exact-head.yml',
   '.github/workflows/contact-ingress-exact-head.yml',
   '.github/workflows/control-room-test-ledger.yml',

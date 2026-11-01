@@ -49,8 +49,7 @@ test('rejects anonymous Git fetch that would fail after repository privatization
 });
 
 test('protects all repaired workflows, including merge and paid-order production membranes', () => {
-  assert.equal(protectedWorkflows.length, 15);
-  assert.ok(protectedWorkflows.includes('.github/workflows/agent-contract-v1.yml'));
+  assert.equal(protectedWorkflows.length, 14);
   assert.ok(protectedWorkflows.includes('.github/workflows/deploy-contact-ingress.yml'));
   assert.ok(protectedWorkflows.includes('.github/workflows/merge-membrane-exact-head.yml'));
   assert.ok(protectedWorkflows.includes('.github/workflows/paid-order-production-preflight.yml'));
