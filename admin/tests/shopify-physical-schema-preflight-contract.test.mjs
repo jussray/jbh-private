@@ -99,3 +99,10 @@ test("production preflight uses the Shopify schema verifier with exact-head shel
   assert.doesNotMatch(productionWorkflow, /psql\s+"\$DATABASE_URL"/);
   assert.doesNotMatch(productionWorkflow, /approval_phrase:/);
 });
+
+test("production preflight cannot pass when the classifier result is missing or unverified", () => {
+  assert.match(
+    productionWorkflow,
+    /if:\s*steps\.preflight\.outputs\.exit_code != '0' \|\| steps\.preflight\.outputs\.result != 'passed-shopify-physical-schema'/,
+  );
+});
