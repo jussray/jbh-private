@@ -263,11 +263,11 @@ export function renderCommerceOperations(
     '<p class="lead">Supplier intelligence, samples, real paid-order handoffs, and capital discipline. The public storefront stays at <a href="https://jussbeautifulhair.com/">jussbeautifulhair.com</a>. No vendor selection, messages, orders, refunds, or spending actions run from this page.</p>',
     '<nav class="steps" aria-label="Operating stages"><span class="step">REVIEW</span><span class="step">VERIFY</span><span class="step">PREPARE</span><span class="step">FULFILL</span><span class="step">LEARN</span></nav>',
     unavailable ? '<p class="note" role="status">' + escapeHtml(unavailable) + '</p>' : "",
-    '<div class="stats"><div class="stat"><span>Supplier records</span><strong>', String(vendors.length),
-    '</strong><span>Recorded, not selected</span></div><div class="stat"><span>Quotes requiring renewal</span><strong>', String(staleQuotes),
-    '</strong><span>Expired by recorded date/status</span></div><div class="stat"><span>Paid orders recorded</span><strong>', String(confirmedOrders),
-    '</strong><span>Signed-webhook store records; live Shopify API not asserted</span></div><div class="stat"><span>Proposed sample outlay · USD</span><strong>', money(proposedUsd, "USD"),
-    '</strong><span>Not money spent; ', String(proposedOther), ' other-currency requests</span></div></div>',
+    '<div class="stats"><div class="stat"><span>Supplier records</span><strong>', sourcing === null ? "UNKNOWN" : String(vendors.length),
+    '</strong><span>Recorded, not selected</span></div><div class="stat"><span>Quotes requiring renewal</span><strong>', sourcing === null ? "UNKNOWN" : String(staleQuotes),
+    '</strong><span>Expired by recorded date/status</span></div><div class="stat"><span>Paid orders recorded</span><strong>', procurement === null ? "UNKNOWN" : String(confirmedOrders),
+    '</strong><span>Signed-webhook store records; live Shopify API not asserted</span></div><div class="stat"><span>Proposed sample outlay · USD</span><strong>', sourcing === null ? "UNKNOWN" : money(proposedUsd, "USD"),
+    '</strong><span>Not money spent; ', sourcing === null ? "UNKNOWN" : String(proposedOther), ' other-currency requests</span></div></div>',
     section("Supplier comparison", "Owner-only records; no vendor is preferred or selected by this page. MOQ in units, WhatsApp and margin stay unknown where no verified source is stored.",
       table(["Supplier", "Evidence", "Last recorded reply", "Minimum order amount", "Quoted shipping", "Brand / private label", "Shipping / lead-time notes", "WhatsApp", "Gross margin"], supplierRows, "No private vendor rows available.")),
     section("Quote and sample comparison", "A recorded reply is not verified merely because an ID was entered. Expired terms are labeled stale.",
@@ -279,7 +279,7 @@ export function renderCommerceOperations(
       table(["Order", "Payment evidence", "Paid amount", "Procurement", "Supplier code", "Shipment proof", "Delivery proof", "Created"], orderRows, "No private Shopify physical orders available.")),
     section("Working capital discipline", "Do not treat a supplier quote as cash available, a sample request as a paid invoice, or sales as net profit.",
       '<p class="note">Estimated open sample requests: <strong>' + String(proposed.length) +
-      '</strong>. USD proposed cost: <strong>' + money(proposedUsd, "USD") +
+      '</strong>. USD proposed cost: <strong>' + (sourcing === null ? "UNKNOWN" : money(proposedUsd, "USD")) +
       '</strong>. Available working capital, actual spend, fees, taxes, refunds and realized margin: <strong>UNKNOWN</strong> until reconciled from authoritative records.</p>'),
     section("Customer acquisition experiments", "Track audience, channel, creative, spend, attributable paid orders, refunds, repeat purchases and CAC only once sourced.",
       '<p class="note">No verified experiment events are connected to this private read view. Conversion rate, customer acquisition cost and return on ad spend remain <strong>UNKNOWN</strong>. No campaigns are launched here.</p>'),
