@@ -4,6 +4,7 @@ import { type Env, isApprovedHost, json, text } from "./shared";
 import { handleShopifyProcurementAdminRequest } from "./shopify-procurement-admin";
 import { handleShopifyPhysicalWebhook } from "./shopify-physical-webhook";
 import { handleVendorSourcingRequest } from "./vendor-sourcing";
+import { handleCommerceOperationsRequest } from "./commerce-operations";
 import { handleWebhook } from "./webhook";
 
 export default {
@@ -33,6 +34,10 @@ export default {
 
     if (pathname.startsWith("/api/admin/vendor-sourcing")) {
       return handleVendorSourcingRequest(request, env);
+    }
+
+    if (pathname === "/api/admin/commerce-operations") {
+      return handleCommerceOperationsRequest(request, env);
     }
 
     if (pathname.startsWith("/api/admin/")) {
