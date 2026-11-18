@@ -59,9 +59,9 @@ test("commerce workflow carries the required gates and six-part evidence contrac
 });
 
 test("Stripe paid-order source is reused under Access and cannot mutate fulfillment", () => {
-  assert.match(operations, /handleAdminRequest\\(stripeOrdersRequest, env\\)/);
-  assert.match(operations, /new URL\\("\\/api\\/admin\\/orders", request\\.url\\)/);
-  assert.match(operations, /renderCommerceOperations\\(responses\\[0\\], responses\\[1\\], new Date\\(\\), responses\\[2\\]\\)/);
+  assert.ok(operations.includes('handleAdminRequest(stripeOrdersRequest, env)'));
+  assert.ok(operations.includes('new URL("/api/admin/orders", request.url)'));
+  assert.ok(operations.includes('renderCommerceOperations(responses[0], responses[1], new Date(), responses[2])'));
   assert.match(operations, /function stripeOrderEvidence/);
   assert.match(operations, /Stripe-order data unavailable: status is not zero/);
   assert.match(operations, /Private paid-order records; live Stripe API not asserted/);
