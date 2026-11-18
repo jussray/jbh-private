@@ -5,6 +5,7 @@ import { handleShopifyProcurementAdminRequest } from "./shopify-procurement-admi
 import { handleShopifyPhysicalWebhook } from "./shopify-physical-webhook";
 import { handleVendorSourcingRequest } from "./vendor-sourcing";
 import { handleWebhook } from "./webhook";
+import { handleJussPaySandboxReceipt } from "./jusspay-sandbox-receipt";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -13,6 +14,10 @@ export default {
     const { pathname } = new URL(request.url);
     if (pathname === "/health") {
       return json({ ok: true, service: "jbh-private-order-control" });
+    }
+
+    if (pathname === "/internal/jusspay/sandbox/paid-receipt") {
+      return handleJussPaySandboxReceipt(request, env);
     }
 
     if (pathname === "/api/stripe/webhook") {
