@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import ts from "typescript";
 
 const root = new URL("../../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
@@ -55,4 +56,66 @@ test("commerce workflow carries the required gates and six-part evidence contrac
   for (const field of ["REALITY", "FIX", "PROOF", "RISK", "ROLLBACK", "NEXT GATE"]) {
     assert.match(operations, new RegExp('"' + field + '"'));
   }
+});
+
+test("Stripe paid-order source is reused under Access and cannot mutate fulfillment", () => {
+  assert.match(operations, /handleAdminRequest\\(stripeOrdersRequest, env\\)/);
+  assert.match(operations, /new URL\\("\\/api\\/admin\\/orders", request\\.url\\)/);
+  assert.match(operations, /renderCommerceOperations\\(responses\\[0\\], responses\\[1\\], new Date\\(\\), responses\\[2\\]\\)/);
+  assert.match(operations, /function stripeOrderEvidence/);
+  assert.match(operations, /Stripe-order data unavailable: status is not zero/);
+  assert.match(operations, /Private paid-order records; live Stripe API not asserted/);
+  assert.doesNotMatch(operations, /method: "(POST|PUT|PATCH|DELETE)"/);
+});
+
+async function loadPureRenderer() {
+  const start = operations.indexOf("type RecordRow =");
+  const end = operations.indexOf("function protectedHeaders()", start);
+  assert.ok(start >= 0 && end > start, "pure renderer must have stable bounds");
+  const { outputText } = ts.transpileModule(operations.slice(start, end), {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  });
+  return import("data:text/javascript;base64," + Buffer.from(outputText).toString("base64"));
+}
+
+test("Stripe paid orders render separately, escape product text, and preserve source distinctions", async () => {
+  const { renderCommerceOperations } = await loadPureRenderer();
+  const stripePaid = {
+    id: 101,
+    createdAt: "2026-11-18T12:00:00Z",
+    paymentStatus: "paid",
+    stripeSessionId: "cs_test_browser_mock_123456789012",
+    stripePaymentIntentId: "pi_test_browser_mock",
+    total: 120,
+    status: "processing",
+    items: [{ name: "<script>bad()</script>", variant: '18"', qty: 1 }],
+  };
+  const html = renderCommerceOperations(
+    { vendors: [], quotes: [], sampleRequests: [] },
+    { orders: [{ id: 99, shopify_order_id: "sh-test", payment_status: "paid", total_cents: 11000, currency: "USD" }] },
+    new Date("2026-11-18T12:00:00Z"),
+    { orders: [stripePaid] },
+  );
+  assert.match(html, /Stripe paid-order handoffs/);
+  assert.match(html, /Shopify paid record never grants automatic procurement/);
+  assert.match(html, /Private paid-order records; live Stripe API not asserted/);
+  assert.match(html, /Stripe paid-order handoff/);
+  assert.match(html, /\$120\.00/);
+  assert.match(html, /&lt;script&gt;bad\(\)&lt;\/script&gt;/);
+  assert.doesNotMatch(html, /<script>bad\(\)<\/script>/);
+  assert.match(html, /Supplier records/);
+});
+
+test("unavailable Stripe data and records without a payment intent never count as confirmed", async () => {
+  const { renderCommerceOperations } = await loadPureRenderer();
+  const unknown = renderCommerceOperations(null, null, new Date("2026-11-18T12:00:00Z"));
+  assert.match(unknown, /Stripe-order data unavailable: status is not zero/);
+  const absentIntent = renderCommerceOperations(
+    { vendors: [], quotes: [], sampleRequests: [] },
+    { orders: [] },
+    new Date("2026-11-18T12:00:00Z"),
+    { orders: [{ id: 1, paymentStatus: "paid", stripeSessionId: "cs_test_example" }] },
+  );
+  assert.match(absentIntent, /Stripe paid orders<\/span><strong>0<\/strong>/);
+  assert.match(absentIntent, /UNKNOWN/);
 });
