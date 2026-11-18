@@ -25,7 +25,7 @@ export async function handleJussPaySandboxReceipt(request: Request, env: Env): P
   if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "invalid_body" }, 400);
   const b = body as Record<string, unknown>;
   if (Object.keys(b).sort().join(",") !== "eventId,livemode,orderId,paymentIntentId,state" ||
-      b.livemode !== false || b.state !== "awaiting_owner_dispatch" ||
+      b.livemode !== false || !["awaiting_owner_dispatch","refunded","partially_refunded","disputed"].includes(b.state as string) ||
       typeof b.orderId !== "string" || !ORDER.test(b.orderId) ||
       typeof b.eventId !== "string" || !EVENT.test(b.eventId) ||
       typeof b.paymentIntentId !== "string" || !PI.test(b.paymentIntentId)) {
@@ -34,21 +34,45 @@ export async function handleJussPaySandboxReceipt(request: Request, env: Env): P
   const digest = hex(new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(raw))));
   try {
     const sql = neon(env.DATABASE_URL);
+    if (b.state !== "awaiting_owner_dispatch") {
+      const holds = await sql`
+        INSERT INTO jusspay_sandbox_holds (order_id, event_id, payment_intent_id, reason)
+        VALUES (${b.orderId}, ${b.eventId}, ${b.paymentIntentId}, ${b.state})
+        ON CONFLICT DO NOTHING RETURNING order_id
+      `;
+      if (!holds.length) {
+        const previous = await sql`
+          SELECT order_id, event_id, payment_intent_id, reason
+          FROM jusspay_sandbox_holds WHERE order_id = ${b.orderId} OR event_id = ${b.eventId}
+        `;
+        if (previous.length !== 1 || previous[0].order_id !== b.orderId ||
+            previous[0].event_id !== b.eventId || previous[0].payment_intent_id !== b.paymentIntentId ||
+            previous[0].reason !== b.state) return json({ error: "receipt_conflict" }, 409);
+      }
+      await sql`
+        UPDATE jusspay_sandbox_receipts SET state = 'hold'
+        WHERE order_id = ${b.orderId} AND payment_intent_id = ${b.paymentIntentId}
+      `;
+      return json({ received: true, state: "hold", duplicate: !holds.length });
+    }
     const rows = await sql`
       INSERT INTO jusspay_sandbox_receipts (order_id, event_id, payment_intent_id, receipt_sha256)
-      VALUES (${b.orderId}, ${b.eventId}, ${b.paymentIntentId}, ${digest})
+      SELECT ${b.orderId}, ${b.eventId}, ${b.paymentIntentId}, ${digest}
+      WHERE NOT EXISTS (SELECT 1 FROM jusspay_sandbox_holds WHERE order_id = ${b.orderId})
       ON CONFLICT DO NOTHING
       RETURNING order_id
     `;
     if (rows.length) return json({ received: true, state: "awaiting_owner_review", duplicate: false });
+    const held = await sql`SELECT order_id FROM jusspay_sandbox_holds WHERE order_id = ${b.orderId}`;
+    if (held.length) return json({ received: true, state: "hold", duplicate: true });
     const existing = await sql`
-      SELECT order_id, event_id, payment_intent_id, receipt_sha256
+      SELECT order_id, event_id, payment_intent_id, receipt_sha256, state
       FROM jusspay_sandbox_receipts WHERE order_id = ${b.orderId} OR event_id = ${b.eventId}
     `;
     if (existing.length !== 1 || existing[0].order_id !== b.orderId ||
         existing[0].event_id !== b.eventId || existing[0].payment_intent_id !== b.paymentIntentId ||
         existing[0].receipt_sha256 !== digest) return json({ error: "receipt_conflict" }, 409);
-    return json({ received: true, state: "awaiting_owner_review", duplicate: true });
+    return json({ received: true, state: existing[0].state === "hold" ? "hold" : "awaiting_owner_review", duplicate: true });
   } catch {
     return json({ error: "receipt_storage_unavailable" }, 503);
   }
