@@ -35,6 +35,8 @@ export async function handleJussPaySandboxReceipt(request: Request, env: Env): P
   try {
     const sql = neon(env.DATABASE_URL);
     if (b.state !== "awaiting_owner_dispatch") {
+      const existingPaid = await sql`SELECT payment_intent_id FROM jusspay_sandbox_receipts WHERE order_id = ${b.orderId}`;
+      if (existingPaid.length && existingPaid[0].payment_intent_id !== b.paymentIntentId) return json({ error: "receipt_conflict" }, 409);
       const holds = await sql`
         INSERT INTO jusspay_sandbox_holds (order_id, event_id, payment_intent_id, reason)
         VALUES (${b.orderId}, ${b.eventId}, ${b.paymentIntentId}, ${b.state})
@@ -49,8 +51,6 @@ export async function handleJussPaySandboxReceipt(request: Request, env: Env): P
             previous[0].event_id !== b.eventId || previous[0].payment_intent_id !== b.paymentIntentId ||
             previous[0].reason !== b.state) return json({ error: "receipt_conflict" }, 409);
       }
-      const existingPaid = await sql`SELECT payment_intent_id FROM jusspay_sandbox_receipts WHERE order_id = ${b.orderId}`;
-      if (existingPaid.length && existingPaid[0].payment_intent_id !== b.paymentIntentId) return json({ error: "receipt_conflict" }, 409);
       await sql`
         UPDATE jusspay_sandbox_receipts SET state = 'hold'
         WHERE order_id = ${b.orderId} AND payment_intent_id = ${b.paymentIntentId}
