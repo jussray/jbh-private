@@ -1,4 +1,5 @@
 import { validateAccess } from "./access";
+import { handleAdminRequest } from "./admin-orders";
 import { handleShopifyProcurementAdminRequest } from "./shopify-procurement-admin";
 import { handleVendorSourcingRequest } from "./vendor-sourcing";
 import { type Env, json, text } from "./shared";
@@ -71,6 +72,13 @@ function orderEvidence(order: RecordRow): "CONFIRMED" | "UNKNOWN" {
     !!field(order, "shopify_order_id") ? "CONFIRMED" : "UNKNOWN";
 }
 
+/** Private Stripe paid-order evidence, not a separate Stripe API readback. */
+function stripeOrderEvidence(order: RecordRow): "CONFIRMED" | "UNKNOWN" {
+  return field(order, "paymentStatus").toLowerCase() === "paid" &&
+    /^cs_(test|live)_/.test(field(order, "stripeSessionId")) &&
+    !!field(order, "stripePaymentIntentId") ? "CONFIRMED" : "UNKNOWN";
+}
+
 function cell(content: string): string { return "<td>" + content + "</td>"; }
 function section(title: string, note: string, body: string): string {
   return '<section class="panel"><div class="sectionhead"><h2>' + escapeHtml(title) +
@@ -127,13 +135,16 @@ export function renderCommerceOperations(
   sourcing: unknown,
   procurement: unknown,
   generatedAt = new Date(),
+  stripeOrders: unknown = null,
 ): string {
   const sourcingData = sourcing && typeof sourcing === "object" ? sourcing as RecordRow : {};
   const procurementData = procurement && typeof procurement === "object" ? procurement as RecordRow : {};
+  const stripeData = stripeOrders && typeof stripeOrders === "object" ? stripeOrders as RecordRow : {};
   const vendors = rows(sourcingData.vendors);
   const quotes = rows(sourcingData.quotes);
   const samples = rows(sourcingData.sampleRequests);
   const orders = rows(procurementData.orders);
+  const stripeOrderRecords = rows(stripeData.orders);
   const today = generatedAt.toISOString().slice(0, 10);
   const vendorNames = new Map(vendors.map((vendor) => [field(vendor, "id"), field(vendor, "display_name") || "Unnamed vendor"]));
   const vendorName = (id: string) => vendorNames.get(id) || "Unverified vendor";
@@ -199,6 +210,21 @@ export function renderCommerceOperations(
     day(order.created_at),
   ].map(cell).join("") + "</tr>").join("");
 
+  const stripeRows = stripeOrderRecords.map((order) => {
+    const products = rows(order.items).map((item) => {
+      return field(item, "name") + " (" + field(item, "variant") + ") x" + field(item, "qty");
+    }).join("; ");
+    return "<tr>" + [
+      display("#" + field(order, "id")),
+      evidence(stripeOrderEvidence(order)),
+      money(Number(order.total) * 100),
+      display(products),
+      display(field(order, "status")),
+      display(field(order, "stripeSessionId").slice(-12)),
+      day(order.createdAt),
+    ].map(cell).join("") + "</tr>";
+  }).join("");
+
   const candidates = new Map<string, { vendors: Set<string>; samples: number }>();
   for (const quote of quotes) {
     for (const item of rows(quote.items)) {
@@ -223,6 +249,7 @@ export function renderCommerceOperations(
     .reduce((sum, sample) => sum + (Number(sample.total_cents) || 0), 0);
   const proposedOther = proposed.filter((sample) => field(sample, "currency") !== "USD").length;
   const confirmedOrders = orders.filter((order) => orderEvidence(order) === "CONFIRMED").length;
+  const confirmedStripeOrders = stripeOrderRecords.filter((order) => stripeOrderEvidence(order) === "CONFIRMED").length;
   const staleQuotes = quotes.filter((quote) => quoteEvidence(quote, today) === "STALE").length;
 
   const receipts = [
@@ -235,6 +262,17 @@ export function renderCommerceOperations(
         ["RISK", "Prices, sample claims, and availability are not independently authenticated here"],
         ["ROLLBACK", "Do not select or pay supplier; preserve existing sourcing records"],
         ["NEXT GATE", "Verify supplier reply and sample before approval"],
+      ],
+    )),
+    ...stripeOrderRecords.slice(0, 15).map((order) => evidenceRecord(
+      "Stripe paid-order handoff · #" + field(order, "id"),
+      [
+        ["REALITY", "Private Stripe payment evidence " + stripeOrderEvidence(order) + "; order status " + (field(order, "status") || "unknown")],
+        ["FIX", "Check paid receipt, approved variant, supplier readiness, and shipping before fulfillment"],
+        ["PROOF", "Session suffix: " + (field(order, "stripeSessionId").slice(-12) || "missing") + "; payment intent recorded: " + (field(order, "stripePaymentIntentId") ? "yes" : "no")],
+        ["RISK", "Private DB status is not a fresh independent Stripe provider check; delivery and supplier stock unknown"],
+        ["ROLLBACK", "No supplier dispatch, refunds, or order mutation from this read-only view"],
+        ["NEXT GATE", "Owner verifies Stripe receipt and physical inventory before any paid-order fulfillment"],
       ],
     )),
     ...orders.slice(0, 15).map((order) => evidenceRecord(
@@ -253,6 +291,7 @@ export function renderCommerceOperations(
   const unavailable = [
     sourcing === null ? "Supplier data unavailable: status is not zero." : "",
     procurement === null ? "Paid-order data unavailable: status is not zero." : "",
+    stripeOrders === null ? "Stripe-order data unavailable: status is not zero." : "",
   ].filter(Boolean).join(" ");
 
   const page = [
@@ -266,7 +305,8 @@ export function renderCommerceOperations(
     '<div class="stats"><div class="stat"><span>Supplier records</span><strong>', sourcing === null ? "UNKNOWN" : String(vendors.length),
     '</strong><span>Recorded, not selected</span></div><div class="stat"><span>Quotes requiring renewal</span><strong>', sourcing === null ? "UNKNOWN" : String(staleQuotes),
     '</strong><span>Expired by recorded date/status</span></div><div class="stat"><span>Paid orders recorded</span><strong>', procurement === null ? "UNKNOWN" : String(confirmedOrders),
-    '</strong><span>Signed-webhook store records; live Shopify API not asserted</span></div><div class="stat"><span>Proposed sample outlay · USD</span><strong>', sourcing === null ? "UNKNOWN" : money(proposedUsd, "USD"),
+    '</strong><span>Signed Shopify webhook records, not live API readback</span></div><div class="stat"><span>Stripe paid orders</span><strong>', stripeOrders === null ? "UNKNOWN" : String(confirmedStripeOrders),
+    '</strong><span>Private paid-order records; live Stripe API not asserted</span></div><div class="stat"><span>Proposed sample outlay · USD</span><strong>', sourcing === null ? "UNKNOWN" : money(proposedUsd, "USD"),
     '</strong><span>Not money spent; ', sourcing === null ? "UNKNOWN" : String(proposedOther), ' other-currency requests</span></div></div>',
     section("Supplier comparison", "Owner-only records; no vendor is preferred or selected by this page. MOQ in units, WhatsApp and margin stay unknown where no verified source is stored.",
       table(["Supplier", "Evidence", "Last recorded reply", "Minimum order amount", "Quoted shipping", "Brand / private label", "Shipping / lead-time notes", "WhatsApp", "Gross margin"], supplierRows, "No private vendor rows available.")),
@@ -277,13 +317,15 @@ export function renderCommerceOperations(
       table(["Product candidate", "Supplier quote coverage", "Sample results", "On-hand inventory", "Supplier stock", "Ready to publish"], productRows, "No structured product quote candidates available.")),
     section("Paid-order fulfillment handoffs", "Order identity and status are private. A Shopify paid record never grants automatic procurement or supplier dispatch.",
       table(["Order", "Payment evidence", "Paid amount", "Procurement", "Supplier code", "Shipment proof", "Delivery proof", "Created"], orderRows, "No private Shopify physical orders available.")),
+    section("Stripe paid-order handoffs", "Signed Stripe webhook records are shown separately from Shopify procurement. No supplier is chosen and no order is dispatched here. Provider payments and delivery require independent verification.",
+      table(["Order", "Private payment evidence", "Recorded total", "Product variants", "Order status", "Stripe session suffix", "Created"], stripeRows, "No private Stripe order records available.")),
     section("Working capital discipline", "Do not treat a supplier quote as cash available, a sample request as a paid invoice, or sales as net profit.",
       '<p class="note">Estimated open sample requests: <strong>' + String(proposed.length) +
       '</strong>. USD proposed cost: <strong>' + (sourcing === null ? "UNKNOWN" : money(proposedUsd, "USD")) +
       '</strong>. Available working capital, actual spend, fees, taxes, refunds and realized margin: <strong>UNKNOWN</strong> until reconciled from authoritative records.</p>'),
     section("Customer acquisition experiments", "Track audience, channel, creative, spend, attributable paid orders, refunds, repeat purchases and CAC only once sourced.",
       '<p class="note">No verified experiment events are connected to this private read view. Conversion rate, customer acquisition cost and return on ad spend remain <strong>UNKNOWN</strong>. No campaigns are launched here.</p>'),
-    section("Evidence ledger", "Each source record carries the founder decision contract. Up to 15 supplier quotes and 15 paid orders appear here; the tables retain the full bounded source result.",
+    section("Evidence ledger", "Each source record carries the founder decision contract. Up to 15 supplier quotes, 15 Shopify orders, and 15 Stripe orders appear here; source data is retained in private APIs.",
       '<div class="receipts">' + (receipts || '<p class="muted">No source receipts to display.</p>') + '</div>'),
     '<footer class="footer">Evidence legend: CONFIRMED = permitted source proof or explicitly verified quote; STALE = expired quote; UNKNOWN = missing or unverified evidence. Records are read-only. Generated ',
     escapeHtml(generatedAt.toISOString()), '. This page never caches private commerce data and is not a public sales page.</footer>',
@@ -323,15 +365,19 @@ export async function handleCommerceOperationsRequest(request: Request, env: Env
   const ordersRequest = new Request(new URL("/api/admin/procurement-orders", request.url), {
     method: "GET", headers: authorizationHeaders,
   });
+  const stripeOrdersRequest = new Request(new URL("/api/admin/orders", request.url), {
+    method: "GET", headers: authorizationHeaders,
+  });
   const results = await Promise.allSettled([
     handleVendorSourcingRequest(sourceRequest, env),
     handleShopifyProcurementAdminRequest(ordersRequest, env),
+    handleAdminRequest(stripeOrdersRequest, env),
   ]);
   const responses = await Promise.all(results.map(async (result) => {
     if (result.status === "rejected" || !result.value.ok) return null;
     try { return await result.value.json(); } catch { return null; }
   }));
-  return new Response(renderCommerceOperations(responses[0], responses[1]), {
+  return new Response(renderCommerceOperations(responses[0], responses[1], new Date(), responses[2]), {
     status: 200, headers: { ...headers, "Content-Type": "text/html; charset=utf-8" },
   });
 }
