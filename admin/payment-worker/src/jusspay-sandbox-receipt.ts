@@ -49,6 +49,8 @@ export async function handleJussPaySandboxReceipt(request: Request, env: Env): P
             previous[0].event_id !== b.eventId || previous[0].payment_intent_id !== b.paymentIntentId ||
             previous[0].reason !== b.state) return json({ error: "receipt_conflict" }, 409);
       }
+      const existingPaid = await sql`SELECT payment_intent_id FROM jusspay_sandbox_receipts WHERE order_id = ${b.orderId}`;
+      if (existingPaid.length && existingPaid[0].payment_intent_id !== b.paymentIntentId) return json({ error: "receipt_conflict" }, 409);
       await sql`
         UPDATE jusspay_sandbox_receipts SET state = 'hold'
         WHERE order_id = ${b.orderId} AND payment_intent_id = ${b.paymentIntentId}
@@ -63,8 +65,11 @@ export async function handleJussPaySandboxReceipt(request: Request, env: Env): P
       RETURNING order_id
     `;
     if (rows.length) return json({ received: true, state: "awaiting_owner_review", duplicate: false });
-    const held = await sql`SELECT order_id FROM jusspay_sandbox_holds WHERE order_id = ${b.orderId}`;
-    if (held.length) return json({ received: true, state: "hold", duplicate: true });
+    const held = await sql`SELECT payment_intent_id FROM jusspay_sandbox_holds WHERE order_id = ${b.orderId}`;
+    if (held.length) {
+      if (held[0].payment_intent_id !== b.paymentIntentId) return json({ error: "receipt_conflict" }, 409);
+      return json({ received: true, state: "hold", duplicate: true });
+    }
     const existing = await sql`
       SELECT order_id, event_id, payment_intent_id, receipt_sha256, state
       FROM jusspay_sandbox_receipts WHERE order_id = ${b.orderId} OR event_id = ${b.eventId}
