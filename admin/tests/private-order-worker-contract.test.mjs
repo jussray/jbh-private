@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import ts from "typescript";
 
 const root = new URL("../../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
@@ -106,4 +107,28 @@ test("root scripts verify and deploy the exact Worker contract", () => {
   assert.match(packageContract.scripts["verify:worker"], /dry-run:worker/);
   assert.equal(packageContract.scripts.deploy, "wrangler deploy");
   assert.equal(packageContract.devDependencies.wrangler, "4.149.0");
+});
+
+test("Stripe webhook rejects test/live mode crossover before any database write", async () => {
+  const start = webhook.indexOf("function approvedStripeEventMode(");
+  const end = webhook.indexOf("export async function handleWebhook(", start);
+  assert.ok(start >= 0 && end > start, "mode guard exists outside the webhook handler");
+  const pure = webhook.slice(start, end).replace("function approvedStripeEventMode(", "export function approvedStripeEventMode(");
+  const { outputText } = ts.transpileModule(pure, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  });
+  const { approvedStripeEventMode } = await import("data:text/javascript;base64," + Buffer.from(outputText).toString("base64"));
+  const env = (mode, key) => ({ STRIPE_CHECKOUT_MODE: mode, STRIPE_SECRET_KEY: key });
+  assert.equal(approvedStripeEventMode(env("test", "sk_test_sample")), "test");
+  assert.equal(approvedStripeEventMode(env("live", "sk_live_sample")), "live");
+  assert.equal(approvedStripeEventMode(env("test", "sk_live_sample")), null);
+  assert.equal(approvedStripeEventMode(env("live", "sk_test_sample")), null);
+  assert.equal(approvedStripeEventMode(env(undefined, "sk_live_sample")), null);
+  assert.equal(approvedStripeEventMode(env("live", "")), null);
+  assert.equal(approvedStripeEventMode(env("disabled", "sk_live_sample")), null);
+  const modeGuard = webhook.indexOf('if (event.livemode !== (expectedMode === "live"))');
+  const sqlCreation = webhook.indexOf("const sql = neon(env.DATABASE_URL);", end);
+  assert.ok(modeGuard > end && sqlCreation > modeGuard,
+    "signed Stripe event mode must be checked before reading or writing the database");
+  assert.match(webhook, /constructEventAsync/);
 });
