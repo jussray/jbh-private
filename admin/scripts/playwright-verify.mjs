@@ -1,7 +1,9 @@
 import {spawn} from 'node:child_process';
+import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import process from 'node:process';
 import {chromium} from 'playwright';
+import ts from 'typescript';
 
 const host = '127.0.0.1';
 const port = Number(process.env.PLAYWRIGHT_PORT || 4173);
@@ -67,6 +69,25 @@ function normalize(text) {
   return text.replace(/\s+/g, ' ').trim();
 }
 
+async function loadCommerceRenderer() {
+  const source = await readFile(
+    new URL('../payment-worker/src/commerce-operations.ts', import.meta.url),
+    'utf8',
+  );
+  const start = source.indexOf('type RecordRow =');
+  const end = source.indexOf('function protectedHeaders()', start);
+  assert(start >= 0 && end > start, 'Commerce renderer must have stable pure bounds.');
+  const {outputText} = ts.transpileModule(source.slice(start, end), {
+    compilerOptions: {
+      module: ts.ModuleKind.ESNext,
+      target: ts.ScriptTarget.ES2022,
+    },
+  });
+  return import(
+    'data:text/javascript;base64,' + Buffer.from(outputText).toString('base64')
+  );
+}
+
 let browser;
 try {
   await waitForServer();
@@ -113,7 +134,129 @@ try {
   await page.getByTestId('button-shop-hero-mobile').waitFor({state: 'visible'});
   assert(await page.getByTestId('brand-moat').isVisible(), 'Brand moat is not visible on mobile.');
 
-  console.log('Playwright verification passed: approved truth mirror, catalog separation, desktop, and mobile.');
+  const {renderCommerceOperations} = await loadCommerceRenderer();
+  const commerceHtml = renderCommerceOperations(
+    {
+      vendors: [
+        {id: 'v-1', display_name: '<script>supplier()</script>'},
+        {id: 'v-2', display_name: 'Verified Vendor'},
+      ],
+      quotes: [
+        {
+          id: 1,
+          vendor_id: 'v-2',
+          status: 'verified',
+          reply_received_at: '2026-11-18T12:00:00Z',
+          source_message_id: 'msg-1',
+          valid_until: '2026-12-31',
+          currency: 'USD',
+          minimum_order_cents: 5000,
+          quoted_shipping_cents: 1200,
+          branding_summary: 'Private label available',
+          shipping_summary: 'Lead time recorded',
+          items: [{productId: 'bundle-18', variant: '18 inch', unitCostCents: 2500}],
+        },
+        {
+          id: 2,
+          vendor_id: 'v-1',
+          status: 'expired',
+          reply_received_at: '2026-09-01T12:00:00Z',
+          source_thread_id: 'thread-2',
+          valid_until: '2026-09-30',
+          currency: 'USD',
+          items: [],
+        },
+        {
+          id: 3,
+          vendor_id: 'v-1',
+          status: 'pending',
+          currency: 'USD',
+          items: [],
+        },
+      ],
+      sampleRequests: [
+        {
+          id: 7,
+          vendor_id: 'v-2',
+          status: 'awaiting_owner_approval',
+          total_cents: 3500,
+          currency: 'USD',
+          created_at: '2026-11-18T12:00:00Z',
+        },
+      ],
+    },
+    {
+      orders: [
+        {
+          id: 99,
+          order_name: '#JBH99',
+          shopify_order_id: 'shopify-99',
+          payment_status: 'paid',
+          total_cents: 11000,
+          currency: 'USD',
+          procurement_status: 'procurement_needed',
+          created_at: '2026-11-18T12:00:00Z',
+        },
+      ],
+    },
+    new Date('2026-11-19T12:00:00Z'),
+    {
+      orders: [
+        {
+          id: 101,
+          paymentStatus: 'paid',
+          stripeSessionId: 'cs_test_playwright_123456789012',
+          stripePaymentIntentId: 'pi_test_playwright',
+          total: 120,
+          status: 'processing',
+          createdAt: '2026-11-18T12:00:00Z',
+          items: [{name: 'Body Wave', variant: '18 inch', qty: 1}],
+        },
+      ],
+    },
+  );
+
+  await page.setViewportSize({width: 1440, height: 1000});
+  await page.setContent(commerceHtml, {waitUntil: 'domcontentloaded'});
+  const commerceText = normalize(await page.locator('body').innerText());
+
+  assert(
+    commerceText.includes('Commerce operations, with receipts.'),
+    'Commerce workspace heading is missing.',
+  );
+  for (const stage of ['REVIEW', 'VERIFY', 'PREPARE', 'FULFILL', 'LEARN']) {
+    assert(commerceText.includes(stage), `Commerce stage ${stage} is missing.`);
+  }
+  for (const state of ['CONFIRMED', 'STALE', 'UNKNOWN', 'SANDBOX']) {
+    assert(
+      await page.locator(`.state.${state.toLowerCase()}`).count() > 0,
+      `Commerce evidence state ${state} is missing.`,
+    );
+  }
+  assert(
+    commerceText.includes('No vendor selection, messages, orders, refunds, or spending actions run from this page.'),
+    'Commerce read-only authority boundary is missing.',
+  );
+  assert(
+    await page.locator('form, button, input, textarea, select').count() === 0,
+    'Commerce workspace unexpectedly exposes mutating controls.',
+  );
+  assert(await page.locator('script').count() === 0, 'Untrusted commerce content created a script element.');
+  assert(
+    commerceText.includes('<script>supplier()</script>'),
+    'Escaped supplier text is not visible as inert text.',
+  );
+
+  await page.setViewportSize({width: 390, height: 844});
+  await page.setContent(commerceHtml, {waitUntil: 'domcontentloaded'});
+  const noBodyOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+  );
+  assert(noBodyOverflow, 'Commerce workspace overflows the mobile viewport.');
+
+  console.log(
+    'Playwright verification passed: approved truth mirror, catalog separation, commerce evidence states, read-only authority, escaping, desktop, and mobile.',
+  );
 } finally {
   await browser?.close();
   await stopServer();
