@@ -50,7 +50,7 @@ function day(value: unknown): string {
   return Number.isNaN(date.getTime()) ? "Unknown" : escapeHtml(date.toISOString().slice(0, 10));
 }
 
-function evidence(value: "CONFIRMED" | "STALE" | "UNKNOWN"): string {
+function evidence(value: "CONFIRMED" | "STALE" | "UNKNOWN" | "SANDBOX"): string {
   return '<span class="state ' + value.toLowerCase() + '">' + value + "</span>";
 }
 
@@ -72,11 +72,14 @@ function orderEvidence(order: RecordRow): "CONFIRMED" | "UNKNOWN" {
     !!field(order, "shopify_order_id") ? "CONFIRMED" : "UNKNOWN";
 }
 
-/** Private Stripe paid-order evidence, not a separate Stripe API readback. */
-function stripeOrderEvidence(order: RecordRow): "CONFIRMED" | "UNKNOWN" {
-  return field(order, "paymentStatus").toLowerCase() === "paid" &&
-    /^cs_(test|live)_/.test(field(order, "stripeSessionId")) &&
-    !!field(order, "stripePaymentIntentId") ? "CONFIRMED" : "UNKNOWN";
+/** Recorded Stripe receipts are not a live Stripe API readback. Sandbox never counts toward live fulfillment. */
+function stripeOrderEvidence(order: RecordRow): "CONFIRMED" | "SANDBOX" | "UNKNOWN" {
+  if (field(order, "paymentStatus").toLowerCase() !== "paid" || !field(order, "stripePaymentIntentId")) {
+    return "UNKNOWN";
+  }
+  const session = field(order, "stripeSessionId");
+  if (/^cs_test_/.test(session)) return "SANDBOX";
+  return /^cs_live_/.test(session) ? "CONFIRMED" : "UNKNOWN";
 }
 
 function cell(content: string): string { return "<td>" + content + "</td>"; }
@@ -119,7 +122,7 @@ const STYLES = [
   "td,th{padding:13px 12px;border-bottom:1px solid #3c3149;vertical-align:top}tr:last-child td{border-bottom:0}",
   "td{max-width:250px;overflow-wrap:anywhere}.empty{color:#a99eb7;text-align:center;padding:29px}",
   ".state{font-size:10px;font-weight:800;letter-spacing:.08em;padding:6px 9px;border-radius:999px;white-space:nowrap}",
-  ".confirmed{background:#16372e;color:#baf6d8}.stale{background:#4a2a20;color:#ffccb9}.unknown{background:#353048;color:#ded1f5}",
+  ".confirmed{background:#16372e;color:#baf6d8}.stale{background:#4a2a20;color:#ffccb9}.unknown{background:#353048;color:#ded1f5}.sandbox{background:#292d43;color:#c5d4ff}",
   ".note{border-left:3px solid #d9ac66;padding:11px 15px;background:#2a2130;border-radius:0 10px 10px 0;color:#e8ddf1;font-size:13px;line-height:1.6}",
   ".receipts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}",
   ".receipt{background:#171420;border:1px solid #46354f;border-radius:12px;padding:13px}",
@@ -305,7 +308,7 @@ export function renderCommerceOperations(
     '<div class="stats"><div class="stat"><span>Supplier records</span><strong>', sourcing === null ? "UNKNOWN" : String(vendors.length),
     '</strong><span>Recorded, not selected</span></div><div class="stat"><span>Quotes requiring renewal</span><strong>', sourcing === null ? "UNKNOWN" : String(staleQuotes),
     '</strong><span>Expired by recorded date/status</span></div><div class="stat"><span>Paid orders recorded</span><strong>', procurement === null ? "UNKNOWN" : String(confirmedOrders),
-    '</strong><span>Signed Shopify webhook records, not live API readback</span></div><div class="stat"><span>Stripe paid orders</span><strong>', stripeOrders === null ? "UNKNOWN" : String(confirmedStripeOrders),
+    '</strong><span>Signed Shopify webhook records, not live API readback</span></div><div class="stat"><span>Live-mode Stripe paid receipts</span><strong>', stripeOrders === null ? "UNKNOWN" : String(confirmedStripeOrders),
     '</strong><span>Private paid-order records; live Stripe API not asserted</span></div><div class="stat"><span>Proposed sample outlay · USD</span><strong>', sourcing === null ? "UNKNOWN" : money(proposedUsd, "USD"),
     '</strong><span>Not money spent; ', sourcing === null ? "UNKNOWN" : String(proposedOther), ' other-currency requests</span></div></div>',
     section("Supplier comparison", "Owner-only records; no vendor is preferred or selected by this page. MOQ in units, WhatsApp and margin stay unknown where no verified source is stored.",
@@ -317,7 +320,7 @@ export function renderCommerceOperations(
       table(["Product candidate", "Supplier quote coverage", "Sample results", "On-hand inventory", "Supplier stock", "Ready to publish"], productRows, "No structured product quote candidates available.")),
     section("Paid-order fulfillment handoffs", "Order identity and status are private. A Shopify paid record never grants automatic procurement or supplier dispatch.",
       table(["Order", "Payment evidence", "Paid amount", "Procurement", "Supplier code", "Shipment proof", "Delivery proof", "Created"], orderRows, "No private Shopify physical orders available.")),
-    section("Stripe paid-order handoffs", "Signed Stripe webhook records are shown separately from Shopify procurement. No supplier is chosen and no order is dispatched here. Provider payments and delivery require independent verification.",
+    section("Stripe paid-order handoffs", "Signed Stripe webhook records are shown separately from Shopify procurement. Test-mode receipts are SANDBOX and never count as live paid orders. Provider payments and delivery require independent verification.",
       table(["Order", "Private payment evidence", "Recorded total", "Product variants", "Order status", "Stripe session suffix", "Created"], stripeRows, "No private Stripe order records available.")),
     section("Working capital discipline", "Do not treat a supplier quote as cash available, a sample request as a paid invoice, or sales as net profit.",
       '<p class="note">Estimated open sample requests: <strong>' + (sourcing === null ? "UNKNOWN" : String(proposed.length)) +
@@ -327,7 +330,7 @@ export function renderCommerceOperations(
       '<p class="note">No verified experiment events are connected to this private read view. Conversion rate, customer acquisition cost and return on ad spend remain <strong>UNKNOWN</strong>. No campaigns are launched here.</p>'),
     section("Evidence ledger", "Each source record carries the founder decision contract. Up to 15 supplier quotes, 15 Shopify orders, and 15 Stripe orders appear here; source data is retained in private APIs.",
       '<div class="receipts">' + (receipts || '<p class="muted">No source receipts to display.</p>') + '</div>'),
-    '<footer class="footer">Evidence legend: CONFIRMED = permitted source proof or explicitly verified quote; STALE = expired quote; UNKNOWN = missing or unverified evidence. Records are read-only. Generated ',
+    '<footer class="footer">Evidence legend: CONFIRMED = permitted source proof or explicitly verified quote; SANDBOX = Stripe test-mode receipt, excluded from live counts; STALE = expired quote; UNKNOWN = missing or unverified evidence. Records are read-only. Generated ',
     escapeHtml(generatedAt.toISOString()), '. This page never caches private commerce data and is not a public sales page.</footer>',
     '</main></body></html>',
   ];
