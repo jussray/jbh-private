@@ -4,6 +4,7 @@ export interface Env {
   DATABASE_URL: string;
   STRIPE_SECRET_KEY: string;
   STRIPE_WEBHOOK_SECRET: string;
+  STRIPE_CHECKOUT_MODE?: "test" | "live";
   SHOPIFY_WEBHOOK_SECRET: string;
   SHOPIFY_SHOP_DOMAIN: string;
   WORKER_HOST: string;
