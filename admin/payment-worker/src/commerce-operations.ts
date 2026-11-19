@@ -320,7 +320,7 @@ export function renderCommerceOperations(
     section("Stripe paid-order handoffs", "Signed Stripe webhook records are shown separately from Shopify procurement. No supplier is chosen and no order is dispatched here. Provider payments and delivery require independent verification.",
       table(["Order", "Private payment evidence", "Recorded total", "Product variants", "Order status", "Stripe session suffix", "Created"], stripeRows, "No private Stripe order records available.")),
     section("Working capital discipline", "Do not treat a supplier quote as cash available, a sample request as a paid invoice, or sales as net profit.",
-      '<p class="note">Estimated open sample requests: <strong>' + String(proposed.length) +
+      '<p class="note">Estimated open sample requests: <strong>' + (sourcing === null ? "UNKNOWN" : String(proposed.length)) +
       '</strong>. USD proposed cost: <strong>' + (sourcing === null ? "UNKNOWN" : money(proposedUsd, "USD")) +
       '</strong>. Available working capital, actual spend, fees, taxes, refunds and realized margin: <strong>UNKNOWN</strong> until reconciled from authoritative records.</p>'),
     section("Customer acquisition experiments", "Track audience, channel, creative, spend, attributable paid orders, refunds, repeat purchases and CAC only once sourced.",
