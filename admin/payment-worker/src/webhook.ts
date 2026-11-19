@@ -403,6 +403,19 @@ async function handleEvent(
   }
 }
 
+/**
+ * Match the public checkout's explicitly selected Stripe mode. An unset mode,
+ * a test/live key mismatch, or an unexpected event mode must never reach order
+ * reconciliation. Only mode-specific, provider-signed events may continue.
+ */
+function approvedStripeEventMode(env: Env): "test" | "live" | null {
+  const mode = env.STRIPE_CHECKOUT_MODE?.trim().toLowerCase();
+  const key = env.STRIPE_SECRET_KEY?.trim() ?? "";
+  if (mode === "test" && /^(sk|rk)_test_/.test(key)) return "test";
+  if (mode === "live" && /^(sk|rk)_live_/.test(key)) return "live";
+  return null;
+}
+
 export async function handleWebhook(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") {
     return text("Method not allowed", 405, { Allow: "POST" });
@@ -410,6 +423,12 @@ export async function handleWebhook(request: Request, env: Env): Promise<Respons
   if (!env.DATABASE_URL || !env.STRIPE_SECRET_KEY || !env.STRIPE_WEBHOOK_SECRET) {
     console.error("[WEBHOOK] required bindings are not configured");
     return text("Stripe not configured", 503);
+  }
+
+  const expectedMode = approvedStripeEventMode(env);
+  if (!expectedMode) {
+    console.error("[WEBHOOK] Stripe credential mode is not approved");
+    return text("Payment mode is not approved", 503);
   }
 
   const signature = request.headers.get("Stripe-Signature");
@@ -429,6 +448,11 @@ export async function handleWebhook(request: Request, env: Env): Promise<Respons
   } catch {
     console.error("[WEBHOOK] signature verification failed");
     return text("Invalid signature", 400);
+  }
+
+  if (event.livemode !== (expectedMode === "live")) {
+    console.error("[WEBHOOK] signed event mode does not match configured Stripe mode");
+    return text("Stripe event mode mismatch", 400);
   }
 
   const sql = neon(env.DATABASE_URL);
