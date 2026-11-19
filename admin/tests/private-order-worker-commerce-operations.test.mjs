@@ -104,6 +104,9 @@ test("Stripe paid orders render separately, escape product text, and preserve so
   assert.match(html, /&lt;script&gt;bad\(\)&lt;\/script&gt;/);
   assert.doesNotMatch(html, /<script>bad\(\)<\/script>/);
   assert.match(html, /Supplier records/);
+  assert.match(html, /Live-mode Stripe paid receipts<\/span><strong>0<\/strong>/);
+  assert.match(html, /<span class="state sandbox">SANDBOX<\/span>/);
+  assert.doesNotMatch(html, /Live-mode Stripe paid receipts<\/span><strong>1<\/strong>/);
 });
 
 test("unavailable Stripe data and records without a payment intent never count as confirmed", async () => {
@@ -117,7 +120,7 @@ test("unavailable Stripe data and records without a payment intent never count a
     new Date("2026-11-18T12:00:00Z"),
     { orders: [{ id: 1, paymentStatus: "paid", stripeSessionId: "cs_test_example" }] },
   );
-  assert.match(absentIntent, /Stripe paid orders<\/span><strong>0<\/strong>/);
+  assert.match(absentIntent, /Live-mode Stripe paid receipts<\/span><strong>0<\/strong>/);
   assert.match(absentIntent, /UNKNOWN/);
 });
 
@@ -131,4 +134,24 @@ test("known empty supplier snapshot keeps a legitimate zero sample count", async
   );
   assert.match(empty, /Estimated open sample requests: <strong>0<\/strong>/);
   assert.doesNotMatch(empty, /Supplier data unavailable: status is not zero/);
+});
+
+test("live-mode Stripe receipt counts once while sandbox and unknown do not inflate fulfillment", async () => {
+  const { renderCommerceOperations } = await loadPureRenderer();
+  const html = renderCommerceOperations(
+    { vendors: [], quotes: [], sampleRequests: [] },
+    { orders: [] },
+    new Date("2026-11-18T12:00:00Z"),
+    { orders: [
+      { id: 1, paymentStatus: "paid", stripeSessionId: "cs_test_sample", stripePaymentIntentId: "pi_test_sample", total: 20 },
+      { id: 2, paymentStatus: "paid", stripeSessionId: "cs_live_sample", stripePaymentIntentId: "pi_live_sample", total: 80 },
+      { id: 3, paymentStatus: "unpaid", stripeSessionId: "cs_live_unpaid", stripePaymentIntentId: "pi_live_unpaid", total: 90 },
+      { id: 4, paymentStatus: "paid", stripeSessionId: "unrecognized", stripePaymentIntentId: "pi_unrecognized", total: 100 },
+    ] },
+  );
+  assert.match(html, /Live-mode Stripe paid receipts<\/span><strong>1<\/strong>/);
+  assert.match(html, /<span class="state sandbox">SANDBOX<\/span>/);
+  assert.match(html, /<span class="state confirmed">CONFIRMED<\/span>/);
+  assert.match(html, /SANDBOX = Stripe test-mode receipt, excluded from live counts/);
+  assert.match(html, /UNKNOWN/);
 });
