@@ -110,6 +110,7 @@ test("unavailable Stripe data and records without a payment intent never count a
   const { renderCommerceOperations } = await loadPureRenderer();
   const unknown = renderCommerceOperations(null, null, new Date("2026-11-18T12:00:00Z"));
   assert.match(unknown, /Stripe-order data unavailable: status is not zero/);
+  assert.match(unknown, /Estimated open sample requests: <strong>UNKNOWN<\/strong>/);
   const absentIntent = renderCommerceOperations(
     { vendors: [], quotes: [], sampleRequests: [] },
     { orders: [] },
@@ -118,4 +119,16 @@ test("unavailable Stripe data and records without a payment intent never count a
   );
   assert.match(absentIntent, /Stripe paid orders<\/span><strong>0<\/strong>/);
   assert.match(absentIntent, /UNKNOWN/);
+});
+
+test("known empty supplier snapshot keeps a legitimate zero sample count", async () => {
+  const { renderCommerceOperations } = await loadPureRenderer();
+  const empty = renderCommerceOperations(
+    { vendors: [], quotes: [], sampleRequests: [] },
+    { orders: [] },
+    new Date("2026-11-18T12:00:00Z"),
+    { orders: [] },
+  );
+  assert.match(empty, /Estimated open sample requests: <strong>0<\/strong>/);
+  assert.doesNotMatch(empty, /Supplier data unavailable: status is not zero/);
 });
