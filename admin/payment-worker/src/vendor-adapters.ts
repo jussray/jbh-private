@@ -4,7 +4,7 @@ import { validateAccess } from "./access";
 import { planVendorReview, vendorAdapterManifest, VendorAdapterError, type VendorReviewInput } from "./vendor-adapters-model";
 import { type Env, json, readBoundedText, text } from "./shared";
 
-const privateHeaders: HeadersInit = {
+const privateHeaders: Record<string, string> = {
   "Cache-Control": "private, no-store, max-age=0",
   Pragma: "no-cache",
 };
