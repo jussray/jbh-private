@@ -39,7 +39,7 @@ export default {
       return handleShopifyProcurementAdminRequest(request, env);
     }
 
-    if (pathname === "/api/admin/vendor-adapters" || pathname === "/api/admin/vendor-adapters/preview") {
+    if (pathname === "/api/admin/vendor-adapters" || pathname.startsWith("/api/admin/vendor-adapters/")) {
       return handleVendorAdapterRequest(request, env);
     }
 

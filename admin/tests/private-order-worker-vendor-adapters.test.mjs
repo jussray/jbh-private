@@ -170,3 +170,10 @@ test("vendor proof route remains owner-authenticated and does not dispatch or mu
   assert.doesNotMatch(proof,/mutation\b/i);
   assert.doesNotMatch(proof,/\.dispatch\(|supplier_ordered|fulfillmentCreate|fulfillmentOrderSubmitFulfillmentRequest/);
 });
+
+
+test("worker index routes provider-backed vendor proof through the vendor adapter handler",async()=>{
+  const source=await readFile("admin/payment-worker/src/index.ts","utf8");
+  assert.match(source,/pathname\.startsWith\("\/api\/admin\/vendor-adapters\/"\)/);
+  assert.match(source,/return handleVendorAdapterRequest\(request, env\)/);
+});
