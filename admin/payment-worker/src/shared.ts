@@ -8,6 +8,9 @@ export interface Env {
   STRIPE_CHECKOUT_MODE?: "test" | "live";
   SHOPIFY_WEBHOOK_SECRET: string;
   SHOPIFY_SHOP_DOMAIN: string;
+  SHOPIFY_ADMIN_ACCESS_TOKEN?: string;
+  SHOPIFY_ADMIN_API_VERSION?: string;
+  DROPSHIP_BEAUTY_LOCATION_GID?: string;
   WORKER_HOST: string;
   CF_ACCESS_TEAM_DOMAIN: string;
   CF_ACCESS_AUD: string;

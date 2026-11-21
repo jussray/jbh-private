@@ -3,6 +3,7 @@
 import { validateAccess } from "./access";
 import { planVendorReview, vendorAdapterManifest, VendorAdapterError, type VendorReviewInput } from "./vendor-adapters-model";
 import { type Env, json, readBoundedText, text } from "./shared";
+import { readDropshipBeautyProof, DropshipBeautyProofError } from "./dropship-beauty-proof";
 
 const privateHeaders: Record<string, string> = {
   "Cache-Control": "private, no-store, max-age=0",
@@ -25,6 +26,21 @@ export async function handleVendorAdapterRequest(request: Request, env: Env): Pr
       supplierDispatch: "disabled_pending_verified_integration",
     }, 200, privateHeaders);
   }
+  if (path === "/api/admin/vendor-adapters/dropship-beauty/proof") {
+    if (request.method !== "GET") {
+      return text("Method not allowed", 405, {...privateHeaders, Allow:"GET"});
+    }
+    try {
+      const proof = await readDropshipBeautyProof(env);
+      return json(proof, proof.liveDispatchVerified ? 200 : 409, privateHeaders);
+    } catch (error) {
+      if (error instanceof DropshipBeautyProofError) {
+        return json({error:error.code, vendor:"dropship-beauty", dispatchAuthority:false}, 503, privateHeaders);
+      }
+      return json({error:"dropship_beauty_proof_unavailable", vendor:"dropship-beauty", dispatchAuthority:false}, 503, privateHeaders);
+    }
+  }
+
   if (path === "/api/admin/vendor-adapters/preview") {
     if (request.method !== "POST") {
       return text("Method not allowed", 405, {...privateHeaders, Allow:"POST"});
