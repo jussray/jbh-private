@@ -145,7 +145,7 @@ try {
         {
           id: 1,
           vendor_id: 'v-2',
-          status: 'verified',
+          status: 'received',
           reply_received_at: '2026-11-18T12:00:00Z',
           source_message_id: 'msg-1',
           valid_until: '2026-12-31',
@@ -169,7 +169,7 @@ try {
         {
           id: 3,
           vendor_id: 'v-1',
-          status: 'pending',
+          status: 'under_review',
           currency: 'USD',
           items: [],
         },
@@ -236,6 +236,13 @@ try {
   assert(
     commerceText.includes('No vendor selection, messages, orders, refunds, or spending actions run from this page.'),
     'Commerce read-only authority boundary is missing.',
+  );
+  const receivedVendor = page.locator('table').first().locator('tbody tr').filter({
+    hasText: 'Verified Vendor',
+  });
+  assert(
+    await receivedVendor.locator('.state.unknown').count() === 1,
+    'An unverified vendor reply was incorrectly promoted to confirmed.',
   );
   assert(
     await page.locator('form, button, input, textarea, select').count() === 0,
