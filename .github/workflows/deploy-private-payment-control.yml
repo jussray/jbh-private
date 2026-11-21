@@ -1,17 +1,12 @@
 name: Deploy Private Payment Control
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "admin/payment-worker/**"
-      - "admin/tests/private-order-worker-*.test.mjs"
-      - "scripts/verify-cloudflare-worker-identity.mjs"
-      - "scripts/verify-commerce-seam.mjs"
-      - "wrangler.toml"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/deploy-private-payment-control.yml"
+  workflow_dispatch:
+    inputs:
+      approval_phrase:
+        description: "Type exactly DEPLOY_JBH_PRIVATE_PAYMENT_CONTROL"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -34,12 +29,14 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      APPROVAL_PHRASE: ${{ inputs.approval_phrase }}
     steps:
-      - name: Require main and Cloudflare deployment bindings
+      - name: Require main, explicit approval, and Cloudflare deployment bindings
         shell: bash
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
+          test "$APPROVAL_PHRASE" = "DEPLOY_JBH_PRIVATE_PAYMENT_CONTROL"
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
 
