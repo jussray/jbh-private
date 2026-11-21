@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import {
   VENDOR_ADAPTERS, vendorAdapterManifest, planVendorReview, VendorAdapterError,
 } from "../../.worker-test-dist/vendor-adapters-model.js";
+import { releaseIdentity } from "../../.worker-test-dist/release-identity.js";
 
 const orderId="jbho_11111111-1111-4111-8111-111111111111";
 const line=(sku,quantity=1)=>({sku,quantity});
@@ -73,4 +74,27 @@ test("vendor adapters are owner-authenticated and do not import a direct dispatc
   assert.match(handler,/planVendorReview\(input\)/);
   assert.doesNotMatch(handler,/fetch\(|\.send\(|\.dispatch\(|stripeClient\(/);
   assert.doesNotMatch(model,/fetch\(|\.dispatch\(|stripeClient\(/);
+});
+
+test("release identity fails closed without an explicit 40-character Git commit",()=>{
+  for(const missing of [undefined,null,"",42,"main","abc123", "z".repeat(40), "a".repeat(39)]){
+    const result=releaseIdentity(missing);
+    assert.equal(result.status,503);
+    assert.equal(result.body.ok,false);
+    assert.equal(result.body.sha,null);
+    assert.equal(result.body.error,"release_sha_unconfigured");
+  }
+  const sha="ABCDEF1234567890ABCDEF1234567890ABCDEF12";
+  const valid=releaseIdentity(sha);
+  assert.equal(valid.status,200);
+  assert.equal(valid.body.sha,sha.toLowerCase());
+  assert.equal(valid.body.service,"jbh-private-payment-control");
+});
+
+test("private Worker exposes version readback before liveness without authorizing sales",async()=>{
+  const source=await readFile("admin/payment-worker/src/index.ts","utf8");
+  assert.match(source,/pathname === "\/version"/);
+  assert.match(source,/releaseIdentity\(env\.RELEASE_SHA\)/);
+  assert.match(source,/return json\(release\.body, release\.status\)/);
+  assert.ok(source.indexOf('pathname === "/version"')<source.indexOf('pathname === "/health"'));
 });
