@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 
 export interface Env {
+  RELEASE_SHA?: string;
   DATABASE_URL: string;
   STRIPE_SECRET_KEY: string;
   STRIPE_WEBHOOK_SECRET: string;

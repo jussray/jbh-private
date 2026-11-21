@@ -10,6 +10,8 @@
   },
   "include": [
     "src/vendor-routing-model.ts",
+    "src/vendor-adapters-model.ts",
+    "src/release-identity.ts",
     "src/shopify-physical-order-model.ts"
   ]
 }
