@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import {
   VENDOR_ADAPTERS, vendorAdapterManifest, planVendorReview, VendorAdapterError,
 } from "../../.worker-test-dist/vendor-adapters-model.js";
+import { evaluateDropshipBeautyProof } from "../../.worker-test-dist/dropship-beauty-proof.js";
 import { releaseIdentity } from "../../.worker-test-dist/release-identity.js";
 
 const orderId="jbho_11111111-1111-4111-8111-111111111111";
@@ -97,4 +98,75 @@ test("private Worker exposes version readback before liveness without authorizin
   assert.match(source,/releaseIdentity\(env\.RELEASE_SHA\)/);
   assert.match(source,/return json\(release\.body, release\.status\)/);
   assert.ok(source.indexOf('pathname === "/version"')<source.indexOf('pathname === "/health"'));
+});
+
+
+test("provider-backed Dropship Beauty proof separates transport from live dispatch authority",()=>{
+  const now=Date.parse("2026-11-21T08:00:00Z");
+  const base={
+    id:"gid://shopify/FulfillmentOrder/111",
+    status:"OPEN",
+    requestStatus:"ACCEPTED",
+    updatedAt:"2026-11-21T07:55:00Z",
+    assignedLocation:{location:{
+      id:"gid://shopify/Location/94408442099",
+      isFulfillmentService:true,
+      fulfillmentService:{id:"gid://shopify/FulfillmentService/9",handle:"dropship-beauty",serviceName:"Dropship Beauty"},
+    }},
+    lineItems:{nodes:[{sku:"BRAZ-SEW-BW-18"},{sku:"BRAZ-SEW-BW-22"}]},
+    fulfillments:{nodes:[]},
+    order:{id:"gid://shopify/Order/999",name:"#999",test:true,fullyPaid:true,displayFinancialStatus:"PAID"},
+  };
+  const transport=evaluateDropshipBeautyProof([base],undefined,now);
+  assert.equal(transport.transportVerified,true);
+  assert.equal(transport.liveDispatchVerified,false);
+  assert.equal(transport.dispatchAuthority,false);
+  assert.equal(transport.jussPayAuthorityCandidate,null);
+
+  const live=evaluateDropshipBeautyProof([{...base,order:{...base.order,test:false}}],undefined,now);
+  assert.equal(live.transportVerified,true);
+  assert.equal(live.liveDispatchVerified,true);
+  assert.equal(live.dispatchAuthority,false);
+  assert.deepEqual(live.jussPayAuthorityCandidate.skus,["BRAZ-SEW-BW-18","BRAZ-SEW-BW-22"]);
+  assert.equal(live.jussPayAuthorityCandidate.mode,"verified-owner-handoff");
+  assert.equal(live.jussPayAuthorityCandidate.ownerHandoffVerified,true);
+  assert.match(live.jussPayAuthorityCandidate.evidenceRef,/^shopify:fulfillment-order:/);
+});
+
+test("Dropship Beauty proof rejects stale, wrong-location, unaccepted and unsupported-SKU evidence",()=>{
+  const now=Date.parse("2026-11-21T08:00:00Z");
+  const node={
+    id:"gid://shopify/FulfillmentOrder/222",
+    status:"OPEN",
+    requestStatus:"ACCEPTED",
+    updatedAt:"2026-11-21T07:55:00Z",
+    assignedLocation:{location:{
+      id:"gid://shopify/Location/94408442099",
+      isFulfillmentService:true,
+      fulfillmentService:{id:"gid://shopify/FulfillmentService/9",handle:"dropship-beauty",serviceName:"Dropship Beauty"},
+    }},
+    lineItems:{nodes:[{sku:"BRAZ-SEW-DW-20"}]},
+    fulfillments:{nodes:[]},
+    order:{id:"gid://shopify/Order/1000",name:"#1000",test:false,fullyPaid:true,displayFinancialStatus:"PAID"},
+  };
+  const stale={...node,updatedAt:"2026-11-01T00:00:00Z"};
+  const wrong={...node,assignedLocation:{location:{...node.assignedLocation.location,id:"gid://shopify/Location/1"}}};
+  const unaccepted={...node,requestStatus:"SUBMITTED"};
+  const badSku={...node,lineItems:{nodes:[{sku:"OTHER-1"}]}};
+  for(const candidate of [stale,wrong,unaccepted,badSku]){
+    const proof=evaluateDropshipBeautyProof([candidate],undefined,now);
+    assert.equal(proof.liveDispatchVerified,false);
+    assert.equal(proof.jussPayAuthorityCandidate,null);
+  }
+});
+
+test("vendor proof route remains owner-authenticated and does not dispatch or mutate suppliers",async()=>{
+  const handler=await readFile("admin/payment-worker/src/vendor-adapters.ts","utf8");
+  const proof=await readFile("admin/payment-worker/src/dropship-beauty-proof.ts","utf8");
+  assert.match(handler,/dropship-beauty\/proof/);
+  assert.match(handler,/await validateAccess\(request, env\)/);
+  assert.match(proof,/fulfillmentOrders/);
+  assert.match(proof,/X-Shopify-Access-Token/);
+  assert.doesNotMatch(proof,/mutation\b/i);
+  assert.doesNotMatch(proof,/\.dispatch\(|supplier_ordered|fulfillmentCreate|fulfillmentOrderSubmitFulfillmentRequest/);
 });
