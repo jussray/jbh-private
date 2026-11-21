@@ -3,7 +3,7 @@ name: Private security build
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/jbh-commerce-operations-20261112]
   pull_request:
   workflow_dispatch:
 
