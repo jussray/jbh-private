@@ -1,4 +1,4 @@
-import type { Env } from "./shared";
+import type { Env } from "./shared.js";
 
 const DEFAULT_LOCATION_GID = "gid://shopify/Location/94408442099";
 const SKU = /^(BRAZ-SEW-(BW|DW|LW|ST|KS|KC|AK|SW)-|BRAZ-TRANS-(CLO-(DW|ST|LW|BW)|FRO-(ST|LW))-|613-BRAZ-SEW-BW-)[A-Z0-9-]*$/;
