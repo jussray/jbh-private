@@ -6,12 +6,19 @@ import { handleShopifyPhysicalWebhook } from "./shopify-physical-webhook";
 import { handleVendorSourcingRequest } from "./vendor-sourcing";
 import { handleVendorAdapterRequest } from "./vendor-adapters";
 import { handleWebhook } from "./webhook";
+import { releaseIdentity } from "./release-identity";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (!isApprovedHost(request, env)) return text("Not found", 404);
 
     const { pathname } = new URL(request.url);
+    if (pathname === "/version") {
+      if (request.method !== "GET") return text("Method not allowed", 405, {Allow: "GET"});
+      const release = releaseIdentity(env.RELEASE_SHA);
+      return json(release.body, release.status);
+    }
+
     if (pathname === "/health") {
       return json({ ok: true, service: "jbh-private-order-control" });
     }
