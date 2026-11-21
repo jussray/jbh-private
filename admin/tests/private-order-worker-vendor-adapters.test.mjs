@@ -160,6 +160,45 @@ test("Dropship Beauty proof rejects stale, wrong-location, unaccepted and unsupp
   }
 });
 
+
+test("Dropship Beauty proof rejects wrong service identity and non-successful closed fulfillments",()=>{
+  const now=Date.parse("2026-11-21T08:00:00Z");
+  const accepted={
+    id:"gid://shopify/FulfillmentOrder/222",status:"OPEN",requestStatus:"ACCEPTED",
+    updatedAt:"2026-11-21T07:55:00Z",
+    assignedLocation:{location:{
+      id:"gid://shopify/Location/94408442099",isFulfillmentService:true,
+      fulfillmentService:{id:"gid://shopify/FulfillmentService/9",handle:"dropship-beauty",serviceName:"Dropship Beauty"},
+    }},
+    lineItems:{nodes:[{sku:"BRAZ-SEW-BW-18"}]},fulfillments:{nodes:[]},
+    order:{id:"gid://shopify/Order/1000",name:"#1000",test:false,fullyPaid:true,displayFinancialStatus:"PAID"},
+  };
+  const evaluate=(node)=>evaluateDropshipBeautyProof([node],undefined,now);
+  assert.equal(evaluate(accepted).liveDispatchVerified,true);
+  for(const fulfillmentService of [
+    {id:"gid://shopify/FulfillmentService/9",handle:"different-provider"},
+    {id:"invalid",handle:"dropship-beauty"},
+    {id:"gid://shopify/FulfillmentService/9",handle:null},
+  ]){
+    const node={...accepted,assignedLocation:{location:{...accepted.assignedLocation.location,fulfillmentService}}};
+    const proof=evaluate(node);
+    assert.equal(proof.transportVerified,false);
+    assert.equal(proof.liveDispatchVerified,false);
+    assert.equal(proof.jussPayAuthorityCandidate,null);
+  }
+  const completed={...accepted,status:"CLOSED",requestStatus:"CLOSED",
+    fulfillments:{nodes:[{id:"gid://shopify/Fulfillment/77",status:"SUCCESS",
+      location:{id:"gid://shopify/Location/94408442099"}}]}};
+  assert.equal(evaluate(completed).liveDispatchVerified,true);
+  for(const status of ["FAILURE","ERROR","CANCELLED","PENDING","RESTOCKED",null]){
+    const node={...completed,fulfillments:{nodes:[{...completed.fulfillments.nodes[0],status}]}};
+    const proof=evaluate(node);
+    assert.equal(proof.transportVerified,false,"status "+status);
+    assert.equal(proof.liveDispatchVerified,false,"status "+status);
+    assert.equal(proof.jussPayAuthorityCandidate,null,"status "+status);
+  }
+});
+
 test("vendor proof route remains owner-authenticated and does not dispatch or mutate suppliers",async()=>{
   const handler=await readFile("admin/payment-worker/src/vendor-adapters.ts","utf8");
   const proof=await readFile("admin/payment-worker/src/dropship-beauty-proof.ts","utf8");

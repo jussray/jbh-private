@@ -61,7 +61,7 @@ export function evaluateDropshipBeautyProof(
     if (!node) continue;
     const location = node.assignedLocation?.location;
     const service = location?.fulfillmentService;
-    if (location?.id !== expectedLocationGid || location?.isFulfillmentService !== true || !service) continue;
+    if (location?.id !== expectedLocationGid || location?.isFulfillmentService !== true || service?.handle !== "dropship-beauty" || !safeId(service.id)) continue;
 
     const fulfillmentOrderId = safeId(node.id);
     const orderId = safeId(node.order?.id);
@@ -75,7 +75,7 @@ export function evaluateDropshipBeautyProof(
     const requestAccepted = node.requestStatus === "ACCEPTED";
     const fulfillmentNodes = Array.isArray(node.fulfillments?.nodes) ? node.fulfillments!.nodes! : [];
     const providerFulfillment = fulfillmentNodes.find((f) =>
-      safeId(f?.id) && f?.location?.id === expectedLocationGid && f?.status !== "CANCELLED"
+      safeId(f?.id) && f?.location?.id === expectedLocationGid && f?.status === "SUCCESS"
     );
     const closedWithFulfillment = node.requestStatus === "CLOSED" && Boolean(providerFulfillment);
     if (!requestAccepted && !closedWithFulfillment) continue;
