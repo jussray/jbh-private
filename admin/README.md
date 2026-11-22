@@ -11,6 +11,31 @@ This directory is the private owner-control source for Juss Beautiful Hair. It c
 
 The storefront router intentionally does not register private admin routes. Browser admin code is not an internet authentication boundary. Do not use a `VITE_*` variable for an admin password or secret because Vite variables are bundled into browser JavaScript.
 
+## Vendor-specific owner adapter runtime (JussPay cutover preparation)
+
+The private Cloudflare Worker now exposes **Cloudflare Access-protected**
+`GET /api/admin/vendor-adapters` and
+`POST /api/admin/vendor-adapters/preview` for a bounded review-only vendor
+work plan. The implementation is in
+`admin/payment-worker/src/vendor-adapters.ts` and
+`vendor-adapters-model.ts`. It never makes a supplier API request or
+marks payment, stock, or dispatch as verified merely from submitted data.
+
+- **Dropship Beauty:** exact supplier SKU/inventory and a functioning Shopify
+  app order handoff are required. A Shopify integration configured in the past
+  is not current paid-order dispatch proof.
+- **Faire:** wholesale inventory must first be received and reserved by JBH;
+  Faire retailer orders are **not** customer dropshipping or a custom retailer API.
+- **DSers:** requires an actual connected order channel or supported CSV
+  exchange, exact mapped supplier SKUs and separate order confirmation.
+- **Manual/other vendors:** owner-accepted supplier quotes, stocked inventory
+  and dispatch proof are required. Unrecognized suppliers are quarantined.
+
+A preview is not an authorization to charge, procure, or dispatch. Real
+supplier adapters must remain gated until verified transport and receipts
+exist, and the JussPay live paid-receipt handoff still requires separate
+end-to-end proof. This does not reactivate Shopify.
+
 ## Current Shopify physical-order seam
 
 The active public physical checkout is Shopify-backed.

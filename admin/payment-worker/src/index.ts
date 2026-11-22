@@ -4,7 +4,9 @@ import { type Env, isApprovedHost, json, text } from "./shared";
 import { handleShopifyProcurementAdminRequest } from "./shopify-procurement-admin";
 import { handleShopifyPhysicalWebhook } from "./shopify-physical-webhook";
 import { handleVendorSourcingRequest } from "./vendor-sourcing";
+import { handleVendorAdapterRequest } from "./vendor-adapters";
 import { handleWebhook } from "./webhook";
+import { releaseIdentity } from "./release-identity";
 import { handleJussPaySandboxReceipt } from "./jusspay-sandbox-receipt";
 
 export default {
@@ -12,6 +14,12 @@ export default {
     if (!isApprovedHost(request, env)) return text("Not found", 404);
 
     const { pathname } = new URL(request.url);
+    if (pathname === "/version") {
+      if (request.method !== "GET") return text("Method not allowed", 405, {Allow: "GET"});
+      const release = releaseIdentity(env.RELEASE_SHA);
+      return json(release.body, release.status);
+    }
+
     if (pathname === "/health") {
       return json({ ok: true, service: "jbh-private-order-control" });
     }
@@ -34,6 +42,10 @@ export default {
 
     if (pathname.startsWith("/api/admin/procurement-orders")) {
       return handleShopifyProcurementAdminRequest(request, env);
+    }
+
+    if (pathname === "/api/admin/vendor-adapters" || pathname.startsWith("/api/admin/vendor-adapters/")) {
+      return handleVendorAdapterRequest(request, env);
     }
 
     if (pathname.startsWith("/api/admin/vendor-sourcing")) {

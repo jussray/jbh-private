@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 
 export interface Env {
+  RELEASE_SHA?: string;
   DATABASE_URL: string;
   JBH_JUSSPAY_RECEIPTS_ENABLED?: string;
   JBH_JUSSPAY_RECEIPT_SECRET?: string;
@@ -8,6 +9,9 @@ export interface Env {
   STRIPE_WEBHOOK_SECRET: string;
   SHOPIFY_WEBHOOK_SECRET: string;
   SHOPIFY_SHOP_DOMAIN: string;
+  SHOPIFY_ADMIN_ACCESS_TOKEN?: string;
+  SHOPIFY_ADMIN_API_VERSION?: string;
+  DROPSHIP_BEAUTY_LOCATION_GID?: string;
   WORKER_HOST: string;
   CF_ACCESS_TEAM_DOMAIN: string;
   CF_ACCESS_AUD: string;
