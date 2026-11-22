@@ -9,5 +9,9 @@ keep_vars = true
 [build]
 command = "npm run verify:worker:cloudflare"
 
+[[services]]
+binding = "JUSSPAY"
+service = "jusspay"
+
 [observability]
 enabled = true
