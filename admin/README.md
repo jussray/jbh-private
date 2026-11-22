@@ -36,6 +36,33 @@ supplier adapters must remain gated until verified transport and receipts
 exist, and the JussPay live paid-receipt handoff still requires separate
 end-to-end proof. This does not reactivate Shopify.
 
+## JussPay private owner fulfillment (read-only)
+
+The existing private `jbh-private-payment-control` Worker exposes an Access-only
+owner view and an identical JSON API at:
+
+- `GET /api/admin/jusspay/fulfillment/view` — server-rendered, escaped owner page.
+- `GET /api/admin/jusspay/fulfillment` — owner-only JSON projection.
+
+Both require a valid signed Cloudflare Access JWT for the private admin
+application and the owner email allowlist, checked inside the Worker.
+They are **not** routes on the public storefront. No browser-side owner key,
+cross-origin credential forwarding, order dispatch, charge or checkout occurs.
+
+The private Worker uses the `JUSSPAY` service binding to the existing
+`jusspay` Worker, plus `JUSSPAY_OWNER_KEY` as a Cloudflare-secret binding.
+Set `JUSSPAY_OWNER_KEY` to the same owner fulfillment key already configured as
+`JBH_OWNER_KEY` in JussPay. Never place either key in GitHub, logs, URLs, or
+browser code. The upstream request uses a fixed internal target and the
+`x-jbh-owner-key` header. If either binding is missing, the API fails closed.
+
+Before declaring the route live, independently verify the deployed exact
+Worker SHA, Cloudflare Access private-owner policy, binding presence, owner
+auth rejection, successful service-to-service queue read, and no customer data
+leak for unauthenticated requests. The view is **read-only**: owner dispatch
+and supplier integrations still require separate proof/authorization.
+The JussPay catalog and live-charge gates remain unchanged.
+
 ## Current Shopify physical-order seam
 
 The active public physical checkout is Shopify-backed.
