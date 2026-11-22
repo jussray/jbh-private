@@ -13,6 +13,7 @@
     "src/vendor-adapters-model.ts",
     "src/dropship-beauty-proof.ts",
     "src/release-identity.ts",
+    "src/jusspay-owner-model.ts",
     "src/shopify-physical-order-model.ts"
   ]
 }
