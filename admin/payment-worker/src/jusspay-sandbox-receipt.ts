@@ -40,7 +40,16 @@ export async function handleJussPaySandboxReceipt(request: Request, env: Env): P
       const holds = await sql`
         INSERT INTO jusspay_sandbox_holds (order_id, event_id, payment_intent_id, reason)
         VALUES (${b.orderId}, ${b.eventId}, ${b.paymentIntentId}, ${b.state})
-        ON CONFLICT DO NOTHING RETURNING order_id
+        ON CONFLICT (order_id) DO UPDATE SET
+          event_id = EXCLUDED.event_id,
+          reason = CASE
+            WHEN jusspay_sandbox_holds.reason = 'disputed' OR EXCLUDED.reason = 'disputed' THEN 'disputed'
+            WHEN jusspay_sandbox_holds.reason = 'refunded' OR EXCLUDED.reason = 'refunded' THEN 'refunded'
+            ELSE 'partially_refunded'
+          END
+        WHERE jusspay_sandbox_holds.payment_intent_id = EXCLUDED.payment_intent_id
+          AND (SELECT COUNT(*) FROM jusspay_sandbox_holds h WHERE h.event_id = EXCLUDED.event_id AND h.order_id <> EXCLUDED.order_id) = 0
+        RETURNING order_id, reason
       `;
       if (!holds.length) {
         const previous = await sql`
@@ -48,14 +57,15 @@ export async function handleJussPaySandboxReceipt(request: Request, env: Env): P
           FROM jusspay_sandbox_holds WHERE order_id = ${b.orderId} OR event_id = ${b.eventId}
         `;
         if (previous.length !== 1 || previous[0].order_id !== b.orderId ||
-            previous[0].event_id !== b.eventId || previous[0].payment_intent_id !== b.paymentIntentId ||
-            previous[0].reason !== b.state) return json({ error: "receipt_conflict" }, 409);
+            previous[0].payment_intent_id !== b.paymentIntentId ||
+            previous[0].event_id !== b.eventId) return json({ error: "receipt_conflict" }, 409);
       }
       await sql`
         UPDATE jusspay_sandbox_receipts SET state = 'hold'
         WHERE order_id = ${b.orderId} AND payment_intent_id = ${b.paymentIntentId}
       `;
-      return json({ received: true, state: "hold", duplicate: !holds.length });
+      const current = await sql`SELECT reason FROM jusspay_sandbox_holds WHERE order_id = ${b.orderId}`;
+      return json({ received: true, state: "hold", reason: current[0]?.reason ?? b.state, duplicate: !holds.length });
     }
     const rows = await sql`
       INSERT INTO jusspay_sandbox_receipts (order_id, event_id, payment_intent_id, receipt_sha256)
