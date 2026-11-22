@@ -8,6 +8,7 @@ import { handleVendorAdapterRequest } from "./vendor-adapters";
 import { handleWebhook } from "./webhook";
 import { releaseIdentity } from "./release-identity";
 import { handleJussPaySandboxReceipt } from "./jusspay-sandbox-receipt";
+import { handleJussPayOwnerRequest } from "./jusspay-owner";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -50,6 +51,10 @@ export default {
 
     if (pathname.startsWith("/api/admin/vendor-sourcing")) {
       return handleVendorSourcingRequest(request, env);
+    }
+
+    if (pathname.startsWith("/api/admin/jusspay/fulfillment")) {
+      return handleJussPayOwnerRequest(request, env);
     }
 
     if (pathname.startsWith("/api/admin/")) {
