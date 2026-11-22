@@ -2,6 +2,9 @@ import Stripe from "stripe";
 
 export interface Env {
   RELEASE_SHA?: string;
+  // Private Cloudflare Worker service binding and separate owner-side secret.
+  JUSSPAY?: { fetch(request: Request): Promise<Response> };
+  JUSSPAY_OWNER_KEY?: string;
   DATABASE_URL: string;
   JBH_JUSSPAY_RECEIPTS_ENABLED?: string;
   JBH_JUSSPAY_RECEIPT_SECRET?: string;
