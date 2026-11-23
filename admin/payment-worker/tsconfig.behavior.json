@@ -16,6 +16,7 @@
     "src/shopify-physical-order-model.ts",
     "src/supplier-selection-model.ts",
     "src/whatsapp-policy.ts",
-    "src/whatsapp-transport.ts"
+    "src/whatsapp-transport.ts",
+    "src/whatsapp-delivery-model.ts"
   ]
 }

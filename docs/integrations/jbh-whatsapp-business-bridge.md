@@ -33,3 +33,11 @@ Do not activate until Meta Business Account and number are connected, Meta webho
 Do not auto-retry an uncertain Meta send: the provider could have accepted the original. Reconcile Meta message ID and delivery status first. Store no payment-card numbers, private recipient addresses in AI prompts, or supplier account credentials in message content.
 
 The system must continue to block customer charges and supplier order dispatch until separate production JussPay/vendor authority gates pass.
+
+## Signed delivery receipts (pending private migration 021)
+
+Meta can acknowledge a send before later reporting `sent`, `delivered`, `read`, or `failed`. Those status updates arrive on the same signed webhook. Migration `021_whatsapp_delivery_receipts.sql` stores immutable, phone-free status receipts keyed by the Meta message ID and status. The private outbox reconciles monotonically, including receipts that arrive before the `/messages` response is saved.
+
+A provider-accepted message is **not** proof of delivery, supplier acceptance, vendor invoicing, shipment, or payment. The bridge never automatically retries a send when delivery is unknown. Meta receipt data must not activate supplier purchases.
+
+This is still review-branch code. Do not apply the migration, enable Meta messaging, or alter production Cloudflare Access until the actual database, webhook, business phone, contacts/consents, and end-to-end tests are verified.

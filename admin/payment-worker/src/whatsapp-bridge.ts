@@ -6,6 +6,8 @@ import {type Env, json, text, readBoundedText} from "./shared";
 import {verifyWebhookChallenge,verifyMetaSignature,normalizeInboundWebhook,planWhatsAppReply,
   validateOutgoingMessage,WhatsAppPolicyError} from "./whatsapp-policy";
 import {sendViaMeta} from "./whatsapp-transport";
+import {normalizeWhatsAppDeliveryEvents} from "./whatsapp-delivery-model";
+import {recordSignedWhatsAppDeliveryReceipt,reconcileWhatsAppOutboxReceipt} from "./whatsapp-delivery-store";
 
 type WaEnv=Env & {
   JBH_WHATSAPP_WEBHOOK_ENABLED?:string; JBH_WHATSAPP_SEND_ENABLED?:string;
@@ -57,11 +59,16 @@ async function webhook(request:Request,e:WaEnv):Promise<Response>{
   try{payload=await readBoundedText(request,65536);}catch{return json({error:"invalid_body"},400);}
   if(!await verifyMetaSignature(payload,request.headers.get("X-Hub-Signature-256"),e.JBH_WHATSAPP_APP_SECRET))
     return json({error:"invalid_signature"},401);
-  let events;
-  try{events=normalizeInboundWebhook(payload,e.JBH_WHATSAPP_PHONE_NUMBER_ID);}
-  catch{return json({error:"invalid_webhook"},400);}
+  let events,receipts;
+  try{
+    events=normalizeInboundWebhook(payload,e.JBH_WHATSAPP_PHONE_NUMBER_ID);
+    receipts=normalizeWhatsAppDeliveryEvents(payload,e.JBH_WHATSAPP_PHONE_NUMBER_ID);
+  }catch{return json({error:"invalid_webhook"},400);}
   try{
     const sql=neon(e.DATABASE_URL);
+    // Only signed Meta delivery events, never an inbound customer instruction.
+    for(const receipt of receipts)
+      await recordSignedWhatsAppDeliveryReceipt(e.DATABASE_URL,receipt);
     for(const event of events){
       const contactHash=await phoneHash(e.JBH_WHATSAPP_CONTACT_HASH_KEY!,event.waId);
       const messageHash=await digest(event.text);
@@ -197,6 +204,10 @@ async function sendApproved(request:Request,e:WaEnv):Promise<Response>{
       templateName:template||undefined,templateLanguage:typeof b.templateLanguage==="string"?b.templateLanguage:undefined});
     await sql`UPDATE jbh_whatsapp_outbox SET state='provider_accepted',
       meta_message_id=${sent.messageId},updated_at=NOW() WHERE idempotency_key=${b.idempotencyKey as string}`;
+    // Delivery callbacks can race ahead of Meta's HTTP response.
+    // If reconciliation fails, never resend or downgrade a verified delivery.
+    try{await reconcileWhatsAppOutboxReceipt(e.DATABASE_URL,sent.messageId);}
+    catch{return json({providerAccepted:true,messageId:sent.messageId,receiptReconciliationPending:true,orderPlaced:false});}
     return json({providerAccepted:true,messageId:sent.messageId,orderPlaced:false});
   }catch{
     await sql`UPDATE jbh_whatsapp_outbox SET state='delivery_unconfirmed',updated_at=NOW()
