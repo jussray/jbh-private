@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS jbh_whatsapp_contacts (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CHECK ((audience = 'vendor' AND vendor_id IS NOT NULL AND order_id IS NULL) OR
-         (audience = 'customer' AND order_id IS NOT NULL AND vendor_id IS NULL)),
+         (audience = 'customer' AND vendor_id IS NULL)),
   CHECK (NOT consented OR (consent_evidence_ref IS NOT NULL AND length(consent_evidence_ref) >= 8))
 );
 CREATE TABLE IF NOT EXISTS jbh_whatsapp_inbox (

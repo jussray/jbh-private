@@ -123,7 +123,10 @@ async function registerContact(request:Request,e:WaEnv):Promise<Response>{
     return json({error:"invalid_contact"},400);
   const vendorId=b.audience==="vendor"&&Number.isSafeInteger(b.vendorId)&&Number(b.vendorId)>0?Number(b.vendorId):null;
   const orderId=b.audience==="customer"&&Number.isSafeInteger(b.orderId)&&Number(b.orderId)>0?Number(b.orderId):null;
-  if((b.audience==="vendor"&&!vendorId)||(b.audience==="customer"&&!orderId))
+  // Opted-in prospective customers may ask FAQs before placing an order.
+  // A supplied order ID must still be real and belong to the exact phone number.
+  if((b.audience==="vendor"&&(!vendorId||b.orderId!=null))||
+     (b.audience==="customer"&&(b.vendorId!=null||(b.orderId!=null&&!orderId))))
     return json({error:"contact_authority_required"},400);
   const sql=neon(e.DATABASE_URL);
   if(vendorId){
