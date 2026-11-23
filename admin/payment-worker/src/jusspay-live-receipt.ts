@@ -8,7 +8,7 @@ const encoder = new TextEncoder();
 const hex = (bytes: Uint8Array) => [...bytes].map(x => x.toString(16).padStart(2, "0")).join("");
 
 export async function handleJussPayLiveReceipt(request: Request, env: Env): Promise<Response> {
-  if (env.JBH_JUSSPAY_RECEIPTS_ENABLED !== "true") return json({ error: "not_found" }, 404);
+  if (env.JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED !== "true") return json({ error: "not_found" }, 404);
   if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   if (!env.DATABASE_URL || !env.JBH_JUSSPAY_RECEIPT_SECRET || env.JBH_JUSSPAY_RECEIPT_SECRET.length < 32) {
     return json({ error: "not_configured" }, 503);
