@@ -4,6 +4,8 @@ import { validateAccess } from "./access";
 import { planVendorReview, vendorAdapterManifest, VendorAdapterError, type VendorReviewInput } from "./vendor-adapters-model";
 import { type Env, json, readBoundedText, text } from "./shared";
 import { readDropshipBeautyProof, DropshipBeautyProofError } from "./dropship-beauty-proof";
+import { selectBestSupplierForVariant, SupplierSelectionError, type SupplierSelectionInput } from "./supplier-selection-model";
+import privateVendorIntent from "../../data/vendor-selection-intent.json";
 
 const privateHeaders: Record<string, string> = {
   "Cache-Control": "private, no-store, max-age=0",
@@ -41,6 +43,24 @@ export async function handleVendorAdapterRequest(request: Request, env: Env): Pr
     }
   }
 
+  if (path === "/api/admin/vendor-adapters/selection-preview") {
+    // Owner-authenticated, advisory-only. POSTed offers are NOT provider proof.
+    // No Stripe call, vendor outreach, buyer address, or purchase is possible here.
+    if (request.method !== "POST") {
+      return text("Method not allowed", 405, {...privateHeaders, Allow:"POST"});
+    }
+    try {
+      const raw = await readBoundedText(request, 32768);
+      const input = JSON.parse(raw) as SupplierSelectionInput;
+      const result = selectBestSupplierForVariant(input, privateVendorIntent, Date.now());
+      return json(result, 200, privateHeaders);
+    } catch (error) {
+      if (error instanceof SupplierSelectionError || error instanceof SyntaxError) {
+        return json({error:"invalid_supplier_selection"}, 400, privateHeaders);
+      }
+      return json({error:"supplier_selection_unavailable"}, 503, privateHeaders);
+    }
+  }
   if (path === "/api/admin/vendor-adapters/preview") {
     if (request.method !== "POST") {
       return text("Method not allowed", 405, {...privateHeaders, Allow:"POST"});
