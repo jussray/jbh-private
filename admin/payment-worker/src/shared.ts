@@ -4,6 +4,7 @@ export interface Env {
   RELEASE_SHA?: string;
   DATABASE_URL: string;
   JBH_JUSSPAY_RECEIPTS_ENABLED?: string;
+  JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED?: string;
   JBH_JUSSPAY_RECEIPT_SECRET?: string;
   STRIPE_SECRET_KEY: string;
   STRIPE_WEBHOOK_SECRET: string;
