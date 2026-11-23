@@ -14,6 +14,8 @@
     "src/dropship-beauty-proof.ts",
     "src/release-identity.ts",
     "src/shopify-physical-order-model.ts",
-    "src/supplier-selection-model.ts"
+    "src/supplier-selection-model.ts",
+    "src/whatsapp-policy.ts",
+    "src/whatsapp-transport.ts"
   ]
 }

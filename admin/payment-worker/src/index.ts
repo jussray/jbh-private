@@ -8,6 +8,7 @@ import { handleVendorAdapterRequest } from "./vendor-adapters";
 import { handleWebhook } from "./webhook";
 import { releaseIdentity } from "./release-identity";
 import { handleJussPaySandboxReceipt } from "./jusspay-sandbox-receipt";
+import { handleWhatsAppRequest } from "./whatsapp-bridge";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -26,6 +27,10 @@ export default {
 
     if (pathname === "/internal/jusspay/sandbox/paid-receipt") {
       return handleJussPaySandboxReceipt(request, env);
+    }
+
+    if (pathname === "/webhooks/whatsapp" || pathname.startsWith("/api/admin/whatsapp/")) {
+      return handleWhatsAppRequest(request, env);
     }
 
     if (pathname === "/api/stripe/webhook") {
