@@ -3,7 +3,7 @@ name: Private security build
 
 on:
   push:
-    branches: [main]
+    branches: [main, "feat/private-supplier-best-fit-routing-20261122"]
   pull_request:
   workflow_dispatch:
 
