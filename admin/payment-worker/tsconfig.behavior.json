@@ -17,6 +17,7 @@
     "src/supplier-selection-model.ts",
     "src/whatsapp-policy.ts",
     "src/whatsapp-transport.ts",
-    "src/whatsapp-delivery-model.ts"
+    "src/whatsapp-delivery-model.ts",
+    "src/whatsapp-review-model.ts"
   ]
 }

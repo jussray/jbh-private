@@ -6,6 +6,7 @@ import {type Env, json, text, readBoundedText} from "./shared";
 import {verifyWebhookChallenge,verifyMetaSignature,normalizeInboundWebhook,planWhatsAppReply,
   validateOutgoingMessage,WhatsAppPolicyError} from "./whatsapp-policy";
 import {sendViaMeta} from "./whatsapp-transport";
+import {handleWhatsAppOwnerReviewRequest} from "./whatsapp-owner-review";
 import {normalizeWhatsAppDeliveryEvents} from "./whatsapp-delivery-model";
 import {recordSignedWhatsAppDeliveryReceipt,reconcileWhatsAppOutboxReceipt} from "./whatsapp-delivery-store";
 
@@ -219,6 +220,8 @@ export async function handleWhatsAppRequest(request:Request,env:Env):Promise<Res
   const e=env as WaEnv,path=new URL(request.url).pathname;
   if(path==="/webhooks/whatsapp")return webhook(request,e);
   if(!await validateAccess(request,e))return json({error:"unauthorized"},401,PRIVATE_HEADERS);
+  if(path==="/api/admin/whatsapp/readiness" || path==="/api/admin/whatsapp/review" || path==="/api/admin/whatsapp/review/resolve")
+    return handleWhatsAppOwnerReviewRequest(request,e);
   if(request.method!=="POST")return text("Method not allowed",405,{...PRIVATE_HEADERS,Allow:"POST"});
   if(!configured(e))return json({error:"whatsapp_not_configured"},503,PRIVATE_HEADERS);
   try{

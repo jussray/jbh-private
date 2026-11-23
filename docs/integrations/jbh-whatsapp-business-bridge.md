@@ -41,3 +41,19 @@ Meta can acknowledge a send before later reporting `sent`, `delivered`, `read`, 
 A provider-accepted message is **not** proof of delivery, supplier acceptance, vendor invoicing, shipment, or payment. The bridge never automatically retries a send when delivery is unknown. Meta receipt data must not activate supplier purchases.
 
 This is still review-branch code. Do not apply the migration, enable Meta messaging, or alter production Cloudflare Access until the actual database, webhook, business phone, contacts/consents, and end-to-end tests are verified.
+
+## Private owner readiness and review (pending migration 022)
+
+These paths are behind existing Cloudflare Access policy on `/api/admin` and cannot be called by Meta:
+
+- `GET /api/admin/whatsapp/readiness`: reports configured binding presence, whether private database schema tables 019–022 exist, and whether outbound switches remain off; never displays secret values. A configured secret is **not** evidence of a live Meta handshake.
+- `GET /api/admin/whatsapp/review`: shows up to 50 recent message IDs, intent labels, reply status, and owner-resolution state. **Metadata only:** the current inbox does not retain original message contents or phone numbers. Do not claim this is a complete conversation reader.
+- `POST /api/admin/whatsapp/review/resolve`: records one owner resolution code (`no_action_required`, `handled_externally`, or `followup_required`) against an existing inbox message ID. No vendor purchase, message, or payment is initiated.
+
+Migration `022_whatsapp_owner_review_actions.sql` is additive and requires `020`. Database migration order is `019 → 020 → 021 → 022`, but **nothing may be applied** before confirming that the actual production private Postgres database and its migration baseline match the code. These checks do not authorize enabling checkout or supplier dispatch.
+
+## Verified Cloudflare routing (2026-11-22/23)
+
+The account routes `api.jussbeautifulhair.com/*` to `jbh-private-payment-control`, and the Access application currently protects `api.jussbeautifulhair.com/api/admin`. The planned public webhook is `https://api.jussbeautifulhair.com/webhooks/whatsapp`. Only this webhook should be reachable without Cloudflare Access, and each POST must validate Meta's signed body.
+
+As checked, the production Worker had **no `DATABASE_URL` or WhatsApp secret bindings**, and the review-branch code was not deployed. Configure Meta assets and secrets inside authorized dashboards; do not paste credentials into chats.
