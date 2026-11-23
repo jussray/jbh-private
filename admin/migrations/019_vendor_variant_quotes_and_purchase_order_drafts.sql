@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS vendor_variant_offers (
   variant TEXT NOT NULL,
   supplier_sku TEXT NOT NULL,
   quote_ref TEXT NOT NULL,
+  orchestrator_code TEXT NOT NULL,
+  supplier_platform TEXT NOT NULL,
   currency TEXT NOT NULL DEFAULT 'USD' CHECK (currency = 'USD'),
   unit_cost_cents INTEGER NOT NULL CHECK (unit_cost_cents > 0),
   shipping_cents INTEGER NOT NULL DEFAULT 0 CHECK (shipping_cents >= 0),

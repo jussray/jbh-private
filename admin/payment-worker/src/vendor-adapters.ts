@@ -4,7 +4,8 @@ import { validateAccess } from "./access";
 import { planVendorReview, vendorAdapterManifest, VendorAdapterError, type VendorReviewInput } from "./vendor-adapters-model";
 import { type Env, json, readBoundedText, text } from "./shared";
 import { readDropshipBeautyProof, DropshipBeautyProofError } from "./dropship-beauty-proof";
-import { selectBestSupplierForVariant, SupplierSelectionError, type SupplierSelectionInput } from "./supplier-selection-model";
+import { SupplierSelectionError } from "./supplier-selection-model";
+import { previewStoredSupplierSelection } from "./supplier-offer-store";
 import privateVendorIntent from "../../data/vendor-selection-intent.json";
 
 const privateHeaders: Record<string, string> = {
@@ -51,10 +52,15 @@ export async function handleVendorAdapterRequest(request: Request, env: Env): Pr
     }
     try {
       const raw = await readBoundedText(request, 32768);
-      const input = JSON.parse(raw) as SupplierSelectionInput;
-      const result = selectBestSupplierForVariant(input, privateVendorIntent, Date.now());
+      const input = JSON.parse(raw) as unknown;
+      // Quotes are sourced from the private database, never from browser-submitted offers.
+      const result = await previewStoredSupplierSelection(input, env, privateVendorIntent);
       return json(result, 200, privateHeaders);
     } catch (error) {
+      if (error instanceof SupplierSelectionError &&
+          error.code === "supplier_quote_database_unavailable") {
+        return json({error:error.code}, 503, privateHeaders);
+      }
       if (error instanceof SupplierSelectionError || error instanceof SyntaxError) {
         return json({error:"invalid_supplier_selection"}, 400, privateHeaders);
       }
