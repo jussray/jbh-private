@@ -57,3 +57,11 @@ Migration `022_whatsapp_owner_review_actions.sql` is additive and requires `020`
 The account routes `api.jussbeautifulhair.com/*` to `jbh-private-payment-control`, and the Access application currently protects `api.jussbeautifulhair.com/api/admin`. The planned public webhook is `https://api.jussbeautifulhair.com/webhooks/whatsapp`. Only this webhook should be reachable without Cloudflare Access, and each POST must validate Meta's signed body.
 
 As checked, the production Worker had **no `DATABASE_URL` or WhatsApp secret bindings**, and the review-branch code was not deployed. Configure Meta assets and secrets inside authorized dashboards; do not paste credentials into chats.
+
+## Migration readiness checks
+
+The owner-only `GET /api/admin/whatsapp/readiness` checks seven private tables and eight catalog guard conditions. The guard conditions include the paid-order trigger, supplier authorization checks, owner approval, customer-consent evidence/default, unique purchase-order dispatch, delivery receipt idempotency, and review foreign key.
+
+`migrationStructureVerified` means *only* that these Postgres catalog objects were observed. `migrationsVerified` intentionally remains false until an isolated migration run, schema and behavioral tests, and exact production deployment evidence are available. Table existence is not sufficient proof. Missing credentials and catalog access fail closed.
+
+Read-only catalog query tested against the existing Neon `jbh-production` database on 2026-11-22: 15/15 checks returned false because migrations 019–022 were not applied. No production migrations were executed.

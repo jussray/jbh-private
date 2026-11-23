@@ -3,6 +3,7 @@
 import {neon} from "@neondatabase/serverless";
 import {type Env,json,readBoundedText,text} from "./shared";
 import {assessWhatsAppReadiness,validateWhatsAppReviewAction} from "./whatsapp-review-model";
+import {assessWhatsAppMigrationStructure} from "./whatsapp-migration-readiness";
 const PRIVATE={"Cache-Control":"private, no-store, max-age=0"};
 type SQL=ReturnType<typeof neon>;
 const checks=(sql:SQL)=>sql`
@@ -13,7 +14,35 @@ const checks=(sql:SQL)=>sql`
     (to_regclass('public.jbh_whatsapp_inbox') IS NOT NULL) AS inbox,
     (to_regclass('public.jbh_whatsapp_outbox') IS NOT NULL) AS outbox,
     (to_regclass('public.jbh_whatsapp_delivery_receipts') IS NOT NULL) AS delivery_receipts,
-    (to_regclass('public.jbh_whatsapp_review_actions') IS NOT NULL) AS review_actions
+    (to_regclass('public.jbh_whatsapp_review_actions') IS NOT NULL) AS review_actions,
+    EXISTS (SELECT 1 FROM pg_constraint c
+      WHERE c.conrelid=to_regclass('public.vendor_variant_offers') AND c.contype='c'
+        AND pg_get_constraintdef(c.oid) LIKE '%dispatch_authority%'
+        AND pg_get_constraintdef(c.oid) LIKE '%commercial_terms_accepted%') AS supplier_dispatch_guard,
+    EXISTS (SELECT 1 FROM pg_trigger t
+      WHERE t.tgrelid=to_regclass('public.supplier_purchase_order_drafts')
+        AND t.tgname='supplier_purchase_draft_paid_order_gate'
+        AND NOT t.tgisinternal AND t.tgenabled IN ('O','A')) AS paid_order_trigger,
+    EXISTS (SELECT 1 FROM pg_constraint c
+      WHERE c.conrelid=to_regclass('public.supplier_purchase_order_drafts') AND c.contype='c'
+        AND pg_get_constraintdef(c.oid) LIKE '%owner_authorized_at%') AS purchase_order_owner_guard,
+    EXISTS (SELECT 1 FROM pg_constraint c
+      WHERE c.conrelid=to_regclass('public.jbh_whatsapp_contacts') AND c.contype='c'
+        AND pg_get_constraintdef(c.oid) LIKE '%consent_evidence_ref%') AS consent_evidence_guard,
+    EXISTS (SELECT 1 FROM pg_attrdef d JOIN pg_attribute a
+        ON a.attrelid=d.adrelid AND a.attnum=d.adnum
+      WHERE d.adrelid=to_regclass('public.jbh_whatsapp_contacts')
+        AND a.attname='consented' AND pg_get_expr(d.adbin,d.adrelid)='false') AS consent_default_off,
+    EXISTS (SELECT 1 FROM pg_constraint c
+      WHERE c.conrelid=to_regclass('public.jbh_whatsapp_outbox') AND c.contype='u'
+        AND pg_get_constraintdef(c.oid) LIKE '%purchase_order_draft_id%') AS purchase_order_dedupe_guard,
+    EXISTS (SELECT 1 FROM pg_constraint c
+      WHERE c.conrelid=to_regclass('public.jbh_whatsapp_delivery_receipts') AND c.contype='p'
+        AND pg_get_constraintdef(c.oid) LIKE '%meta_message_id%'
+        AND pg_get_constraintdef(c.oid) LIKE '%provider_status%') AS receipt_idempotence_guard,
+    EXISTS (SELECT 1 FROM pg_constraint c
+      WHERE c.conrelid=to_regclass('public.jbh_whatsapp_review_actions') AND c.contype='f'
+        AND c.confrelid=to_regclass('public.jbh_whatsapp_inbox')) AS review_foreign_key_guard
   `;
 
 export async function handleWhatsAppOwnerReviewRequest(request:Request,env:Env):Promise<Response>{
@@ -23,19 +52,14 @@ export async function handleWhatsAppOwnerReviewRequest(request:Request,env:Env):
     if(request.method!=="GET")return text("Method not allowed",405,{...PRIVATE,Allow:"GET"});
     const readiness=assessWhatsAppReadiness(env);
     if(!env.DATABASE_URL)
-      return json({...readiness,databaseReachable:false,migrationTables:{},
-        migrationsVerified:false},200,PRIVATE);
+      return json({...readiness,databaseReachable:false,
+        ...assessWhatsAppMigrationStructure(null)},200,PRIVATE);
     try{
       const result=await checks(neon(env.DATABASE_URL));
-      const raw=result[0]||{},migrationTables={
-        quotes:raw.quotes===true,purchaseOrderDrafts:raw.purchase_order_drafts===true,
-        contacts:raw.contacts===true,inbox:raw.inbox===true,outbox:raw.outbox===true,
-        deliveryReceipts:raw.delivery_receipts===true,reviewActions:raw.review_actions===true,
-      };
-      return json({...readiness,databaseReachable:true,migrationTables,
-        migrationsVerified:Object.values(migrationTables).every(Boolean)},200,PRIVATE);
-    }catch{return json({...readiness,databaseReachable:false,migrationTables:{},
-      migrationsVerified:false},200,PRIVATE);}
+      return json({...readiness,databaseReachable:true,
+        ...assessWhatsAppMigrationStructure(result[0])},200,PRIVATE);
+    }catch{return json({...readiness,databaseReachable:false,
+      ...assessWhatsAppMigrationStructure(null)},200,PRIVATE);}
   }
   if(!env.DATABASE_URL)return json({error:"whatsapp_database_not_configured"},503,PRIVATE);
   const sql=neon(env.DATABASE_URL);
