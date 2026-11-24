@@ -238,6 +238,22 @@
           "admin/payment-worker/src/worker-storage.mjs",
           "admin/payment-worker/proposed-migrations/jbh_fulfillment_review.sql"
         ]
+      },
+      {
+        "id": "jusspay-receipt-isolation-contract",
+        "name": "JussPay live and sandbox receipt isolation contracts",
+        "kind": "contract",
+        "command": "node --test admin/tests/private-order-worker-jusspay-live-receipt-contract.test.mjs admin/tests/private-order-worker-jusspay-receipt-contract.test.mjs",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/tests/private-order-worker-jusspay-live-receipt-contract.test.mjs",
+          "admin/tests/private-order-worker-jusspay-receipt-contract.test.mjs",
+          "admin/payment-worker/src/jusspay-live-receipt.ts",
+          "admin/payment-worker/src/jusspay-sandbox-receipt.ts",
+          "admin/migrations/019_jusspay_live_receipts.sql",
+          ".github/workflows/apply-jusspay-live-receipts-migration.yml"
+        ]
       }
     ]
   },
