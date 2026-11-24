@@ -84,6 +84,8 @@ jobs:
         run: |
           set -euo pipefail
           npx wrangler deploy --strict --config wrangler.toml \
+            --tag "$EXPECTED_HEAD_SHA" \
+            --message "sha:$EXPECTED_HEAD_SHA" \
             --var "RELEASE_SHA:$EXPECTED_HEAD_SHA" \
             --var "SHOPIFY_ADMIN_API_VERSION:2026-10" \
             --var "DROPSHIP_BEAUTY_LOCATION_GID:gid://shopify/Location/94408442099"
