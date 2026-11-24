@@ -19,3 +19,11 @@ test('storage regressions are included in the Worker and Control Room test catal
  assert.ok(pkg.scripts['test:worker'].split(/\s+/).includes(path));
  assert.ok(manifest.tests.catalog.some(x=>x.id==='jusspay-fulfillment-review-storage'&&x.required===true&&x.status==='active'&&x.command==='node --test '+path));
 });
+
+test('review payload constraint fails closed on SQL NULL and non-string identity values',()=>{
+ const ddl=readFileSync(new URL('../payment-worker/proposed-migrations/jbh_fulfillment_review.sql',import.meta.url),'utf8');
+ const constraint=ddl.split('\n').find(line=>line.includes('payload jsonb NOT NULL CHECK'));
+ assert.ok(constraint.endsWith(') IS TRUE),'));
+ assert.ok(constraint.includes("jsonb_typeof(payload) = 'object'"));
+ for(const key of ['tenant','orderId','canonicalSku','status']) assert.ok(constraint.includes("jsonb_typeof(payload->'"+key+"') = 'string'"));
+});
