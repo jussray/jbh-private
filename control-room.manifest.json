@@ -225,6 +225,19 @@
           "admin/scripts/playwright-verify.mjs",
           "admin/package.json"
         ]
+      },
+      {
+        "id": "jusspay-fulfillment-review-storage",
+        "name": "JussPay review-only storage regression tests",
+        "kind": "unit",
+        "command": "node --test admin/tests/jusspay-fulfillment-review-storage.test.mjs",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/tests/jusspay-fulfillment-review-storage.test.mjs",
+          "admin/payment-worker/src/worker-storage.mjs",
+          "admin/payment-worker/proposed-migrations/jbh_fulfillment_review.sql"
+        ]
       }
     ]
   },

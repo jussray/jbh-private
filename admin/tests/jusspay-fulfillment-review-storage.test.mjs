@@ -10,3 +10,12 @@ test('fixed tenant scope rejects other tenant inputs',async()=>{const store=crea
 test('invalid monetary values rejected',async()=>{const store=createReviewStore(fake());for(const v of [-1,NaN,Infinity,1.5,Number.MAX_SAFE_INTEGER+1])await assert.rejects(store.reserve({...intent,landedCostCents:v}),/INVALID_REVIEW/);});
 test('adapter recreation retains identical receipt',async()=>{const db=fake();const first=await createReviewStore(db).reserve(intent);const second=await createReviewStore(db).reserve(intent);assert.equal(second.created,false);assert.deepEqual(second.entry,first.entry);});
 test('database failures never become successful review receipts',async()=>{const store=createReviewStore(async()=>{throw Error('db unavailable')});await assert.rejects(store.reserve(intent),/db unavailable/);});
+
+import {readFileSync} from 'node:fs';
+test('storage regressions are included in the Worker and Control Room test catalogs',()=>{
+ const pkg=JSON.parse(readFileSync(new URL('../../package.json',import.meta.url),'utf8'));
+ const manifest=JSON.parse(readFileSync(new URL('../../control-room.manifest.json',import.meta.url),'utf8'));
+ const path='admin/tests/jusspay-fulfillment-review-storage.test.mjs';
+ assert.ok(pkg.scripts['test:worker'].split(/\s+/).includes(path));
+ assert.ok(manifest.tests.catalog.some(x=>x.id==='jusspay-fulfillment-review-storage'&&x.required===true&&x.status==='active'&&x.command==='node --test '+path));
+});
