@@ -73,13 +73,19 @@ jobs:
               AND (SELECT COUNT(*) = 5 FROM information_schema.columns
                    WHERE table_schema='public' AND table_name='jusspay_live_holds')
               AND EXISTS (SELECT 1 FROM pg_constraint
-                          WHERE conname='jusspay_live_receipts_pkey')
+                          WHERE conname='jusspay_live_receipts_pkey' AND conrelid='public.jusspay_live_receipts'::regclass
+                            AND contype='p' AND convalidated)
               AND EXISTS (SELECT 1 FROM pg_constraint
-                          WHERE conname='jusspay_live_holds_pkey')
+                          WHERE conname='jusspay_live_holds_pkey' AND conrelid='public.jusspay_live_holds'::regclass
+                            AND contype='p' AND convalidated)
               AND EXISTS (SELECT 1 FROM pg_constraint
-                          WHERE conname='jusspay_live_receipts_state_check')
+                          WHERE conname='jusspay_live_receipts_state_check' AND conrelid='public.jusspay_live_receipts'::regclass
+                            AND contype='c' AND convalidated)
               AND EXISTS (SELECT 1 FROM pg_constraint
-                          WHERE conname='jusspay_live_holds_reason_check');
+                          WHERE conname='jusspay_live_holds_reason_check' AND conrelid='public.jusspay_live_holds'::regclass
+                            AND contype='c' AND convalidated)
+              AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname='jusspay_live_receipts_event_id_key' AND conrelid='public.jusspay_live_receipts'::regclass AND contype='u' AND convalidated)
+              AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname='jusspay_live_holds_event_id_key' AND conrelid='public.jusspay_live_holds'::regclass AND contype='u' AND convalidated);
           ")"
           test "$result" = "t"
           printf 'JussPay live receipt schema verified for %s\n' "$EXPECTED_HEAD_SHA"

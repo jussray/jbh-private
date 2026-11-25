@@ -73,25 +73,36 @@ export async function handleJussPayLiveReceipt(request: Request, env: Env): Prom
       if (holds.length !== 1) return json({ error: "receipt_conflict" }, 409);
       return json({ received: true, state: "hold", reason: holds[0].reason, duplicate: false });
     }
-    const [, , rows, held, existing] = await sql.transaction([
+    const [, , rows, , held, existing] = await sql.transaction([
       sql`SET LOCAL lock_timeout = '5s'`,
       sql`LOCK TABLE jusspay_live_receipts, jusspay_live_holds IN SHARE ROW EXCLUSIVE MODE`,
       sql`
-        INSERT INTO jusspay_live_receipts (order_id, event_id, payment_intent_id, receipt_sha256)
-        SELECT ${b.orderId}, ${b.eventId}, ${b.paymentIntentId}, ${digest}
-        WHERE NOT EXISTS (SELECT 1 FROM jusspay_live_holds WHERE order_id = ${b.orderId} OR event_id = ${b.eventId})
+        INSERT INTO jusspay_live_receipts (order_id, event_id, payment_intent_id, receipt_sha256, state)
+        SELECT ${b.orderId}, ${b.eventId}, ${b.paymentIntentId}, ${digest},
+          CASE WHEN EXISTS (SELECT 1 FROM jusspay_live_holds h WHERE h.order_id = ${b.orderId}
+            AND h.payment_intent_id = ${b.paymentIntentId}) THEN 'hold' ELSE 'awaiting_owner_review' END
+        WHERE NOT EXISTS (SELECT 1 FROM jusspay_live_holds h
+          WHERE h.event_id = ${b.eventId} OR (h.order_id = ${b.orderId} AND h.payment_intent_id <> ${b.paymentIntentId}))
         ON CONFLICT DO NOTHING
         RETURNING order_id
       `,
+      // Repair only an exact historical paid receipt if a matching hold exists.
+      sql`UPDATE jusspay_live_receipts p SET state = 'hold'
+        WHERE p.order_id = ${b.orderId} AND p.event_id = ${b.eventId}
+          AND p.payment_intent_id = ${b.paymentIntentId} AND p.receipt_sha256 = ${digest}
+          AND EXISTS (SELECT 1 FROM jusspay_live_holds h WHERE h.order_id = p.order_id
+            AND h.payment_intent_id = p.payment_intent_id AND h.event_id <> p.event_id)
+          AND NOT EXISTS (SELECT 1 FROM jusspay_live_holds WHERE event_id = ${b.eventId})`,
       sql`SELECT order_id, event_id, payment_intent_id FROM jusspay_live_holds WHERE order_id = ${b.orderId} OR event_id = ${b.eventId}`,
       sql`SELECT order_id, event_id, payment_intent_id, receipt_sha256, state FROM jusspay_live_receipts WHERE order_id = ${b.orderId} OR event_id = ${b.eventId}`,
     ], { isolationLevel: "ReadCommitted" });
     if (held.length) {
       if (held.length !== 1 || held[0].order_id !== b.orderId ||
           held[0].payment_intent_id !== b.paymentIntentId || held[0].event_id === b.eventId ||
-          existing.some(row => row.order_id !== b.orderId || row.payment_intent_id !== b.paymentIntentId ||
-            row.event_id !== b.eventId || row.receipt_sha256 !== digest)) return json({ error: "receipt_conflict" }, 409);
-      return json({ received: true, state: "hold", duplicate: true });
+          existing.length !== 1 || existing[0].state !== "hold" || existing[0].order_id !== b.orderId ||
+          existing[0].payment_intent_id !== b.paymentIntentId || existing[0].event_id !== b.eventId ||
+          existing[0].receipt_sha256 !== digest) return json({ error: "receipt_conflict" }, 409);
+      return json({ received: true, state: "hold", duplicate: !rows.length });
     }
     if (existing.length !== 1 || existing[0].order_id !== b.orderId ||
         existing[0].event_id !== b.eventId || existing[0].payment_intent_id !== b.paymentIntentId ||
