@@ -14,6 +14,7 @@
     "src/dropship-beauty-proof.ts",
     "src/release-identity.ts",
     "src/jusspay-owner-model.ts",
+    "src/jusspay-owner-stream.ts",
     "src/shopify-physical-order-model.ts"
   ]
 }
