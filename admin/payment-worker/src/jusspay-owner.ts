@@ -2,6 +2,7 @@
 // payment mutation, or supplier dispatch capability is introduced here.
 import { validateAccess } from "./access";
 import { normalizeOwnerQueue, renderOwnerQueuePage } from "./jusspay-owner-model";
+import { MAX_QUEUE_RESPONSE_BYTES, readLimitedResponse } from "./jusspay-owner-stream";
 import { type Env, json, text } from "./shared";
 
 const PRIVATE_HEADERS: Record<string, string> = {
@@ -9,29 +10,7 @@ const PRIVATE_HEADERS: Record<string, string> = {
   Pragma: "no-cache",
   "Referrer-Policy": "no-referrer",
 };
-const MAX_QUEUE_RESPONSE_BYTES = 1024 * 1024;
 const JUSSPAY_FULFILLMENT_URL = "https://jusspay.internal/jbh/fulfillment";
-
-async function readLimitedResponse(response: Response): Promise<string> {
-  if (!response.body) throw new Error("missing_upstream_body");
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  for (;;) {
-    const {done, value} = await reader.read();
-    if (done) break;
-    length += value.byteLength;
-    if (length > MAX_QUEUE_RESPONSE_BYTES) {
-      await reader.cancel().catch(() => {});
-      throw new Error("upstream_body_too_large");
-    }
-    chunks.push(value);
-  }
-  const buffer = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {buffer.set(chunk, offset);offset += chunk.byteLength;}
-  return new TextDecoder("utf-8", {fatal: true}).decode(buffer);
-}
 
 export async function handleJussPayOwnerRequest(request: Request, env: Env): Promise<Response> {
   // Access identity is validated on every request before inspecting private
