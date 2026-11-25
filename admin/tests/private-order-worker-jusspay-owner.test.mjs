@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {readFile} from "node:fs/promises";
 import {normalizeOwnerQueue, renderOwnerQueuePage} from "../../.worker-test-dist/jusspay-owner-model.js";
+import {readLimitedResponse, MAX_QUEUE_RESPONSE_BYTES} from "../../.worker-test-dist/jusspay-owner-stream.js";
 
 const read=(path)=>readFile(path,"utf8");
 const sample=()=>({
@@ -81,7 +82,18 @@ test("private upstream never follows secret-bearing redirects or buffers unlimit
   const handler=await read("admin/payment-worker/src/jusspay-owner.ts");
   assert.match(handler,/redirect: "manual"/);
   assert.match(handler,/readLimitedResponse\(upstream\)/);
-  assert.match(handler,/response\.body\.getReader\(\)/);
-  assert.match(handler,/length > MAX_QUEUE_RESPONSE_BYTES/);
+  const stream=await read("admin/payment-worker/src/jusspay-owner-stream.ts");
+  assert.match(stream,/response\.body\.getReader\(\)/);
+  assert.match(stream,/length > MAX_QUEUE_RESPONSE_BYTES/);
   assert.doesNotMatch(handler,/await upstream\.text\(\)/);
+});
+
+test("bounded owner queue reader rejects oversized and invalid upstream responses",async()=>{
+  assert.equal(MAX_QUEUE_RESPONSE_BYTES,1024*1024);
+  assert.deepEqual(JSON.parse(await readLimitedResponse(Response.json({queue:[]}))),{queue:[]});
+  const tooLarge=new Response(new Uint8Array(MAX_QUEUE_RESPONSE_BYTES+1));
+  await assert.rejects(readLimitedResponse(tooLarge),/upstream_body_too_large/);
+  const invalidUtf8=new Response(Uint8Array.from([255,254]));
+  await assert.rejects(readLimitedResponse(invalidUtf8));
+  await assert.rejects(readLimitedResponse(new Response(null)),/missing_upstream_body/);
 });
