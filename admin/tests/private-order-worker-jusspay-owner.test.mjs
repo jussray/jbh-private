@@ -54,3 +54,34 @@ test("owner API is Access protected, private service-bound and never receives pa
   assert.match(shared,/JUSSPAY_OWNER_KEY/);
   assert.doesNotMatch(wrangler,/JUSSPAY_OWNER_KEY/);
 });
+
+test("refund and dispute holds visibly block dispatch and escape owner plans",()=>{
+  const body=sample();
+  body.queue[0].status="hold";
+  body.queue[0].holdReason='charge.dispute.created';
+  body.queue[0].vendorPlans=[{vendor:"dropship-beauty",action:"owner_review",
+    handoff:"shopify-app-owner",note:"Never dispatch without proof <img src=x>",
+    requirements:["verified_sku","approved handoff & inventory"]}];
+  const [order]=normalizeOwnerQueue(body);
+  assert.equal(order.holdReason,"charge.dispute.created");
+  assert.deepEqual(order.vendorPlans[0].requirements,["verified_sku","approved handoff & inventory"]);
+  const html=renderOwnerQueuePage([order]);
+  assert.match(html,/HOLD — DO NOT DISPATCH/);
+  assert.match(html,/charge\.dispute\.created/);
+  assert.match(html,/approved handoff &amp; inventory/);
+  assert.match(html,/&lt;img src=x&gt;/);
+  assert.doesNotMatch(html,/<img[\s>]/i);
+});
+test("oversized review plan contracts are not silently accepted",()=>{
+  const body=sample();
+  body.queue[0].vendorPlans[0].requirements=Array(17).fill("x");
+  assert.throws(()=>normalizeOwnerQueue(body),/invalid_jusspay_queue/);
+});
+test("private upstream never follows secret-bearing redirects or buffers unlimited responses",async()=>{
+  const handler=await read("admin/payment-worker/src/jusspay-owner.ts");
+  assert.match(handler,/redirect: "manual"/);
+  assert.match(handler,/readLimitedResponse\(upstream\)/);
+  assert.match(handler,/response\.body\.getReader\(\)/);
+  assert.match(handler,/length > MAX_QUEUE_RESPONSE_BYTES/);
+  assert.doesNotMatch(handler,/await upstream\.text\(\)/);
+});
