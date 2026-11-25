@@ -9,6 +9,7 @@
     "declaration": false
   },
   "include": [
+    "src/fulfillment-review-status-model.ts",
     "src/vendor-routing-model.ts",
     "src/vendor-adapters-model.ts",
     "src/dropship-beauty-proof.ts",

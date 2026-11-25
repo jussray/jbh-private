@@ -1,3 +1,4 @@
+import { handleFulfillmentReviewStatus } from "./fulfillment-review-status";
 import { handleAdminRequest } from "./admin-orders";
 import { handleProviderAdminRequest } from "./provider-admin";
 import { type Env, isApprovedHost, json, text } from "./shared";
@@ -55,6 +56,10 @@ export default {
 
     if (pathname.startsWith("/api/admin/vendor-sourcing")) {
       return handleVendorSourcingRequest(request, env);
+    }
+
+    if (pathname === "/api/admin/fulfillment-review/status") {
+      return handleFulfillmentReviewStatus(request, env);
     }
 
     if (pathname.startsWith("/api/admin/")) {
