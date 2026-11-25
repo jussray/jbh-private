@@ -51,8 +51,10 @@ cross-origin credential forwarding, order dispatch, charge or checkout occurs.
 
 The private Worker uses the `JUSSPAY` service binding to the existing
 `jusspay` Worker, plus `JUSSPAY_OWNER_KEY` as a Cloudflare-secret binding.
-Set `JUSSPAY_OWNER_KEY` to the same owner fulfillment key already configured as
-`JBH_OWNER_KEY` in JussPay. Never place either key in GitHub, logs, URLs, or
+Configure `JUSSPAY_OWNER_KEY` to match JussPay's separate
+`JBH_OWNER_BRIDGE_KEY` read-only credential. **Do not reuse or rotate** the
+human owner's `JBH_OWNER_KEY`: it remains the only credential permitted to
+mark an order dispatched or read other owner-only JussPay endpoints. Never place either key in GitHub, logs, URLs, or
 browser code. The upstream request uses a fixed internal target and the
 `x-jbh-owner-key` header. If either binding is missing, the API fails closed.
 
