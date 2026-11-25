@@ -34,52 +34,69 @@ export async function handleJussPayLiveReceipt(request: Request, env: Env): Prom
   const digest = hex(new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(raw))));
   try {
     const sql = neon(env.DATABASE_URL);
+    // Both live receipt tables share one bounded transaction and lock order.
+    // A concurrent hold cannot slip between the paid insert and its readback.
     if (b.state !== "awaiting_owner_dispatch") {
-      const existingPaid = await sql`SELECT payment_intent_id FROM jusspay_live_receipts WHERE order_id = ${b.orderId}`;
-      if (existingPaid.length && existingPaid[0].payment_intent_id !== b.paymentIntentId) return json({ error: "receipt_conflict" }, 409);
-      const holds = await sql`
-        INSERT INTO jusspay_live_holds (order_id, event_id, payment_intent_id, reason)
-        VALUES (${b.orderId}, ${b.eventId}, ${b.paymentIntentId}, ${b.state})
-        ON CONFLICT (order_id) DO UPDATE SET
-          event_id = EXCLUDED.event_id,
-          reason = CASE
-            WHEN jusspay_live_holds.reason = 'disputed' OR EXCLUDED.reason = 'disputed' THEN 'disputed'
-            WHEN jusspay_live_holds.reason = 'refunded' OR EXCLUDED.reason = 'refunded' THEN 'refunded'
-            ELSE 'partially_refunded'
-          END
-        WHERE jusspay_live_holds.payment_intent_id = EXCLUDED.payment_intent_id
-          AND (SELECT COUNT(*) FROM jusspay_live_holds h WHERE h.event_id = EXCLUDED.event_id AND h.order_id <> EXCLUDED.order_id) = 0
-        RETURNING order_id, reason
-      `;
-      if (!holds.length) {
-        const previous = await sql`SELECT order_id, event_id, payment_intent_id, reason FROM jusspay_live_holds WHERE order_id = ${b.orderId} OR event_id = ${b.eventId}`;
-        if (previous.length !== 1 || previous[0].order_id !== b.orderId ||
-            previous[0].payment_intent_id !== b.paymentIntentId || previous[0].event_id !== b.eventId) {
-          return json({ error: "receipt_conflict" }, 409);
-        }
-      }
-      await sql`UPDATE jusspay_live_receipts SET state = 'hold' WHERE order_id = ${b.orderId} AND payment_intent_id = ${b.paymentIntentId}`;
-      const current = await sql`SELECT reason FROM jusspay_live_holds WHERE order_id = ${b.orderId}`;
-      return json({ received: true, state: "hold", reason: current[0]?.reason ?? b.state, duplicate: !holds.length });
+      const [, , holds] = await sql.transaction([
+        sql`SET LOCAL lock_timeout = '5s'`,
+        sql`LOCK TABLE jusspay_live_receipts, jusspay_live_holds IN SHARE ROW EXCLUSIVE MODE`,
+        sql`
+          INSERT INTO jusspay_live_holds (order_id, event_id, payment_intent_id, reason)
+          SELECT ${b.orderId}, ${b.eventId}, ${b.paymentIntentId}, ${b.state}
+          WHERE NOT EXISTS (
+            SELECT 1 FROM jusspay_live_receipts p
+            WHERE p.event_id = ${b.eventId}
+               OR (p.order_id = ${b.orderId} AND p.payment_intent_id <> ${b.paymentIntentId})
+          ) AND NOT EXISTS (
+            SELECT 1 FROM jusspay_live_holds h
+            WHERE h.event_id = ${b.eventId} AND h.order_id <> ${b.orderId}
+          )
+          ON CONFLICT (order_id) DO UPDATE SET
+            event_id = EXCLUDED.event_id,
+            reason = CASE
+              WHEN jusspay_live_holds.reason = 'disputed' OR EXCLUDED.reason = 'disputed' THEN 'disputed'
+              WHEN jusspay_live_holds.reason = 'refunded' OR EXCLUDED.reason = 'refunded' THEN 'refunded'
+              ELSE 'partially_refunded'
+            END
+          WHERE jusspay_live_holds.payment_intent_id = EXCLUDED.payment_intent_id
+          RETURNING order_id, reason
+        `,
+        sql`
+          UPDATE jusspay_live_receipts p SET state = 'hold'
+          WHERE p.order_id = ${b.orderId} AND p.payment_intent_id = ${b.paymentIntentId}
+            AND EXISTS (SELECT 1 FROM jusspay_live_holds h
+              WHERE h.order_id = p.order_id AND h.event_id = ${b.eventId}
+                AND h.payment_intent_id = ${b.paymentIntentId})
+            AND NOT EXISTS (SELECT 1 FROM jusspay_live_receipts WHERE event_id = ${b.eventId})
+        `,
+      ], { isolationLevel: "ReadCommitted" });
+      if (holds.length !== 1) return json({ error: "receipt_conflict" }, 409);
+      return json({ received: true, state: "hold", reason: holds[0].reason, duplicate: false });
     }
-    const rows = await sql`
-      INSERT INTO jusspay_live_receipts (order_id, event_id, payment_intent_id, receipt_sha256)
-      SELECT ${b.orderId}, ${b.eventId}, ${b.paymentIntentId}, ${digest}
-      WHERE NOT EXISTS (SELECT 1 FROM jusspay_live_holds WHERE order_id = ${b.orderId})
-      ON CONFLICT DO NOTHING
-      RETURNING order_id
-    `;
-    if (rows.length) return json({ received: true, state: "awaiting_owner_review", duplicate: false });
-    const held = await sql`SELECT payment_intent_id FROM jusspay_live_holds WHERE order_id = ${b.orderId}`;
+    const [, , rows, held, existing] = await sql.transaction([
+      sql`SET LOCAL lock_timeout = '5s'`,
+      sql`LOCK TABLE jusspay_live_receipts, jusspay_live_holds IN SHARE ROW EXCLUSIVE MODE`,
+      sql`
+        INSERT INTO jusspay_live_receipts (order_id, event_id, payment_intent_id, receipt_sha256)
+        SELECT ${b.orderId}, ${b.eventId}, ${b.paymentIntentId}, ${digest}
+        WHERE NOT EXISTS (SELECT 1 FROM jusspay_live_holds WHERE order_id = ${b.orderId} OR event_id = ${b.eventId})
+        ON CONFLICT DO NOTHING
+        RETURNING order_id
+      `,
+      sql`SELECT order_id, event_id, payment_intent_id FROM jusspay_live_holds WHERE order_id = ${b.orderId} OR event_id = ${b.eventId}`,
+      sql`SELECT order_id, event_id, payment_intent_id, receipt_sha256, state FROM jusspay_live_receipts WHERE order_id = ${b.orderId} OR event_id = ${b.eventId}`,
+    ], { isolationLevel: "ReadCommitted" });
     if (held.length) {
-      if (held[0].payment_intent_id !== b.paymentIntentId) return json({ error: "receipt_conflict" }, 409);
+      if (held.length !== 1 || held[0].order_id !== b.orderId ||
+          held[0].payment_intent_id !== b.paymentIntentId || held[0].event_id === b.eventId ||
+          existing.some(row => row.order_id !== b.orderId || row.payment_intent_id !== b.paymentIntentId ||
+            row.event_id !== b.eventId || row.receipt_sha256 !== digest)) return json({ error: "receipt_conflict" }, 409);
       return json({ received: true, state: "hold", duplicate: true });
     }
-    const existing = await sql`SELECT order_id, event_id, payment_intent_id, receipt_sha256, state FROM jusspay_live_receipts WHERE order_id = ${b.orderId} OR event_id = ${b.eventId}`;
     if (existing.length !== 1 || existing[0].order_id !== b.orderId ||
         existing[0].event_id !== b.eventId || existing[0].payment_intent_id !== b.paymentIntentId ||
         existing[0].receipt_sha256 !== digest) return json({ error: "receipt_conflict" }, 409);
-    return json({ received: true, state: existing[0].state, duplicate: true });
+    return json({ received: true, state: existing[0].state, duplicate: !rows.length });
   } catch {
     return json({ error: "receipt_storage_unavailable" }, 503);
   }
