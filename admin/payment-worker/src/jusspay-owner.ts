@@ -12,6 +12,27 @@ const PRIVATE_HEADERS: Record<string, string> = {
 const MAX_QUEUE_RESPONSE_BYTES = 1024 * 1024;
 const JUSSPAY_FULFILLMENT_URL = "https://jusspay.internal/jbh/fulfillment";
 
+async function readLimitedResponse(response: Response): Promise<string> {
+  if (!response.body) throw new Error("missing_upstream_body");
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  for (;;) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    length += value.byteLength;
+    if (length > MAX_QUEUE_RESPONSE_BYTES) {
+      await reader.cancel().catch(() => {});
+      throw new Error("upstream_body_too_large");
+    }
+    chunks.push(value);
+  }
+  const buffer = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {buffer.set(chunk, offset);offset += chunk.byteLength;}
+  return new TextDecoder("utf-8", {fatal: true}).decode(buffer);
+}
+
 export async function handleJussPayOwnerRequest(request: Request, env: Env): Promise<Response> {
   // Access identity is validated on every request before inspecting private
   // bindings or reading customer addresses.
@@ -33,15 +54,14 @@ export async function handleJussPayOwnerRequest(request: Request, env: Env): Pro
     // Never forward browser cookies, bearer tokens or caller-selected URLs.
     const upstream = await env.JUSSPAY.fetch(new Request(JUSSPAY_FULFILLMENT_URL, {
       method: "GET",
+      // Redirects must never forward the private owner key to another host.
+      redirect: "manual",
       headers: {"x-jbh-owner-key": env.JUSSPAY_OWNER_KEY},
     }));
     if (!upstream.ok || Number(upstream.headers.get("Content-Length") || 0) > MAX_QUEUE_RESPONSE_BYTES) {
       return json({error: "jusspay_queue_unavailable"}, 502, PRIVATE_HEADERS);
     }
-    const raw = await upstream.text();
-    if (new TextEncoder().encode(raw).byteLength > MAX_QUEUE_RESPONSE_BYTES) {
-      return json({error: "jusspay_queue_unavailable"}, 502, PRIVATE_HEADERS);
-    }
+    const raw = await readLimitedResponse(upstream);
     const orders = normalizeOwnerQueue(JSON.parse(raw));
     if (view) {
       return new Response(renderOwnerQueuePage(orders), {
