@@ -55,7 +55,7 @@ export function normalizeOwnerQueue(payload: unknown): OwnerOrder[] {
     const vendorPlans = row.vendorPlans.map((entry) => {
       const plan = object(entry);
       const requirements = plan.requirements === undefined ? [] : plan.requirements;
-      if (!Array.isArray(requirements) || requirements.length > 16) invalid();
+      if (!Array.isArray(requirements) || requirements.length > 16) return invalid();
       return { vendor: requiredText(plan.vendor, 40), action: requiredText(plan.action, 80),
         note: optionalText(plan.note, 600), handoff: optionalText(plan.handoff, 160),
         requirements: requirements.map((v) => requiredText(v, 100)) };
