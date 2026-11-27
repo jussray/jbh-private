@@ -189,3 +189,40 @@ or silently replace provider configuration.
 Live receipt activation still requires the independently scoped receipt
 credential, database binding, applied and verified migration, and signed
 readiness proof. No live approval follows from this reconciliation alone.
+
+### Explicitly approved recovery from Script API provenance
+
+Normal production deployment remains strict. Do not remove the strict-upload
+flag merely because Cloudflare rejects a deployment made after a Script API
+edit. The recovery tool, `scripts/private-worker-version-recovery.mjs`, uses
+an explicitly pinned active version and only stages an immutable Worker version;
+it does not deploy it or change routes, secrets, or live-payment controls.
+
+Run from a clean checkout of current main with the locked dependencies installed.
+Use the existing securely supplied Cloudflare account ID/token, exact approved
+`EXPECTED_HEAD_SHA`, and the independently reviewed
+`JBH_RECOVERY_ACTIVE_VERSION` (UUID). Run the read-only preflight first:
+
+```sh
+node scripts/private-worker-version-recovery.mjs --preflight
+```
+
+Only after explicit approval to stage, set
+`JBH_RECOVERY_APPROVAL=STAGE_JBH_WORKER_VERSION` and invoke:
+
+```sh
+node scripts/private-worker-version-recovery.mjs --stage
+```
+
+The tool refuses unexpected binding inventory, runtime settings, service target,
+non-unique active deployment, stale main, or checkout changes. It runs the
+existing Worker tests and strict dry-run build before staging; inherited bindings
+are pinned to the reviewed version, not the latest upload. It checks staged
+metadata and active version after the upload. Secret values are never emitted.
+An ambiguous upload result requires manual version inventory review before retry.
+
+A successful staging receipt is not a deployment or proof of production
+fulfillment. Review the staged version and rollback version separately before
+any production promotion. Do not enable live receipts or apply a production
+migration on the basis of this receipt alone. This recovery path intentionally
+rejects new bindings until its inventory has been reviewed and updated.
