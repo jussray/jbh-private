@@ -154,3 +154,22 @@ The public site must deploy only from `jussbeautifulhair-site`. This private rep
 ## License
 
 Private and proprietary. Do not redistribute source code, vendor material, customer information, branding, product assets, credentials, or operational records.
+
+## JussPay live receipt cutover (candidate, disabled until verified)
+
+The private Worker accepts a separate HMAC-signed live receipt at
+`/internal/jusspay/live/paid-receipt` only when
+`JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED=true` and the independent
+`JBH_JUSSPAY_LIVE_RECEIPT_SECRET` is provisioned. Sandbox remains separate.
+Migration `019_jusspay_live_receipt_journal.sql` records immutable event
+identity and hold precedence atomically. A receipt is evidence of a
+verified payment/hold from JussPay, not authorization to dispatch or buy
+inventory. The response echoes exact order/event identity only after storage
+succeeds. The signed `/internal/jusspay/live/readiness` probe checks schema
+presence and effective database privileges, not actual payment fulfillment.
+Before applying the migration to production, inspect the real schema and
+role, review the migration, verify the disposable database tests and grant
+only the necessary privileges to the intended private Worker database role.
+Never run fixture SQL against production. No secret values belong in git.
+No supplier automation, storefront activation or historical receipt backfill
+is implied by this change.
