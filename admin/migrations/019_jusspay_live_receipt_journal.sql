@@ -1,15 +1,16 @@
 -- Additive live-only receipt journal. This stores payment evidence, not
 -- authorization to procure or dispatch. Existing sandbox and legacy tables
 -- are not changed. Run only through the authorized private database process.
+-- Fail on pre-existing objects instead of silently accepting incompatible schemas.
 BEGIN;
-CREATE TABLE IF NOT EXISTS public.jusspay_live_order_receipt_state (
+CREATE TABLE public.jusspay_live_order_receipt_state (
   order_id text PRIMARY KEY CHECK (order_id ~ '^jbho_[0-9a-f-]{36}$'),
   payment_intent_id text NOT NULL UNIQUE CHECK (payment_intent_id ~ '^pi_[A-Za-z0-9_]{1,180}$'),
   paid_seen boolean NOT NULL DEFAULT false,
   hold_reason text CHECK (hold_reason IN ('partially_refunded','refunded','disputed')),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE TABLE IF NOT EXISTS public.jusspay_live_receipt_events (
+CREATE TABLE public.jusspay_live_receipt_events (
   event_id text PRIMARY KEY CHECK (event_id ~ '^evt_[A-Za-z0-9_]{1,180}$'),
   order_id text NOT NULL REFERENCES public.jusspay_live_order_receipt_state(order_id),
   payment_intent_id text NOT NULL,
@@ -17,8 +18,8 @@ CREATE TABLE IF NOT EXISTS public.jusspay_live_receipt_events (
   receipt_sha256 text NOT NULL CHECK (receipt_sha256 ~ '^[a-f0-9]{64}$'),
   received_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS jusspay_live_receipt_events_order_idx ON public.jusspay_live_receipt_events(order_id);
-CREATE OR REPLACE FUNCTION public.record_jusspay_live_receipt(
+CREATE INDEX jusspay_live_receipt_events_order_idx ON public.jusspay_live_receipt_events(order_id);
+CREATE FUNCTION public.record_jusspay_live_receipt(
   p_order text, p_event text, p_pi text, p_state text, p_digest text
 ) RETURNS TABLE(receipt_state text, duplicate boolean)
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
