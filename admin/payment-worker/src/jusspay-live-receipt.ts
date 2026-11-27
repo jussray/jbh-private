@@ -30,3 +30,34 @@ export async function handleJussPayLiveReceipt(request: Request, env: Env): Prom
     return json({error:"receipt_storage_unavailable"},503);
   }
 }
+
+/** Authenticated configuration/privilege probe. No test row or payment is created. */
+export async function handleJussPayLiveReceiptReadiness(request: Request, env: Env): Promise<Response> {
+  if (env.JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED !== "true") return json({error:"not_found"},404);
+  if (request.method !== "POST") return json({error:"method_not_allowed"},405);
+  const secret=env.JBH_JUSSPAY_LIVE_RECEIPT_SECRET;
+  if (!env.DATABASE_URL || !secret || secret.length < 32 || secret===env.JBH_JUSSPAY_RECEIPT_SECRET ||
+      !/^[a-f0-9]{40}$/.test(env.RELEASE_SHA||"")) return json({error:"not_configured"},503);
+  let raw:string;
+  try {raw=await readBoundedText(request,1024);}catch{return json({error:"invalid_body"},400);}
+  if(!await verifyLiveReceiptSignature(raw,request.headers.get("x-jbh-jusspay-signature")||"",secret))return json({error:"invalid_signature"},401);
+  if(raw!==JSON.stringify({schema:"jbh-private/jusspay-live-readiness@v1"}))return json({error:"invalid_body"},400);
+  try {
+    const sql=neon(env.DATABASE_URL);
+    const rows=await sql`
+      SELECT
+        to_regclass('public.jusspay_live_order_receipt_state') IS NOT NULL
+        AND to_regclass('public.jusspay_live_receipt_events') IS NOT NULL
+        AND to_regprocedure('public.record_jusspay_live_receipt(text,text,text,text,text)') IS NOT NULL
+        AND has_table_privilege(current_user,to_regclass('public.jusspay_live_order_receipt_state'),'SELECT')
+        AND has_table_privilege(current_user,to_regclass('public.jusspay_live_order_receipt_state'),'INSERT')
+        AND has_table_privilege(current_user,to_regclass('public.jusspay_live_order_receipt_state'),'UPDATE')
+        AND has_table_privilege(current_user,to_regclass('public.jusspay_live_receipt_events'),'SELECT')
+        AND has_table_privilege(current_user,to_regclass('public.jusspay_live_receipt_events'),'INSERT')
+        AND has_function_privilege(current_user,to_regprocedure('public.record_jusspay_live_receipt(text,text,text,text,text)'),'EXECUTE')
+        AS ready
+    `;
+    if(rows[0]?.ready!==true)return json({error:"receipt_schema_unavailable"},503);
+    return json({schema:"jbh-private/jusspay-live-readiness@v1",livemode:true,configured:true,releaseSha:env.RELEASE_SHA});
+  }catch{return json({error:"receipt_schema_unavailable"},503);}
+}
