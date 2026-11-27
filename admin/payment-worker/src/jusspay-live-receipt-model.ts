@@ -1,3 +1,7 @@
+export function liveReceiptSecret(env: {JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED?:string;JBH_JUSSPAY_LIVE_RECEIPT_SECRET?:string;JBH_JUSSPAY_RECEIPT_SECRET?:string}):string|null {
+  const key=env.JBH_JUSSPAY_LIVE_RECEIPT_SECRET;
+  return env.JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED==="true"&&typeof key==="string"&&key.length>=32&&key.length<=512&&key!==env.JBH_JUSSPAY_RECEIPT_SECRET?key:null;
+}
 const ORDER = /^jbho_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const EVENT = /^evt_[A-Za-z0-9_]{1,180}$/;
 const PI = /^pi_[A-Za-z0-9_]{1,180}$/;
