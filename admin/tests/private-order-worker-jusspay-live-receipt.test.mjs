@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseLiveReceipt, verifyLiveReceiptSignature, liveReceiptAcknowledgment } from "../../.worker-test-dist/jusspay-live-receipt-model.js";
+import { liveReceiptSecret, parseLiveReceipt, verifyLiveReceiptSignature, liveReceiptAcknowledgment } from "../../.worker-test-dist/jusspay-live-receipt-model.js";
 const receipt={eventId:"evt_fixture",livemode:true,orderId:"jbho_11111111-1111-4111-8111-111111111111",paymentIntentId:"pi_fixture",state:"awaiting_owner_dispatch"};
 const secret="live-fixture-"+ "a".repeat(40);
 test("live receiver accepts exact receipt, not sandbox, PII or malformed fields",()=>{
@@ -18,4 +18,16 @@ test("live signature binds exact bytes and is not accepted with a sandbox key",a
 test("acknowledgment identifies the exact stored event and never grants dispatch authority",()=>{
  assert.deepEqual(liveReceiptAcknowledgment(receipt,{state:"hold",duplicate:true}),{schema:"jbh-private/jusspay-live-receipt@v1",received:true,livemode:true,orderId:receipt.orderId,eventId:receipt.eventId,state:"hold",duplicate:true});
  assert.equal(liveReceiptAcknowledgment(receipt,{state:"dispatched",duplicate:false}),null);
+});
+
+test("live secret gate rejects missing, disabled, reused sandbox and oversized credentials",()=>{
+ const env={JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED:"true",JBH_JUSSPAY_LIVE_RECEIPT_SECRET:secret,JBH_JUSSPAY_RECEIPT_SECRET:"sandbox-"+ "b".repeat(40)};
+ assert.equal(liveReceiptSecret(env),secret);
+ for(const patch of [{JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED:"false"},{JBH_JUSSPAY_LIVE_RECEIPT_SECRET:undefined},{JBH_JUSSPAY_LIVE_RECEIPT_SECRET:"short"},{JBH_JUSSPAY_RECEIPT_SECRET:secret},{JBH_JUSSPAY_LIVE_RECEIPT_SECRET:"x".repeat(513)}])assert.equal(liveReceiptSecret({...env,...patch}),null);
+});
+test("hold events cannot be acknowledged as awaiting owner review",()=>{
+ for(const state of ["refunded","partially_refunded","disputed"]){
+   assert.equal(liveReceiptAcknowledgment({...receipt,state},{state:"awaiting_owner_review",duplicate:false}),null);
+   assert.equal(liveReceiptAcknowledgment({...receipt,state},{state:"hold",duplicate:false}).state,"hold");
+ }
 });
