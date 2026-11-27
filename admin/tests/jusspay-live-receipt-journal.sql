@@ -1,6 +1,35 @@
 -- Disposable database only. Exercises the real transactional migration.
 BEGIN;
-DO $$
+CREATE ROLE receipt_fixture_denied NOLOGIN;
+CREATE ROLE receipt_fixture_worker NOLOGIN;
+DO $
+BEGIN
+  IF has_function_privilege('receipt_fixture_denied','public.record_jusspay_live_receipt(text,text,text,text,text)','EXECUTE')
+     OR has_table_privilege('receipt_fixture_denied','public.jusspay_live_receipt_events','SELECT')
+     OR has_table_privilege('receipt_fixture_denied','public.jusspay_live_order_receipt_state','INSERT') THEN
+    RAISE EXCEPTION 'ungranted role can access receipt journal';
+  END IF;
+END $;
+GRANT USAGE ON SCHEMA public TO receipt_fixture_worker;
+GRANT SELECT, INSERT, UPDATE ON public.jusspay_live_order_receipt_state TO receipt_fixture_worker;
+GRANT SELECT, INSERT ON public.jusspay_live_receipt_events TO receipt_fixture_worker;
+GRANT EXECUTE ON FUNCTION public.record_jusspay_live_receipt(text,text,text,text,text) TO receipt_fixture_worker;
+SET LOCAL ROLE receipt_fixture_worker;
+DO $
+BEGIN
+  IF NOT (has_table_privilege(current_user,'public.jusspay_live_order_receipt_state','SELECT')
+    AND has_table_privilege(current_user,'public.jusspay_live_order_receipt_state','INSERT')
+    AND has_table_privilege(current_user,'public.jusspay_live_order_receipt_state','UPDATE')
+    AND has_table_privilege(current_user,'public.jusspay_live_receipt_events','SELECT')
+    AND has_table_privilege(current_user,'public.jusspay_live_receipt_events','INSERT')
+    AND has_function_privilege(current_user,'public.record_jusspay_live_receipt(text,text,text,text,text)','EXECUTE'))
+    OR has_table_privilege(current_user,'public.jusspay_live_receipt_events','UPDATE')
+    OR has_table_privilege(current_user,'public.jusspay_live_receipt_events','DELETE')
+    OR has_table_privilege(current_user,'public.jusspay_live_order_receipt_state','DELETE') THEN
+    RAISE EXCEPTION 'receipt worker privilege mismatch';
+  END IF;
+END $;
+DO $
 DECLARE
   r record;
   o1 text := 'jbho_11111111-1111-4111-8111-111111111111';
@@ -33,6 +62,9 @@ BEGIN
   IF r.receipt_state <> 'hold' THEN RAISE EXCEPTION 'refund hold not recorded'; END IF;
   SELECT * INTO r FROM public.record_jusspay_live_receipt(o2,'evt_late_paid','pi_two','awaiting_owner_dispatch',d);
   IF r.receipt_state <> 'hold' THEN RAISE EXCEPTION 'late payment reopened hold'; END IF;
+  PERFORM public.record_jusspay_live_receipt(o1,'evt_partial_first','pi_one','partially_refunded',d);
+  PERFORM public.record_jusspay_live_receipt(o1,'evt_full_after_partial','pi_one','refunded',d);
+  IF NOT EXISTS (SELECT 1 FROM public.jusspay_live_order_receipt_state WHERE order_id=o1 AND hold_reason='refunded') THEN RAISE EXCEPTION 'partial to full escalation failed'; END IF;
   PERFORM public.record_jusspay_live_receipt(o2,'evt_dispute','pi_two','disputed',d);
   PERFORM public.record_jusspay_live_receipt(o2,'evt_partial','pi_two','partially_refunded',d);
   IF NOT EXISTS (SELECT 1 FROM public.jusspay_live_order_receipt_state WHERE order_id=o2 AND paid_seen AND hold_reason='disputed') THEN RAISE EXCEPTION 'hold precedence failed'; END IF;
