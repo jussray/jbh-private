@@ -26,6 +26,9 @@ on:
       - "admin/migrations/012_dropship_beauty_sku_families.sql"
       - "admin/migrations/013_dispatch_authority_gate.sql"
       - "admin/migrations/014_shopify_physical_dispatch_gate.sql"
+      - "admin/migrations/019_jusspay_live_receipt_journal.sql"
+      - "admin/tests/jusspay-live-receipt-journal.sql"
+      - "admin/tests/private-order-worker-jusspay-live-receipt.test.mjs"
       - "admin/scripts/preflight-shopify-physical-order-schema.mjs"
       - "admin/tests/shopify-physical-schema-preflight-contract.test.mjs"
       - "admin/tests/vendor-connection-state-contract.test.mjs"
@@ -117,3 +120,42 @@ jobs:
 
       - name: Build private admin
         run: npm run build
+
+  live_receipt_database:
+    name: Verify live receipt journal on disposable PostgreSQL
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: receipt_fixture
+          POSTGRES_USER: receipt_fixture
+          POSTGRES_PASSWORD: disposable_fixture_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U receipt_fixture -d receipt_fixture"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Fetch exact candidate
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
+          git checkout --detach FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"
+      - name: Apply and verify fixture-only migration
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        env:
+          PGPASSWORD: disposable_fixture_password
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -p 5432 -U receipt_fixture -d receipt_fixture --set=ON_ERROR_STOP=1 --file=admin/migrations/019_jusspay_live_receipt_journal.sql
+          psql -h 127.0.0.1 -p 5432 -U receipt_fixture -d receipt_fixture --set=ON_ERROR_STOP=1 --file=admin/tests/jusspay-live-receipt-journal.sql
