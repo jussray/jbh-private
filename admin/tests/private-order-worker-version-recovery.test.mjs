@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { recoveryPlan, verifyStaged, singleActiveVersion } from "../../scripts/private-worker-version-recovery.mjs";
+import { recoveryPlan, verifyStaged, singleActiveVersion, verifyBundleReadback } from "../../scripts/private-worker-version-recovery.mjs";
 
 const old = "11111111-1111-4111-8111-111111111111";
 const next = "22222222-2222-4222-8222-222222222222";
@@ -42,4 +42,17 @@ test("checks staged identity, unchanged binding names/types, service target, and
   assert.throws(()=>verifyStaged(version,{...staged,bindings:staged.bindings.slice(1)},release));
   assert.throws(()=>verifyStaged(version,{...staged,bindings:staged.bindings.map(b=>b.name==="CF_ACCESS_AUD"?{...b,text:"changed"}:b)},release));
   assert.throws(()=>verifyStaged(version,{...staged,bindings:staged.bindings.map(b=>b.name==="JUSSPAY"?{...b,service:"wrong"}:b)},release));
+});
+
+test("requires provider readback of the exact staged module bytes and release tag",()=>{
+  const expected=Buffer.from("export default {};\n");
+  const staged={main_module:"index.js",annotations:{"workers/tag":release},modules:[{name:"index.js",content_type:"application/javascript+module",content_base64:expected.toString("base64")}]};
+  assert.doesNotThrow(()=>verifyBundleReadback(staged,"index.js",expected,release));
+  for(const changed of [
+    {...staged,main_module:"other.js"},
+    {...staged,annotations:{"workers/tag":"b".repeat(40)}},
+    {...staged,modules:[]},
+    {...staged,modules:[{...staged.modules[0],content_base64:Buffer.from("different").toString("base64")}]},
+    {...staged,modules:[...staged.modules,staged.modules[0]]}
+  ])assert.throws(()=>verifyBundleReadback(changed,"index.js",expected,release));
 });
