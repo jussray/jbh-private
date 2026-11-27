@@ -2,20 +2,20 @@
 BEGIN;
 CREATE ROLE receipt_fixture_denied NOLOGIN;
 CREATE ROLE receipt_fixture_worker NOLOGIN;
-DO $
+DO $$
 BEGIN
   IF has_function_privilege('receipt_fixture_denied','public.record_jusspay_live_receipt(text,text,text,text,text)','EXECUTE')
      OR has_table_privilege('receipt_fixture_denied','public.jusspay_live_receipt_events','SELECT')
      OR has_table_privilege('receipt_fixture_denied','public.jusspay_live_order_receipt_state','INSERT') THEN
     RAISE EXCEPTION 'ungranted role can access receipt journal';
   END IF;
-END $;
+END $$;
 GRANT USAGE ON SCHEMA public TO receipt_fixture_worker;
 GRANT SELECT, INSERT, UPDATE ON public.jusspay_live_order_receipt_state TO receipt_fixture_worker;
 GRANT SELECT, INSERT ON public.jusspay_live_receipt_events TO receipt_fixture_worker;
 GRANT EXECUTE ON FUNCTION public.record_jusspay_live_receipt(text,text,text,text,text) TO receipt_fixture_worker;
 SET LOCAL ROLE receipt_fixture_worker;
-DO $
+DO $$
 BEGIN
   IF NOT (has_table_privilege(current_user,'public.jusspay_live_order_receipt_state','SELECT')
     AND has_table_privilege(current_user,'public.jusspay_live_order_receipt_state','INSERT')
@@ -28,8 +28,8 @@ BEGIN
     OR has_table_privilege(current_user,'public.jusspay_live_order_receipt_state','DELETE') THEN
     RAISE EXCEPTION 'receipt worker privilege mismatch';
   END IF;
-END $;
-DO $
+END $$;
+DO $$
 DECLARE
   r record;
   o1 text := 'jbho_11111111-1111-4111-8111-111111111111';
