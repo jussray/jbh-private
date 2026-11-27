@@ -173,3 +173,19 @@ only the necessary privileges to the intended private Worker database role.
 Never run fixture SQL against production. No secret values belong in git.
 No supplier automation, storefront activation or historical receipt backfill
 is implied by this change.
+
+### Private Worker deployment reconciliation
+
+The Nov 25, 2026 Script API deployments introduced the `JUSSPAY_OWNER_KEY`
+server-held credential and the `JUSSPAY` service binding to `jusspay`.
+The source declares that binding and retains `keep_vars = true`; the owner
+credential must never enter source. A successful source build does not
+resolve the provider's strict-upload conflict after an API deployment.
+Before any separately authorized provider adoption, review the active version,
+preserve all existing bindings and settings, check exact-head proofs, and
+document the rollback version. Do not remove the strict deployment gate
+or silently replace provider configuration.
+
+Live receipt activation still requires the independently scoped receipt
+credential, database binding, applied and verified migration, and signed
+readiness proof. No live approval follows from this reconciliation alone.
