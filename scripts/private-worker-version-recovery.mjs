@@ -78,6 +78,14 @@ export function verifyStaged(previous,staged,release) {
   }
 }
 
+export function verifyBundleReadback(staged,name,expected,release) {
+  requireThat(staged?.main_module===name && staged.annotations?.["workers/tag"]===release &&
+    Array.isArray(staged.modules) && staged.modules.length===1,"staged_module_inventory_mismatch");
+  const m=staged.modules[0];
+  requireThat(m?.name===name && m.content_type==="application/javascript+module" &&
+    typeof m.content_base64==="string" && m.content_base64===expected.toString("base64"),"staged_module_bytes_mismatch");
+}
+
 async function run() {
   const mode=process.argv[2]||"--preflight";
   requireThat(["--preflight","--stage"].includes(mode) && process.argv.length<=3,"invalid_mode");
@@ -141,8 +149,9 @@ async function run() {
       annotations:{"workers/tag":release,"workers/message":"Guarded JBH recovery candidate; no traffic"}
     });
     requireThat(VERSION.test(staged.id),"staging_response_invalid");
-    const readback=await cf(beta+"/versions/"+staged.id);
+    const readback=await cf(beta+"/versions/"+staged.id+"?include=modules");
     verifyStaged(before,readback,release);
+    verifyBundleReadback(readback,js[0].name,module,release);
     requireThat(await active()===expectedVersion,"active_version_changed_after_stage");
     await assertMain();
     console.log(JSON.stringify({...receipt,staged:true,candidateVersion:staged.id,bundleSha256:digest}));
