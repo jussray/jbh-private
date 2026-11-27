@@ -1,12 +1,12 @@
 import { neon } from "@neondatabase/serverless";
 import { type Env, json, readBoundedText } from "./shared";
-import { parseLiveReceipt, verifyLiveReceiptSignature, liveReceiptAcknowledgment } from "./jusspay-live-receipt-model";
+import { liveReceiptSecret, parseLiveReceipt, verifyLiveReceiptSignature, liveReceiptAcknowledgment } from "./jusspay-live-receipt-model";
 
 export async function handleJussPayLiveReceipt(request: Request, env: Env): Promise<Response> {
   if (env.JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED !== "true") return json({error:"not_found"},404);
   if (request.method !== "POST") return json({error:"method_not_allowed"},405);
-  const secret=env.JBH_JUSSPAY_LIVE_RECEIPT_SECRET;
-  if (!env.DATABASE_URL || !secret || secret.length < 32 || secret===env.JBH_JUSSPAY_RECEIPT_SECRET) {
+  const secret=liveReceiptSecret(env);
+  if (!env.DATABASE_URL || !secret) {
     return json({error:"not_configured"},503);
   }
   let raw: string;
@@ -35,8 +35,8 @@ export async function handleJussPayLiveReceipt(request: Request, env: Env): Prom
 export async function handleJussPayLiveReceiptReadiness(request: Request, env: Env): Promise<Response> {
   if (env.JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED !== "true") return json({error:"not_found"},404);
   if (request.method !== "POST") return json({error:"method_not_allowed"},405);
-  const secret=env.JBH_JUSSPAY_LIVE_RECEIPT_SECRET;
-  if (!env.DATABASE_URL || !secret || secret.length < 32 || secret===env.JBH_JUSSPAY_RECEIPT_SECRET ||
+  const secret=liveReceiptSecret(env);
+  if (!env.DATABASE_URL || !secret ||
       !/^[a-f0-9]{40}$/.test(env.RELEASE_SHA||"")) return json({error:"not_configured"},503);
   let raw:string;
   try {raw=await readBoundedText(request,1024);}catch{return json({error:"invalid_body"},400);}
