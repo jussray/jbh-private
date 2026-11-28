@@ -15,6 +15,7 @@
     "src/release-identity.ts",
     "src/shopify-physical-order-model.ts",
     "src/jusspay-live-receipt-model.ts",
+    "src/fulfillment-review-status-model.ts",
     "src/jusspay-owner-model.ts",
     "src/jusspay-owner-stream.ts"
   ]

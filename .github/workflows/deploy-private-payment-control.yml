@@ -91,6 +91,8 @@ jobs:
           live_main="$(git ls-remote origin refs/heads/main | cut -f1)"
           test "$live_main" = "$EXPECTED_HEAD_SHA"
           npx wrangler deploy --strict --config wrangler.toml \
+            --tag "$EXPECTED_HEAD_SHA" \
+            --message "sha:$EXPECTED_HEAD_SHA" \
             --var "RELEASE_SHA:$EXPECTED_HEAD_SHA" \
             --var "SHOPIFY_ADMIN_API_VERSION:$SHOPIFY_ADMIN_API_VERSION" \
             --var "DROPSHIP_BEAUTY_LOCATION_GID:$DROPSHIP_BEAUTY_LOCATION_GID"

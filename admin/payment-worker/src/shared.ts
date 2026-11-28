@@ -6,6 +6,8 @@ export interface Env {
   JUSSPAY?: { fetch(request: Request): Promise<Response> };
   JUSSPAY_OWNER_KEY?: string;
   DATABASE_URL: string;
+  JBH_REVIEW_DATABASE_URL?: string;
+  JBH_REVIEW_STATUS_ENABLED?: string;
   JBH_JUSSPAY_RECEIPTS_ENABLED?: string;
   JBH_JUSSPAY_RECEIPT_SECRET?: string;
   JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED?: string;

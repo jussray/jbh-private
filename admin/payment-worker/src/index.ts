@@ -9,6 +9,7 @@ import { handleWebhook } from "./webhook";
 import { releaseIdentity } from "./release-identity";
 import { handleJussPaySandboxReceipt } from "./jusspay-sandbox-receipt";
 import { handleJussPayOwnerRequest } from "./jusspay-owner";
+import { handleFulfillmentReviewStatus } from "./fulfillment-review-status";
 import { handleJussPayLiveReceipt, handleJussPayLiveReceiptReadiness } from "./jusspay-live-receipt";
 
 export default {
@@ -60,6 +61,10 @@ export default {
 
     if (pathname.startsWith("/api/admin/vendor-sourcing")) {
       return handleVendorSourcingRequest(request, env);
+    }
+
+    if (pathname === "/api/admin/fulfillment-review/status") {
+      return handleFulfillmentReviewStatus(request, env);
     }
 
     if (pathname === "/api/admin/jusspay/fulfillment" || pathname === "/api/admin/jusspay/fulfillment/view") {
