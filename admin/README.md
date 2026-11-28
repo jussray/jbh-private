@@ -234,3 +234,23 @@ fulfillment. Review the staged version and rollback version separately before
 any production promotion. Do not enable live receipts or apply a production
 migration on the basis of this receipt alone. This recovery path intentionally
 rejects new bindings until its inventory has been reviewed and updated.
+
+### Deployment input resolution
+
+The private payment control deployment reads the existing Worker settings for
+the Shopify API version and location GID. It validates their names, types and
+formats before use; it does not invent values or emit credentials. Normal
+strict deployment remains in force.
+
+Contact ingress reads the approved repository variables
+`CONTACT_ROUTE_PATTERN`, `CONTACT_ZONE_NAME`, `ALLOWED_CONTACT_ORIGINS`,
+and `ALLOWED_CONTACT_HOSTNAMES`. Missing or invalid values block deployment.
+These variables must represent an approved configuration; they are not
+automatically guessed. The existing private, protected-main and customer-data
+requirements remain in force.
+
+The deployment and uniqueness-migration actions use default-off owner approval
+checkboxes. They resolve the dispatched commit from GitHub. The migration
+retains the existing scoped database secret, fixed additive migration file,
+duplicate preflight and postflight; a fresh main check precedes SQL.
+No migration or deployment is authorized by merging this documentation.
