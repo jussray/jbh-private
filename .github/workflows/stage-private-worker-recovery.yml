@@ -3,18 +3,11 @@ name: Stage Private Worker Recovery
 on:
   workflow_dispatch:
     inputs:
-      expected_head_sha:
-        description: Exact current main commit approved for staging
+      approve_staging:
+        description: Approve staging only (no production promotion)
         required: true
-        type: string
-      active_version:
-        description: Reviewed active Cloudflare version UUID
-        required: true
-        type: string
-      approval_phrase:
-        description: Type exactly STAGE_JBH_WORKER_VERSION
-        required: true
-        type: string
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -25,20 +18,18 @@ concurrency:
 
 jobs:
   stage:
-    if: github.repository == 'jussray/jbh-private' && github.ref == 'refs/heads/main' && github.actor == github.repository_owner && github.triggering_actor == github.repository_owner
+    if: github.repository == 'jussray/jbh-private' && github.ref == 'refs/heads/main' && github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && inputs.approve_staging == true
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
-      EXPECTED_HEAD_SHA: ${{ inputs.expected_head_sha }}
-      JBH_RECOVERY_ACTIVE_VERSION: ${{ inputs.active_version }}
-      JBH_RECOVERY_APPROVAL: ${{ inputs.approval_phrase }}
+      EXPECTED_HEAD_SHA: ${{ github.sha }}
+      JBH_RECOVERY_APPROVAL: STAGE_JBH_WORKER_VERSION
     steps:
-      - name: Require exact owner-approved main and recovery UUID
+      - name: Resolve and verify exact owner-approved main
         shell: bash
         run: |
           set -euo pipefail
           [[ "$EXPECTED_HEAD_SHA" =~ ^[a-f0-9]{40}$ ]]
-          [[ "$JBH_RECOVERY_ACTIVE_VERSION" =~ ^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$ ]]
           test "$JBH_RECOVERY_APPROVAL" = STAGE_JBH_WORKER_VERSION
           test "$GITHUB_SHA" = "$EXPECTED_HEAD_SHA"
           git init .
@@ -65,5 +56,5 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/private-worker-version-recovery.mjs --preflight
+          # The staging command performs preflight and pins the active version in one process.
           node scripts/private-worker-version-recovery.mjs --stage
