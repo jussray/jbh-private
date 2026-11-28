@@ -3,6 +3,8 @@ import Stripe from "stripe";
 export interface Env {
   RELEASE_SHA?: string;
   DATABASE_URL: string;
+  JBH_REVIEW_DATABASE_URL?: string;
+  JBH_REVIEW_STATUS_ENABLED?: string;
   JBH_JUSSPAY_RECEIPTS_ENABLED?: string;
   JBH_JUSSPAY_RECEIPT_SECRET?: string;
   JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED?: string;

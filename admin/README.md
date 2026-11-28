@@ -254,3 +254,9 @@ checkboxes. They resolve the dispatched commit from GitHub. The migration
 retains the existing scoped database secret, fixed additive migration file,
 duplicate preflight and postflight; a fresh main check precedes SQL.
 No migration or deployment is authorized by merging this documentation.
+
+### Reconciled receipt migration and review-only storage
+
+The earlier PR #96 receipt tables and shared sandbox/live secret are superseded by the canonical `019_jusspay_live_receipt_journal.sql` and independent live signature contract. The earlier candidate remains in Git history; do not apply its competing migration. The separate review storage adapter and owner-authenticated status diagnostic remain isolated and disabled unless configured. Its DDL is proposed only. Storage status is not commercial or provider readiness.
+
+The canonical journal migration action resolves the exact dispatch SHA, requires the owner approval checkbox and `production-payments` environment, and refuses a public or unprotected repository. Configure the dedicated migration database secret `JBH_RECEIPT_MIGRATION_DATABASE_URL` and approved environment variables `JBH_RECEIPT_MIGRATION_HOST`, `JBH_RECEIPT_MIGRATION_DATABASE`, and `JBH_RECEIPT_MIGRATION_ROLE` from verified database configuration. No target is guessed; runtime credentials are not reused. The action verifies identity and absence of legacy/conflicting objects before applying the canonical SQL. A schema-object check is not runtime privilege proof; separately verify runtime grants and authenticated readiness before enabling receipts. Do not rerun after an ambiguous mutation without inspecting actual schema.

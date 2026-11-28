@@ -225,6 +225,33 @@
           "admin/scripts/playwright-verify.mjs",
           "admin/package.json"
         ]
+      },
+      {
+        "id": "jusspay-fulfillment-review-storage",
+        "name": "JussPay review-only storage regression tests",
+        "kind": "unit",
+        "command": "node --test admin/tests/jusspay-fulfillment-review-storage.test.mjs",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/payment-worker/proposed-migrations/jbh_fulfillment_review.sql",
+          "admin/payment-worker/src/worker-storage.mjs",
+          "admin/tests/jusspay-fulfillment-review-storage.test.mjs"
+        ]
+      },
+      {
+        "id": "jusspay-canonical-journal-migration",
+        "name": "Canonical JussPay receipt journal migration boundary",
+        "kind": "contract",
+        "command": "node --test admin/tests/private-order-worker-jusspay-journal-migration.test.mjs",
+        "required": true,
+        "status": "active",
+        "evidencePaths": [
+          "admin/tests/private-order-worker-jusspay-journal-migration.test.mjs",
+          ".github/workflows/apply-jusspay-live-receipts-migration.yml",
+          "admin/migrations/019_jusspay_live_receipt_journal.sql",
+          "admin/payment-worker/src/jusspay-live-receipt-model.ts"
+        ]
       }
     ]
   },
