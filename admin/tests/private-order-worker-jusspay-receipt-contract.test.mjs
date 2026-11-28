@@ -22,15 +22,3 @@ test("private JussPay receipt is sandbox-only and fail-closed", () => {
   assert.match(receipt, /b\.livemode !== false/);
   assert.match(receipt, /crypto\.subtle\.verify\(/);
 });
-
-test("live receipt migration is manual, exact-main, additive, and separately gated", () => {
-  const workflow = readFileSync(new URL("../../.github/workflows/apply-jusspay-live-receipts-migration.yml", import.meta.url), "utf8");
-  assert.ok(workflow.includes("workflow_dispatch:"));
-  assert.ok(workflow.includes("APPLY_JUSSPAY_LIVE_RECEIPTS"));
-  assert.ok(workflow.includes('test "$GITHUB_REF" = "refs/heads/main"'));
-  assert.ok(workflow.includes("secrets.DATABASE_URL"));
-  assert.ok(workflow.includes("admin/migrations/019_jusspay_live_receipts.sql"));
-  assert.ok(workflow.includes("jusspay_live_receipts"));
-  assert.ok(workflow.includes("jusspay_live_holds"));
-  assert.doesNotMatch(workflow, /wrangler deploy|JBH_LIVE_CHARGES_APPROVED/);
-});

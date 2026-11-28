@@ -3,17 +3,17 @@ name: Apply JussPay Live Receipt Migration
 on:
   workflow_dispatch:
     inputs:
-      approval_phrase:
-        description: "Type exactly APPLY_JUSSPAY_LIVE_RECEIPTS"
+      approve_migration:
+        description: Approve applying the canonical receipt journal only
+        type: boolean
         required: true
-        type: string
+        default: false
 
 permissions:
   contents: read
-  statuses: write
 
 concurrency:
-  group: jusspay-live-receipts-production-migration
+  group: paid-order-production-migration
   cancel-in-progress: false
 
 env:
@@ -22,96 +22,97 @@ env:
 
 jobs:
   migrate:
-    name: Apply and verify isolated live receipt tables
+    if: github.repository == 'jussray/jbh-private' && github.ref == 'refs/heads/main' && github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && inputs.approve_migration == true
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     environment: production-payments
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      APPROVAL_PHRASE: ${{ inputs.approval_phrase }}
     steps:
-      - name: Require main, explicit approval, and database access
+      - name: Require approved private production governance
         shell: bash
         run: |
           set -euo pipefail
-          test "$GITHUB_REF" = "refs/heads/main"
-          test "$APPROVAL_PHRASE" = "APPLY_JUSSPAY_LIVE_RECEIPTS"
-          test -n "$DATABASE_URL"
-          command -v psql >/dev/null
-
-      - name: Check out exact requested head
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.EXPECTED_HEAD_SHA }}
-
-      - name: Verify exact head
+          gh api "repos/$GITHUB_REPOSITORY" > "$RUNNER_TEMP/repository.json"
+          gh api "repos/$GITHUB_REPOSITORY/branches/main" > "$RUNNER_TEMP/main.json"
+          node --input-type=module <<'NODE'
+          import {readFileSync} from "node:fs";
+          const read=name=>JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/"+name+".json","utf8"));
+          const repository=read("repository"),main=read("main");
+          const required=main.protection?.required_status_checks;
+          const contexts=[...(required?.contexts||[]),...(required?.checks||[]).map(x=>x.context)];
+          if(repository.private !== true || main.protected !== true || main.commit?.sha!==process.env.EXPECTED_HEAD_SHA ||
+             required?.enforcement_level==="off" || !contexts.includes("Verify test-ledger contract"))
+            throw Error("production_governance_not_verified");
+          NODE
+      - name: Fetch exact approved main
         shell: bash
         run: |
           set -euo pipefail
-          actual="$(git rev-parse HEAD)"
-          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
-          test "$actual" = "$EXPECTED_HEAD_SHA"
-
-      - name: Apply additive JussPay live receipt migration
-        shell: bash
-        run: |
-          set -euo pipefail
-          psql "$DATABASE_URL" --set=ON_ERROR_STOP=1 \
-            --file=admin/migrations/019_jusspay_live_receipts.sql
-
-      - name: Verify live receipt tables and constraints
-        id: postflight
-        shell: bash
-        run: |
-          set -euo pipefail
-          result="$(psql "$DATABASE_URL" --tuples-only --no-align --set=ON_ERROR_STOP=1 --command="
-            SELECT
-              to_regclass('public.jusspay_live_receipts') IS NOT NULL
-              AND to_regclass('public.jusspay_live_holds') IS NOT NULL
-              AND (SELECT COUNT(*) = 6 FROM information_schema.columns
-                   WHERE table_schema='public' AND table_name='jusspay_live_receipts')
-              AND (SELECT COUNT(*) = 5 FROM information_schema.columns
-                   WHERE table_schema='public' AND table_name='jusspay_live_holds')
-              AND EXISTS (SELECT 1 FROM pg_constraint
-                          WHERE conname='jusspay_live_receipts_pkey' AND conrelid='public.jusspay_live_receipts'::regclass
-                            AND contype='p' AND convalidated)
-              AND EXISTS (SELECT 1 FROM pg_constraint
-                          WHERE conname='jusspay_live_holds_pkey' AND conrelid='public.jusspay_live_holds'::regclass
-                            AND contype='p' AND convalidated)
-              AND EXISTS (SELECT 1 FROM pg_constraint
-                          WHERE conname='jusspay_live_receipts_state_check' AND conrelid='public.jusspay_live_receipts'::regclass
-                            AND contype='c' AND convalidated)
-              AND EXISTS (SELECT 1 FROM pg_constraint
-                          WHERE conname='jusspay_live_holds_reason_check' AND conrelid='public.jusspay_live_holds'::regclass
-                            AND contype='c' AND convalidated)
-              AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname='jusspay_live_receipts_event_id_key' AND conrelid='public.jusspay_live_receipts'::regclass AND contype='u' AND convalidated)
-              AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname='jusspay_live_holds_event_id_key' AND conrelid='public.jusspay_live_holds'::regclass AND contype='u' AND convalidated);
-          ")"
-          test "$result" = "t"
-          printf 'JussPay live receipt schema verified for %s\n' "$EXPECTED_HEAD_SHA"
-
-      - name: Publish exact-head migration status
-        if: always()
-        shell: bash
+          git init .
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
+          git checkout --detach FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"
+      - name: Prove target identity and absence of conflicting schema
+        id: preflight
         env:
-          POSTFLIGHT_OUTCOME: ${{ steps.postflight.outcome }}
+          PGDATABASE: ${{ secrets.JBH_RECEIPT_MIGRATION_DATABASE_URL }}
+          APPROVED_HOST: ${{ vars.JBH_RECEIPT_MIGRATION_HOST }}
+          APPROVED_DATABASE: ${{ vars.JBH_RECEIPT_MIGRATION_DATABASE }}
+          APPROVED_ROLE: ${{ vars.JBH_RECEIPT_MIGRATION_ROLE }}
+        shell: bash
         run: |
           set -euo pipefail
-          state=failure
-          description="JussPay live receipt migration did not complete"
-          if [ "$POSTFLIGHT_OUTCOME" = "success" ]; then
-            state=success
-            description="JussPay live receipt tables and constraints verified"
-          fi
-          node -e 'const [state,context,description]=process.argv.slice(1); process.stdout.write(JSON.stringify({state,context,description}))' \
-            "$state" "jusspay-live-receipts-migration" "$description" > "$RUNNER_TEMP/migration-status.json"
-          curl -fsSL -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/statuses/$EXPECTED_HEAD_SHA" \
-            --data-binary @"$RUNNER_TEMP/migration-status.json"
-
-      - name: Fail unless postflight passed
-        if: steps.postflight.outcome != 'success'
-        run: exit 1
+          command -v psql >/dev/null
+          node --input-type=module <<'NODE'
+          const e=process.env;
+          let u;
+          try {u=new URL(e.PGDATABASE||"");} catch {throw Error("invalid_migration_connection");}
+          if(!e.APPROVED_HOST||!e.APPROVED_DATABASE||!e.APPROVED_ROLE||
+             !["postgres:","postgresql:"].includes(u.protocol)||u.hostname!==e.APPROVED_HOST||
+             decodeURIComponent(u.pathname.slice(1))!==e.APPROVED_DATABASE||
+             decodeURIComponent(u.username)!==e.APPROVED_ROLE||!u.password||
+             !["require","verify-full"].includes(u.searchParams.get("sslmode"))||
+             [...u.searchParams.keys()].some(k=>!["sslmode","channel_binding"].includes(k))||
+             !/^[A-Za-z_][A-Za-z0-9_-]{0,62}$/.test(e.APPROVED_DATABASE)||
+             !/^[A-Za-z_][A-Za-z0-9_-]{0,62}$/.test(e.APPROVED_ROLE))
+            throw Error("approved_database_identity_mismatch");
+          NODE
+          result="$(psql -X -At -v ON_ERROR_STOP=1 -v db="$APPROVED_DATABASE" -v role="$APPROVED_ROLE" 2>/dev/null <<'SQL'
+          SELECT current_database()=:'db' AND current_user=:'role' AND NOT pg_is_in_recovery()
+            AND has_schema_privilege(current_user,'public','CREATE')
+            AND to_regclass('public.jusspay_live_order_receipt_state') IS NULL
+            AND to_regclass('public.jusspay_live_receipt_events') IS NULL
+            AND to_regclass('public.jusspay_live_receipts') IS NULL
+            AND to_regclass('public.jusspay_live_holds') IS NULL
+            AND to_regprocedure('public.record_jusspay_live_receipt(text,text,text,text,text)') IS NULL;
+          SQL
+          )"
+          test "$result" = t
+          echo "Canonical migration target and empty schema verified."
+      - name: Apply canonical journal
+        if: steps.preflight.outcome == 'success'
+        env:
+          PGDATABASE: ${{ secrets.JBH_RECEIPT_MIGRATION_DATABASE_URL }}
+          PGOPTIONS: "-c lock_timeout=5000 -c statement_timeout=30000"
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$EXPECTED_HEAD_SHA"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"
+          psql -X -v ON_ERROR_STOP=1 --file=admin/migrations/019_jusspay_live_receipt_journal.sql > /dev/null 2>&1 || { echo "Migration failed; inspect private database state before retry."; exit 1; }
+      - name: Verify canonical journal objects without customer reads
+        env:
+          PGDATABASE: ${{ secrets.JBH_RECEIPT_MIGRATION_DATABASE_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          result="$(psql -X -At -v ON_ERROR_STOP=1 2>/dev/null <<'SQL'
+          SELECT to_regclass('public.jusspay_live_order_receipt_state') IS NOT NULL
+            AND to_regclass('public.jusspay_live_receipt_events') IS NOT NULL
+            AND to_regprocedure('public.record_jusspay_live_receipt(text,text,text,text,text)') IS NOT NULL
+            AND EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid=to_regclass('public.jusspay_live_order_receipt_state') AND contype='p' AND convalidated)
+            AND EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid=to_regclass('public.jusspay_live_receipt_events') AND contype='p' AND convalidated);
+          SQL
+          )"
+          test "$result" = t
+          echo "Canonical schema objects present. Runtime grants and signed readiness remain separate."

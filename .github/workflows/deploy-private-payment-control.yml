@@ -3,10 +3,11 @@ name: Deploy Private Payment Control
 on:
   workflow_dispatch:
     inputs:
-      approval_phrase:
-        description: "Type exactly DEPLOY_JBH_PRIVATE_PAYMENT_CONTROL"
+      approve_deployment:
+        description: Approve deployment of the verified current main
+        type: boolean
         required: true
-        type: string
+        default: false
 
 permissions:
   contents: read
@@ -23,13 +24,14 @@ env:
 
 jobs:
   deploy:
+    if: github.repository == 'jussray/jbh-private' && github.ref == 'refs/heads/main' && github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && inputs.approve_deployment == true
     name: Verify exact head and deploy private payment control
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      APPROVAL_PHRASE: ${{ inputs.approval_phrase }}
+      APPROVAL_PHRASE: DEPLOY_JBH_PRIVATE_PAYMENT_CONTROL
     steps:
       - name: Require main, explicit approval, and Cloudflare deployment bindings
         shell: bash
@@ -79,13 +81,18 @@ jobs:
       - name: Prove canonical Worker already exists
         run: npx wrangler deployments list --config wrangler.toml
 
+      - name: Resolve authoritative existing payment configuration
+        run: node scripts/resolve-payment-deploy-bindings.mjs
+
       - name: Deploy exact verified private Worker
         shell: bash
         run: |
           set -euo pipefail
+          live_main="$(git ls-remote origin refs/heads/main | cut -f1)"
+          test "$live_main" = "$EXPECTED_HEAD_SHA"
           npx wrangler deploy --strict --config wrangler.toml \
             --tag "$EXPECTED_HEAD_SHA" \
             --message "sha:$EXPECTED_HEAD_SHA" \
             --var "RELEASE_SHA:$EXPECTED_HEAD_SHA" \
-            --var "SHOPIFY_ADMIN_API_VERSION:2026-10" \
-            --var "DROPSHIP_BEAUTY_LOCATION_GID:gid://shopify/Location/94408442099"
+            --var "SHOPIFY_ADMIN_API_VERSION:$SHOPIFY_ADMIN_API_VERSION" \
+            --var "DROPSHIP_BEAUTY_LOCATION_GID:$DROPSHIP_BEAUTY_LOCATION_GID"

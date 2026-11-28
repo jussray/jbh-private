@@ -48,12 +48,16 @@ test("migration preflight fails closed with distinct exit codes", () => {
 
 test("production migration is manual, repository-secret-gated, and main-only", () => {
   assert.match(migrationWorkflow, /workflow_dispatch:/);
-  assert.match(migrationWorkflow, /approval_phrase:/);
-  assert.match(migrationWorkflow, /NOT A SECRET\. Type only: APPLY_UNIQUE_STRIPE_SESSION_INDEX/);
+  assert.match(migrationWorkflow, /approve_migration:/);
+  assert.match(migrationWorkflow, /default: false/);
+  assert.match(migrationWorkflow, /github\.actor == github\.repository_owner/);
+  assert.match(migrationWorkflow, /github\.triggering_actor == github\.repository_owner/);
+  assert.match(migrationWorkflow, /inputs\.approve_migration == true/);
   assert.doesNotMatch(migrationWorkflow, /environment:\s*production-payments/);
   assert.match(migrationWorkflow, /DATABASE_URL: \$\{\{ secrets\.DATABASE_URL \}\}/);
   assert.match(migrationWorkflow, /Validate repository production database secret/);
-  assert.match(migrationWorkflow, /APPROVAL_PHRASE: \$\{\{ inputs\.approval_phrase \}\}/);
+  assert.match(migrationWorkflow, /APPROVAL_PHRASE: APPLY_UNIQUE_STRIPE_SESSION_INDEX/);
+  assert.doesNotMatch(migrationWorkflow, /inputs\.approval_phrase/);
   assert.match(migrationWorkflow, /test -n "\$DATABASE_URL"/);
   assert.match(migrationWorkflow, /refs\/heads\/main/);
   assert.match(migrationWorkflow, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
@@ -74,6 +78,8 @@ test("production migration fails closed before and after additive SQL", () => {
   assert.equal(preflightCalls.length, 2);
   assert.match(migrationWorkflow, /psql "\$DATABASE_URL" --set=ON_ERROR_STOP=1/);
   assert.match(migrationWorkflow, /migrations\/002_unique_stripe_session\.sql/);
+  assert.match(migrationWorkflow, /git ls-remote origin refs\/heads\/main/);
+  assert.ok(migrationWorkflow.indexOf('test "$live_main" = "$EXPECTED_HEAD_SHA"') < migrationWorkflow.indexOf('psql "$DATABASE_URL"'));
   assert.match(migrationWorkflow, /passed-index-present/);
   assert.match(migrationWorkflow, /paid-order-production-migration\/\$\{result\}/);
   assert.doesNotMatch(migrationWorkflow, /DROP\s+INDEX/i);

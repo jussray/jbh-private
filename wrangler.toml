@@ -11,3 +11,9 @@ command = "npm run verify:worker:cloudflare"
 
 [observability]
 enabled = true
+
+# Preserve the production service binding introduced by the Nov 25 API deployment.
+# Owner credentials remain provider-held secrets; live receipt activation is separate.
+[[services]]
+binding = "JUSSPAY"
+service = "jusspay"

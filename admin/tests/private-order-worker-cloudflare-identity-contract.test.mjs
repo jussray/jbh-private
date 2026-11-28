@@ -68,3 +68,13 @@ test("fails closed for any unrecognized Cloudflare Worker override without loggi
   assert.doesNotMatch(result.stderr, /jbh-private-unknown/);
   assert.doesNotMatch(result.stderr, /WRANGLER_CI_OVERRIDE_NAME=/);
 });
+
+test("declares the observed canonical JussPay service binding without embedding credentials", () => {
+  const blocks = wrangler.split(/^\[\[services\]\]\s*$/m).slice(1);
+  const matching = blocks.map(block => block.split(/^\[/m)[0]).filter(block => /^binding\s*=\s*"JUSSPAY"\s*$/m.test(block));
+  assert.equal(matching.length, 1);
+  assert.match(matching[0], /^service\s*=\s*"jusspay"\s*$/m);
+  assert.match(wrangler, /^keep_vars\s*=\s*true\s*$/m);
+  assert.doesNotMatch(wrangler, /^JUSSPAY_OWNER_KEY\s*=/m);
+  assert.doesNotMatch(wrangler, /^JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED\s*=\s*"true"/m);
+});
