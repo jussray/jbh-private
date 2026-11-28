@@ -6,7 +6,7 @@
   "packageManager": "npm@10.9.2",
   "scripts": {
     "typecheck:worker": "tsc -p admin/payment-worker/tsconfig.json",
-    "test:worker": "tsc -p admin/payment-worker/tsconfig.behavior.json && node --test admin/tests/private-order-worker-*.test.mjs",
+    "test:worker": "tsc -p admin/payment-worker/tsconfig.behavior.json && node --test admin/tests/private-order-worker-*.test.mjs admin/tests/jusspay-fulfillment-review-storage.test.mjs",
     "dry-run:worker": "wrangler deploy --dry-run --outdir .wrangler/dry-run",
     "verify:commerce-seam": "node scripts/verify-commerce-seam.mjs",
     "verify:worker:cloudflare": "node scripts/verify-cloudflare-worker-identity.mjs && npm run verify:commerce-seam && npm run typecheck:worker && npm run test:worker && node --test admin/tests/shopify-customer-contact-contract.test.mjs admin/tests/shopify-physical-schema-preflight-contract.test.mjs",

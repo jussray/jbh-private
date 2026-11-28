@@ -1,0 +1,118 @@
+name: Apply JussPay Live Receipt Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      approve_migration:
+        description: Approve applying the canonical receipt journal only
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: paid-order-production-migration
+  cancel-in-progress: false
+
+env:
+  EXPECTED_HEAD_SHA: ${{ github.sha }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  migrate:
+    if: github.repository == 'jussray/jbh-private' && github.ref == 'refs/heads/main' && github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && inputs.approve_migration == true
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    environment: production-payments
+    steps:
+      - name: Require approved private production governance
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY" > "$RUNNER_TEMP/repository.json"
+          gh api "repos/$GITHUB_REPOSITORY/branches/main" > "$RUNNER_TEMP/main.json"
+          node --input-type=module <<'NODE'
+          import {readFileSync} from "node:fs";
+          const read=name=>JSON.parse(readFileSync(process.env.RUNNER_TEMP+"/"+name+".json","utf8"));
+          const repository=read("repository"),main=read("main");
+          const required=main.protection?.required_status_checks;
+          const contexts=[...(required?.contexts||[]),...(required?.checks||[]).map(x=>x.context)];
+          if(repository.private !== true || main.protected !== true || main.commit?.sha!==process.env.EXPECTED_HEAD_SHA ||
+             required?.enforcement_level==="off" || !contexts.includes("Verify test-ledger contract"))
+            throw Error("production_governance_not_verified");
+          NODE
+      - name: Fetch exact approved main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
+          git checkout --detach FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"
+      - name: Prove target identity and absence of conflicting schema
+        id: preflight
+        env:
+          PGDATABASE: ${{ secrets.JBH_RECEIPT_MIGRATION_DATABASE_URL }}
+          APPROVED_HOST: ${{ vars.JBH_RECEIPT_MIGRATION_HOST }}
+          APPROVED_DATABASE: ${{ vars.JBH_RECEIPT_MIGRATION_DATABASE }}
+          APPROVED_ROLE: ${{ vars.JBH_RECEIPT_MIGRATION_ROLE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v psql >/dev/null
+          node --input-type=module <<'NODE'
+          const e=process.env;
+          let u;
+          try {u=new URL(e.PGDATABASE||"");} catch {throw Error("invalid_migration_connection");}
+          if(!e.APPROVED_HOST||!e.APPROVED_DATABASE||!e.APPROVED_ROLE||
+             !["postgres:","postgresql:"].includes(u.protocol)||u.hostname!==e.APPROVED_HOST||
+             decodeURIComponent(u.pathname.slice(1))!==e.APPROVED_DATABASE||
+             decodeURIComponent(u.username)!==e.APPROVED_ROLE||!u.password||
+             !["require","verify-full"].includes(u.searchParams.get("sslmode"))||
+             [...u.searchParams.keys()].some(k=>!["sslmode","channel_binding"].includes(k))||
+             !/^[A-Za-z_][A-Za-z0-9_-]{0,62}$/.test(e.APPROVED_DATABASE)||
+             !/^[A-Za-z_][A-Za-z0-9_-]{0,62}$/.test(e.APPROVED_ROLE))
+            throw Error("approved_database_identity_mismatch");
+          NODE
+          result="$(psql -X -At -v ON_ERROR_STOP=1 -v db="$APPROVED_DATABASE" -v role="$APPROVED_ROLE" 2>/dev/null <<'SQL'
+          SELECT current_database()=:'db' AND current_user=:'role' AND NOT pg_is_in_recovery()
+            AND has_schema_privilege(current_user,'public','CREATE')
+            AND to_regclass('public.jusspay_live_order_receipt_state') IS NULL
+            AND to_regclass('public.jusspay_live_receipt_events') IS NULL
+            AND to_regclass('public.jusspay_live_receipts') IS NULL
+            AND to_regclass('public.jusspay_live_holds') IS NULL
+            AND to_regprocedure('public.record_jusspay_live_receipt(text,text,text,text,text)') IS NULL;
+          SQL
+          )"
+          test "$result" = t
+          echo "Canonical migration target and empty schema verified."
+      - name: Apply canonical journal
+        if: steps.preflight.outcome == 'success'
+        env:
+          PGDATABASE: ${{ secrets.JBH_RECEIPT_MIGRATION_DATABASE_URL }}
+          PGOPTIONS: "-c lock_timeout=5000 -c statement_timeout=30000"
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$EXPECTED_HEAD_SHA"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"
+          psql -X -v ON_ERROR_STOP=1 --file=admin/migrations/019_jusspay_live_receipt_journal.sql > /dev/null 2>&1 || { echo "Migration failed; inspect private database state before retry."; exit 1; }
+      - name: Verify canonical journal objects without customer reads
+        env:
+          PGDATABASE: ${{ secrets.JBH_RECEIPT_MIGRATION_DATABASE_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          result="$(psql -X -At -v ON_ERROR_STOP=1 2>/dev/null <<'SQL'
+          SELECT to_regclass('public.jusspay_live_order_receipt_state') IS NOT NULL
+            AND to_regclass('public.jusspay_live_receipt_events') IS NOT NULL
+            AND to_regprocedure('public.record_jusspay_live_receipt(text,text,text,text,text)') IS NOT NULL
+            AND EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid=to_regclass('public.jusspay_live_order_receipt_state') AND contype='p' AND convalidated)
+            AND EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid=to_regclass('public.jusspay_live_receipt_events') AND contype='p' AND convalidated);
+          SQL
+          )"
+          test "$result" = t
+          echo "Canonical schema objects present. Runtime grants and signed readiness remain separate."
