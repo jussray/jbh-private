@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { recoveryPlan, verifyStaged, singleActiveVersion, verifyBundleReadback } from "../../scripts/private-worker-version-recovery.mjs";
+import { recoveryPlan, verifyStaged, singleActiveVersion, verifyBundleReadback, resolveRecoveryVersion } from "../../scripts/private-worker-version-recovery.mjs";
 
 const old = "11111111-1111-4111-8111-111111111111";
 const next = "22222222-2222-4222-8222-222222222222";
@@ -55,4 +55,14 @@ test("requires provider readback of the exact staged module bytes and release ta
     {...staged,modules:[{...staged.modules[0],content_base64:Buffer.from("different").toString("base64")}]},
     {...staged,modules:[...staged.modules,staged.modules[0]]}
   ])assert.throws(()=>verifyBundleReadback(changed,"index.js",expected,release));
+});
+
+test("discovers the unique active version automatically and rejects stale explicit pins",()=>{
+  const response={deployments:[{versions:[{version_id:old,percentage:100}]}]};
+  assert.equal(resolveRecoveryVersion(response),old);
+  assert.equal(resolveRecoveryVersion(response,old),old);
+  assert.throws(()=>resolveRecoveryVersion(response,next));
+  assert.throws(()=>resolveRecoveryVersion(response,"latest"));
+  assert.throws(()=>resolveRecoveryVersion({deployments:[]}));
+  assert.throws(()=>resolveRecoveryVersion({deployments:[{versions:[{version_id:old,percentage:50},{version_id:next,percentage:50}]}]}));
 });
