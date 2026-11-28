@@ -2,12 +2,14 @@ import Stripe from "stripe";
 
 export interface Env {
   RELEASE_SHA?: string;
-  // Private Cloudflare Worker service binding and separate owner-side secret.
+  // Private service binding with a separate read-only bridge credential.
   JUSSPAY?: { fetch(request: Request): Promise<Response> };
   JUSSPAY_OWNER_KEY?: string;
   DATABASE_URL: string;
   JBH_JUSSPAY_RECEIPTS_ENABLED?: string;
   JBH_JUSSPAY_RECEIPT_SECRET?: string;
+  JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED?: string;
+  JBH_JUSSPAY_LIVE_RECEIPT_SECRET?: string;
   STRIPE_SECRET_KEY: string;
   STRIPE_WEBHOOK_SECRET: string;
   SHOPIFY_WEBHOOK_SECRET: string;

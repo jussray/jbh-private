@@ -9,6 +9,7 @@ import { handleWebhook } from "./webhook";
 import { releaseIdentity } from "./release-identity";
 import { handleJussPaySandboxReceipt } from "./jusspay-sandbox-receipt";
 import { handleJussPayOwnerRequest } from "./jusspay-owner";
+import { handleJussPayLiveReceipt, handleJussPayLiveReceiptReadiness } from "./jusspay-live-receipt";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -23,6 +24,14 @@ export default {
 
     if (pathname === "/health") {
       return json({ ok: true, service: "jbh-private-order-control" });
+    }
+
+    if (pathname === "/internal/jusspay/live/readiness") {
+      return handleJussPayLiveReceiptReadiness(request, env);
+    }
+
+    if (pathname === "/internal/jusspay/live/paid-receipt") {
+      return handleJussPayLiveReceipt(request, env);
     }
 
     if (pathname === "/internal/jusspay/sandbox/paid-receipt") {
@@ -53,7 +62,7 @@ export default {
       return handleVendorSourcingRequest(request, env);
     }
 
-    if (pathname.startsWith("/api/admin/jusspay/fulfillment")) {
+    if (pathname === "/api/admin/jusspay/fulfillment" || pathname === "/api/admin/jusspay/fulfillment/view") {
       return handleJussPayOwnerRequest(request, env);
     }
 
