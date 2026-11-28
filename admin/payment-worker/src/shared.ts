@@ -2,6 +2,9 @@ import Stripe from "stripe";
 
 export interface Env {
   RELEASE_SHA?: string;
+  // Private service binding with a separate read-only bridge credential.
+  JUSSPAY?: { fetch(request: Request): Promise<Response> };
+  JUSSPAY_OWNER_KEY?: string;
   DATABASE_URL: string;
   JBH_REVIEW_DATABASE_URL?: string;
   JBH_REVIEW_STATUS_ENABLED?: string;

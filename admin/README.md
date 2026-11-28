@@ -36,6 +36,35 @@ supplier adapters must remain gated until verified transport and receipts
 exist, and the JussPay live paid-receipt handoff still requires separate
 end-to-end proof. This does not reactivate Shopify.
 
+## JussPay private owner fulfillment (read-only)
+
+After deployment, the proposed route on `jbh-private-payment-control` would expose an Access-only
+owner view and an identical JSON API at:
+
+- `GET /api/admin/jusspay/fulfillment/view` — server-rendered, escaped owner page.
+- `GET /api/admin/jusspay/fulfillment` — owner-only JSON projection.
+
+Both routes require a valid signed Cloudflare Access JWT for the private admin
+application and the owner email allowlist, checked inside the Worker.
+They are **not** routes on the public storefront. No browser-side owner key,
+cross-origin credential forwarding, order dispatch, charge or checkout occurs.
+
+The private Worker uses the `JUSSPAY` service binding to the existing
+`jusspay` Worker, plus `JUSSPAY_OWNER_KEY` as a Cloudflare-secret binding.
+Configure `JUSSPAY_OWNER_KEY` to match JussPay's separate
+`JBH_OWNER_BRIDGE_KEY` read-only credential. **Do not reuse or rotate** the
+human owner's `JBH_OWNER_KEY`: it remains the only credential permitted to
+mark an order dispatched or read other owner-only JussPay endpoints. Never place either key in GitHub, logs, URLs, or
+browser code. The upstream request uses a fixed internal target and the
+`x-jbh-owner-key` header. If either binding is missing, the API fails closed.
+
+Before declaring the route live, independently verify the deployed exact
+Worker SHA, Cloudflare Access private-owner policy, binding presence, owner
+auth rejection, successful service-to-service queue read, and no customer data
+leak for unauthenticated requests. The view is **read-only**: owner dispatch
+and supplier integrations still require separate proof/authorization.
+The JussPay catalog and live-charge gates remain unchanged.
+
 ## Current Shopify physical-order seam
 
 The active public physical checkout is Shopify-backed.
