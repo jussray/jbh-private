@@ -198,10 +198,18 @@ edit. The recovery tool, `scripts/private-worker-version-recovery.mjs`, uses
 an explicitly pinned active version and only stages an immutable Worker version;
 it does not deploy it or change routes, secrets, or live-payment controls.
 
-Run from a clean checkout of current main with the locked dependencies installed.
-Use the existing securely supplied Cloudflare account ID/token, exact approved
-`EXPECTED_HEAD_SHA`, and the independently reviewed
-`JBH_RECOVERY_ACTIVE_VERSION` (UUID). Run the read-only preflight first:
+In GitHub Actions, run **Stage Private Worker Recovery** on main and select
+the staging approval checkbox. The workflow derives `EXPECTED_HEAD_SHA`
+from the dispatch commit, checks it against current main, discovers the
+single active Cloudflare version, and pins that version for the entire
+staging run. Do not ask the owner to retype provider-resolvable identifiers.
+The checkbox authorizes staging only; production promotion remains separate.
+
+For manual local recovery, run from a clean checkout of current main with
+locked dependencies installed. Use the existing securely supplied Cloudflare
+account ID/token and exact `EXPECTED_HEAD_SHA`. The active version is
+discovered automatically; `JBH_RECOVERY_ACTIVE_VERSION` is an optional
+explicit pin that must match the live version. Run read-only preflight first:
 
 ```sh
 node scripts/private-worker-version-recovery.mjs --preflight

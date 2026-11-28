@@ -57,6 +57,13 @@ export function singleActiveVersion(response) {
   return versions[0].version_id;
 }
 
+export function resolveRecoveryVersion(response,explicitPin) {
+  const active=singleActiveVersion(response);
+  requireThat(explicitPin===undefined || (VERSION.test(explicitPin) && explicitPin===active),
+    "active_version_pin_mismatch");
+  return active;
+}
+
 export function recoveryPlan(version,{activeVersion,expectedVersion,release}) {
   requireThat(VERSION.test(expectedVersion) && activeVersion===expectedVersion &&
     version?.id===expectedVersion && SHA.test(release), "version_or_release_mismatch");
@@ -90,9 +97,9 @@ async function run() {
   const mode=process.argv[2]||"--preflight";
   requireThat(["--preflight","--stage"].includes(mode) && process.argv.length<=3,"invalid_mode");
   const account=process.env.CLOUDFLARE_ACCOUNT_ID,token=process.env.CLOUDFLARE_API_TOKEN;
-  const expectedVersion=process.env.JBH_RECOVERY_ACTIVE_VERSION,release=process.env.EXPECTED_HEAD_SHA;
+  const explicitPin=process.env.JBH_RECOVERY_ACTIVE_VERSION,release=process.env.EXPECTED_HEAD_SHA;
   requireThat(/^[a-f0-9]{32}$/i.test(account||"") && typeof token==="string" && token.length>0 &&
-    VERSION.test(expectedVersion||"") && SHA.test(release||""),"missing_recovery_configuration");
+    (explicitPin===undefined || VERSION.test(explicitPin)) && SHA.test(release||""),"missing_recovery_configuration");
   const git=(args)=>execFileSync("git",args,{encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim();
   const root=git(["rev-parse","--show-toplevel"]);
   requireThat(resolve(process.cwd())===resolve(root),"run_from_repository_root");
@@ -115,6 +122,8 @@ async function run() {
   }
   const active=async()=>singleActiveVersion(await cf(named+"/deployments"));
   await assertMain();
+  // Resolve once, then use this immutable pin for the entire staging operation.
+  const expectedVersion=resolveRecoveryVersion(await cf(named+"/deployments"),explicitPin);
   const before=await cf(beta+"/versions/"+expectedVersion);
   const plan=recoveryPlan(before,{activeVersion:await active(),expectedVersion,release});
   requireThat(before.source==="api","recovery_requires_script_api_provenance");
