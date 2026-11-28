@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { recoveryPlan, verifyStaged, singleActiveVersion, verifyBundleReadback, resolveRecoveryVersion } from "../../scripts/private-worker-version-recovery.mjs";
 
 const old = "11111111-1111-4111-8111-111111111111";
@@ -65,4 +66,16 @@ test("discovers the unique active version automatically and rejects stale explic
   assert.throws(()=>resolveRecoveryVersion(response,"latest"));
   assert.throws(()=>resolveRecoveryVersion({deployments:[]}));
   assert.throws(()=>resolveRecoveryVersion({deployments:[{versions:[{version_id:old,percentage:50},{version_id:next,percentage:50}]}]}));
+});
+
+test("owner recovery workflow derives inputs without removing explicit approval",()=>{
+  const workflow=readFileSync(new URL("../../.github/workflows/stage-private-worker-recovery.yml",import.meta.url),"utf8");
+  assert.match(workflow,/approve_staging:\s*\n[\s\S]*?type: boolean\s*\n\s*default: false/);
+  assert.match(workflow,/inputs\.approve_staging == true/);
+  assert.match(workflow,/github\.actor == github\.repository_owner/);
+  assert.match(workflow,/github\.triggering_actor == github\.repository_owner/);
+  assert.match(workflow,/EXPECTED_HEAD_SHA: \$\{\{ github\.sha \}\}/);
+  assert.doesNotMatch(workflow,/inputs\.(expected_head_sha|active_version|approval_phrase)/);
+  assert.doesNotMatch(workflow,/JBH_RECOVERY_ACTIVE_VERSION:/);
+  assert.equal((workflow.match(/node scripts\/private-worker-version-recovery\.mjs --stage/g)||[]).length,1);
 });
