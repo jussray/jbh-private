@@ -10,6 +10,10 @@
   },
   "include": [
     "src/vendor-routing-model.ts",
-    "src/shopify-physical-order-model.ts"
+    "src/vendor-adapters-model.ts",
+    "src/dropship-beauty-proof.ts",
+    "src/release-identity.ts",
+    "src/shopify-physical-order-model.ts",
+    "src/jusspay-live-receipt-model.ts"
   ]
 }

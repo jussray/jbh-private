@@ -3,26 +3,11 @@ name: Deploy Private Contact Ingress
 on:
   workflow_dispatch:
     inputs:
-      approval_phrase:
-        description: "Type exactly DEPLOY_JBH_CONTACT_INGRESS"
+      approve_deployment:
+        description: Approve deployment of the verified current main
+        type: boolean
         required: true
-        type: string
-      route_pattern:
-        description: "Cloudflare route, for example contact.example.com/*"
-        required: true
-        type: string
-      zone_name:
-        description: "Cloudflare zone containing the route hostname"
-        required: true
-        type: string
-      allowed_origins:
-        description: "Comma-separated exact HTTPS storefront origins"
-        required: true
-        type: string
-      allowed_hostnames:
-        description: "Comma-separated exact Turnstile storefront hostnames"
-        required: true
-        type: string
+        default: false
 
 permissions:
   contents: read
@@ -39,6 +24,7 @@ env:
 
 jobs:
   deploy:
+    if: github.repository == 'jussray/jbh-private' && github.ref == 'refs/heads/main' && github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && inputs.approve_deployment == true
     name: Verify and deploy existing private contact Worker
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -47,11 +33,11 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
-      APPROVAL_PHRASE: ${{ inputs.approval_phrase }}
-      CONTACT_ROUTE_PATTERN: ${{ inputs.route_pattern }}
-      CONTACT_ZONE_NAME: ${{ inputs.zone_name }}
-      ALLOWED_CONTACT_ORIGINS: ${{ inputs.allowed_origins }}
-      ALLOWED_CONTACT_HOSTNAMES: ${{ inputs.allowed_hostnames }}
+      APPROVAL_PHRASE: DEPLOY_JBH_CONTACT_INGRESS
+      CONTACT_ROUTE_PATTERN: ${{ vars.CONTACT_ROUTE_PATTERN }}
+      CONTACT_ZONE_NAME: ${{ vars.CONTACT_ZONE_NAME }}
+      ALLOWED_CONTACT_ORIGINS: ${{ vars.ALLOWED_CONTACT_ORIGINS }}
+      ALLOWED_CONTACT_HOSTNAMES: ${{ vars.ALLOWED_CONTACT_HOSTNAMES }}
       CONTACT_WRANGLER_CONFIG: contact-worker/wrangler.production.json
     steps:
       - name: Require main and explicit deployment approval
@@ -80,6 +66,9 @@ jobs:
           const main = JSON.parse(readFileSync(`${root}/main-branch.json`, "utf8"));
           if (repository.private !== true) {
             throw new Error("Production membrane failed: repository must be private.");
+          }
+          if (main.commit?.sha !== process.env.EXPECTED_HEAD_SHA) {
+            throw new Error("Production membrane failed: dispatched SHA is no longer current main.");
           }
           if (main.protected !== true) {
             throw new Error("Production membrane failed: main branch must be protected.");

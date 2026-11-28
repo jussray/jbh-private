@@ -1,0 +1,571 @@
+{
+  "artifactType": "JussPay_Live_Catalog_Reconciliation_Candidates",
+  "schemaVersion": 1,
+  "createdAtUtc": "2026-11-22T22:55:24.969Z",
+  "mode": "live_read_only",
+  "accountId": "acct_1TfbELRp7J40bCrl",
+  "sources": {
+    "vendorIntake": "jussray/jbh-private/vendor-docs/jbh_vendor_intake.csv",
+    "vendorIntakeBlobSha": "df5def95af7235046ba3ee70215b9c05612ef34a",
+    "stripeProductCollection": "/v1/products",
+    "stripePriceCollection": "/v1/prices"
+  },
+  "activationPolicy": "UNAPPROVED. Not an env binding. Do not activate checkout from this document. SKU, unit price, stock, fulfillment, shipping/tax and owner approval must be verified separately.",
+  "stripeProductsRead": 16,
+  "stripePricesRead": 47,
+  "candidates": [
+    {
+      "intakeId": "bundle-bodywave",
+      "intakeName": "Lawless Body Wave Bundle — Raw Vietnamese",
+      "category": "Bundles",
+      "intakeDraftRetailUsd": "89",
+      "stripeProductId": "prod_Ug4WqTq53btKfF",
+      "stripeProductName": "Body Wave Bundle",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TgiN8Rp7J40bCrlvz9eX46m",
+          "amountCents": 7500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgiN8Rp7J40bCrllvmpP5Ya",
+          "amountCents": 8500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgiN8Rp7J40bCrlJgXo6BjX",
+          "amountCents": 9500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgiN8Rp7J40bCrlK5G4PBBr",
+          "amountCents": 10500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgiN8Rp7J40bCrldJgoQDlP",
+          "amountCents": 11500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgiN8Rp7J40bCrlRzAqgGde",
+          "amountCents": 12500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgiN8Rp7J40bCrlNeuNsk1L",
+          "amountCents": 14000,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "bundle-bonestraight",
+      "intakeName": "Lawless Bone Straight Bundle — Raw Vietnamese",
+      "category": "Bundles",
+      "intakeDraftRetailUsd": "89",
+      "stripeProductId": "prod_Ug4ZXF9nHk9bJ4",
+      "stripeProductName": "Bone Straight Bundle",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TgiQ9Rp7J40bCrlcoHDfVtc",
+          "amountCents": 7500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpEyRp7J40bCrliwCPQn32",
+          "amountCents": 8500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpK1Rp7J40bCrlEPUkkycs",
+          "amountCents": 9500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpK1Rp7J40bCrlVAUKyuU1",
+          "amountCents": 10500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpK1Rp7J40bCrlAVL9dt0Z",
+          "amountCents": 11500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpK1Rp7J40bCrlz5EkameN",
+          "amountCents": 12500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpK1Rp7J40bCrlYezwwZS8",
+          "amountCents": 14000,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "bundle-deepwave",
+      "intakeName": "Lawless Deep Wave Bundle",
+      "category": "Bundles",
+      "intakeDraftRetailUsd": "95",
+      "stripeProductId": "prod_Ug4ZRIS4Mmn1Zt",
+      "stripeProductName": "Deep Wave Bundle",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TgiQlRp7J40bCrlO9bM0eWv",
+          "amountCents": 8000,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpPGRp7J40bCrlG4eee7Zt",
+          "amountCents": 9500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpPGRp7J40bCrlq9KAriK6",
+          "amountCents": 10500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpPGRp7J40bCrlJICbtDKb",
+          "amountCents": 11500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpPGRp7J40bCrlb7frrm24",
+          "amountCents": 12500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpPGRp7J40bCrl5UbMUUBh",
+          "amountCents": 14000,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpPGRp7J40bCrlOc3wDN0W",
+          "amountCents": 16500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "bundle-loosewave",
+      "intakeName": "Lawless Loose Wave Bundle",
+      "category": "Bundles",
+      "intakeDraftRetailUsd": "95",
+      "stripeProductId": "prod_Ug4bkFtJe5gLaI",
+      "stripeProductName": "Loose Wave Bundle",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TgiRpRp7J40bCrlbWftRbeN",
+          "amountCents": 8000,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1Tgpo3Rp7J40bCrlNpcPfPUm",
+          "amountCents": 9500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1Tgpo3Rp7J40bCrlY20DAfS0",
+          "amountCents": 10500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1Tgpo3Rp7J40bCrlzm3LV8Lb",
+          "amountCents": 11500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1Tgpo3Rp7J40bCrlu5eo45i0",
+          "amountCents": 12500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1Tgpo3Rp7J40bCrlPsTfUqK3",
+          "amountCents": 14000,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1Tgpo3Rp7J40bCrlxc2YcvSD",
+          "amountCents": 16500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "bundle-kinkystraight",
+      "intakeName": "Flawless Kinky Straight Bundle",
+      "category": "Bundles",
+      "intakeDraftRetailUsd": "99",
+      "stripeProductId": "prod_Ug4bNzDMoa0o2K",
+      "stripeProductName": "Kinky Straight Bundle",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TgiSbRp7J40bCrlU08o2hEq",
+          "amountCents": 8500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpwSRp7J40bCrl3c3fwxEN",
+          "amountCents": 10000,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpwqRp7J40bCrlqXm55dBA",
+          "amountCents": 11500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgpzlRp7J40bCrlEMC4TVBl",
+          "amountCents": 12500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1Tgq4ARp7J40bCrlNd0CokU6",
+          "amountCents": 14000,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1Tgq5DRp7J40bCrlwp4nsIOM",
+          "amountCents": 15500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1Tgq5eRp7J40bCrlCw3OuuXo",
+          "amountCents": 17500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "bundle-royal-indian",
+      "intakeName": "Royal Raw Indian Temple Bundle",
+      "category": "Bundles",
+      "intakeDraftRetailUsd": "129",
+      "stripeProductId": "prod_Ug4c0kREUpkNyp",
+      "stripeProductName": "Royal Raw Indian Temple Bundle",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TgiTFRp7J40bCrlYywtkjVX",
+          "amountCents": 11000,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "closure-4x4",
+      "intakeName": "Lawless 4×4 HD Lace Closure",
+      "category": "Closures & Frontals",
+      "intakeDraftRetailUsd": "79",
+      "stripeProductId": "prod_Ug4OF2CkMfeWws",
+      "stripeProductName": "4×4 HD Lace Closure",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TgiFwRp7J40bCrl8U26DtO8",
+          "amountCents": 6500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "closure-5x5",
+      "intakeName": "Lawless 5×5 HD Lace Closure",
+      "category": "Closures & Frontals",
+      "intakeDraftRetailUsd": "99",
+      "stripeProductId": "prod_Ug4Pt007CG4KfQ",
+      "stripeProductName": "5×5 HD Lace Closure",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TgiGiRp7J40bCrlNSrMZKnE",
+          "amountCents": 8500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "frontal-13x4",
+      "intakeName": "Lawless 13×4 HD Lace Frontal",
+      "category": "Closures & Frontals",
+      "intakeDraftRetailUsd": "149",
+      "stripeProductId": "prod_Ug4QVAHWpKA8Me",
+      "stripeProductName": "13×4 HD Lace Frontal",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TgiHQRp7J40bCrlzjO0krkO",
+          "amountCents": 12500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "wig-glueless-bodywave",
+      "intakeName": "Flawless Glueless 4×4 Closure Wig — Body Wave",
+      "category": "Wigs",
+      "intakeDraftRetailUsd": "189",
+      "stripeProductId": "prod_Ug4dGQiTcyesMl",
+      "stripeProductName": "Glueless Body Wave Wig",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TgiUTRp7J40bCrlmk2psnKA",
+          "amountCents": 16500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "wig-13x4-straight",
+      "intakeName": "Flawless 13×4 Lace Frontal Wig — Straight",
+      "category": "Wigs",
+      "intakeDraftRetailUsd": "249",
+      "stripeProductId": "prod_Ug4eLyR1fKJqWP",
+      "stripeProductName": "13×4 Straight Frontal Wig",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TgphCRp7J40bCrlF8eYeSxL",
+          "amountCents": 12500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        },
+        {
+          "stripePriceId": "price_1TgiVaRp7J40bCrlFdnL0zFS",
+          "amountCents": 21500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "wig-upart-deepwave",
+      "intakeName": "Flawless Deep Wave U-Part Wig",
+      "category": "Wigs",
+      "intakeDraftRetailUsd": "169",
+      "stripeProductId": "prod_UfBoVWCEitgJdx",
+      "stripeProductName": "Deep Wave U-Part Wig",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TfrR9Rp7J40bCrlwpqiZa9o",
+          "amountCents": 14500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "wig-13x6-bob",
+      "intakeName": "Flawless 13×6 Body Wave Bob Wig",
+      "category": "Wigs",
+      "intakeDraftRetailUsd": "159",
+      "stripeProductId": "prod_UfBk1Ue7G9zJah",
+      "stripeProductName": "13×6 Body Wave Bob Wig",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TfrNDRp7J40bCrlddt2Q4N6",
+          "amountCents": 13500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "edge-control",
+      "intakeName": "Lawless Edge Control — 4 oz",
+      "category": "Beauty Essentials",
+      "intakeDraftRetailUsd": "14",
+      "stripeProductId": "prod_Ug4KBpqqcaBfR2",
+      "stripeProductName": "Lawless Edge Control — 4 oz",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TgiCBRp7J40bCrlPcV4gX93",
+          "amountCents": 1000,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "lace-melt-spray",
+      "intakeName": "Lawless Lace Melt Spray",
+      "category": "Beauty Essentials",
+      "intakeDraftRetailUsd": "19",
+      "stripeProductId": "prod_Ug4MjHGcZyahpj",
+      "stripeProductName": "Lawless Lace Melt Spray",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TgiDKRp7J40bCrl077BCOrv",
+          "amountCents": 1500,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    },
+    {
+      "intakeId": "hair-oil",
+      "intakeName": "Lawless Hair Oil — Rosemary Mint",
+      "category": "Beauty Essentials",
+      "intakeDraftRetailUsd": "24",
+      "stripeProductId": "prod_Ug4Mf5jAiyQXWa",
+      "stripeProductName": "Lawless Hair Oil — Rosemary Mint",
+      "nameMatch": "curated_name_match_only_not_variant_or_supplier_proof",
+      "stripePrices": [
+        {
+          "stripePriceId": "price_1TgiE7Rp7J40bCrl06yrXV36",
+          "amountCents": 1800,
+          "currency": "usd",
+          "active": true,
+          "recurring": false
+        }
+      ],
+      "skuMappingVerified": false,
+      "supplierHandoffVerified": false,
+      "approvedForJussPay": false
+    }
+  ]
+}

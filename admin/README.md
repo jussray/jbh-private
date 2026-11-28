@@ -11,6 +11,31 @@ This directory is the private owner-control source for Juss Beautiful Hair. It c
 
 The storefront router intentionally does not register private admin routes. Browser admin code is not an internet authentication boundary. Do not use a `VITE_*` variable for an admin password or secret because Vite variables are bundled into browser JavaScript.
 
+## Vendor-specific owner adapter runtime (JussPay cutover preparation)
+
+The private Cloudflare Worker now exposes **Cloudflare Access-protected**
+`GET /api/admin/vendor-adapters` and
+`POST /api/admin/vendor-adapters/preview` for a bounded review-only vendor
+work plan. The implementation is in
+`admin/payment-worker/src/vendor-adapters.ts` and
+`vendor-adapters-model.ts`. It never makes a supplier API request or
+marks payment, stock, or dispatch as verified merely from submitted data.
+
+- **Dropship Beauty:** exact supplier SKU/inventory and a functioning Shopify
+  app order handoff are required. A Shopify integration configured in the past
+  is not current paid-order dispatch proof.
+- **Faire:** wholesale inventory must first be received and reserved by JBH;
+  Faire retailer orders are **not** customer dropshipping or a custom retailer API.
+- **DSers:** requires an actual connected order channel or supported CSV
+  exchange, exact mapped supplier SKUs and separate order confirmation.
+- **Manual/other vendors:** owner-accepted supplier quotes, stocked inventory
+  and dispatch proof are required. Unrecognized suppliers are quarantined.
+
+A preview is not an authorization to charge, procure, or dispatch. Real
+supplier adapters must remain gated until verified transport and receipts
+exist, and the JussPay live paid-receipt handoff still requires separate
+end-to-end proof. This does not reactivate Shopify.
+
 ## Current Shopify physical-order seam
 
 The active public physical checkout is Shopify-backed.
@@ -129,3 +154,103 @@ The public site must deploy only from `jussbeautifulhair-site`. This private rep
 ## License
 
 Private and proprietary. Do not redistribute source code, vendor material, customer information, branding, product assets, credentials, or operational records.
+
+## JussPay live receipt cutover (candidate, disabled until verified)
+
+The private Worker accepts a separate HMAC-signed live receipt at
+`/internal/jusspay/live/paid-receipt` only when
+`JBH_JUSSPAY_LIVE_RECEIPTS_ENABLED=true` and the independent
+`JBH_JUSSPAY_LIVE_RECEIPT_SECRET` is provisioned. Sandbox remains separate.
+Migration `019_jusspay_live_receipt_journal.sql` records immutable event
+identity and hold precedence atomically. A receipt is evidence of a
+verified payment/hold from JussPay, not authorization to dispatch or buy
+inventory. The response echoes exact order/event identity only after storage
+succeeds. The signed `/internal/jusspay/live/readiness` probe checks schema
+presence and effective database privileges, not actual payment fulfillment.
+Before applying the migration to production, inspect the real schema and
+role, review the migration, verify the disposable database tests and grant
+only the necessary privileges to the intended private Worker database role.
+Never run fixture SQL against production. No secret values belong in git.
+No supplier automation, storefront activation or historical receipt backfill
+is implied by this change.
+
+### Private Worker deployment reconciliation
+
+The Nov 25, 2026 Script API deployments introduced the `JUSSPAY_OWNER_KEY`
+server-held credential and the `JUSSPAY` service binding to `jusspay`.
+The source declares that binding and retains `keep_vars = true`; the owner
+credential must never enter source. A successful source build does not
+resolve the provider's strict-upload conflict after an API deployment.
+Before any separately authorized provider adoption, review the active version,
+preserve all existing bindings and settings, check exact-head proofs, and
+document the rollback version. Do not remove the strict deployment gate
+or silently replace provider configuration.
+
+Live receipt activation still requires the independently scoped receipt
+credential, database binding, applied and verified migration, and signed
+readiness proof. No live approval follows from this reconciliation alone.
+
+### Explicitly approved recovery from Script API provenance
+
+Normal production deployment remains strict. Do not remove the strict-upload
+flag merely because Cloudflare rejects a deployment made after a Script API
+edit. The recovery tool, `scripts/private-worker-version-recovery.mjs`, uses
+an explicitly pinned active version and only stages an immutable Worker version;
+it does not deploy it or change routes, secrets, or live-payment controls.
+
+In GitHub Actions, run **Stage Private Worker Recovery** on main and select
+the staging approval checkbox. The workflow derives `EXPECTED_HEAD_SHA`
+from the dispatch commit, checks it against current main, discovers the
+single active Cloudflare version, and pins that version for the entire
+staging run. Do not ask the owner to retype provider-resolvable identifiers.
+The checkbox authorizes staging only; production promotion remains separate.
+
+For manual local recovery, run from a clean checkout of current main with
+locked dependencies installed. Use the existing securely supplied Cloudflare
+account ID/token and exact `EXPECTED_HEAD_SHA`. The active version is
+discovered automatically; `JBH_RECOVERY_ACTIVE_VERSION` is an optional
+explicit pin that must match the live version. Run read-only preflight first:
+
+```sh
+node scripts/private-worker-version-recovery.mjs --preflight
+```
+
+Only after explicit approval to stage, set
+`JBH_RECOVERY_APPROVAL=STAGE_JBH_WORKER_VERSION` and invoke:
+
+```sh
+node scripts/private-worker-version-recovery.mjs --stage
+```
+
+The tool refuses unexpected binding inventory, runtime settings, service target,
+non-unique active deployment, stale main, or checkout changes. It runs the
+existing Worker tests and strict dry-run build before staging; inherited bindings
+are pinned to the reviewed version, not the latest upload. It checks staged
+metadata and active version after the upload. Secret values are never emitted.
+An ambiguous upload result requires manual version inventory review before retry.
+
+A successful staging receipt is not a deployment or proof of production
+fulfillment. Review the staged version and rollback version separately before
+any production promotion. Do not enable live receipts or apply a production
+migration on the basis of this receipt alone. This recovery path intentionally
+rejects new bindings until its inventory has been reviewed and updated.
+
+### Deployment input resolution
+
+The private payment control deployment reads the existing Worker settings for
+the Shopify API version and location GID. It validates their names, types and
+formats before use; it does not invent values or emit credentials. Normal
+strict deployment remains in force.
+
+Contact ingress reads the approved repository variables
+`CONTACT_ROUTE_PATTERN`, `CONTACT_ZONE_NAME`, `ALLOWED_CONTACT_ORIGINS`,
+and `ALLOWED_CONTACT_HOSTNAMES`. Missing or invalid values block deployment.
+These variables must represent an approved configuration; they are not
+automatically guessed. The existing private, protected-main and customer-data
+requirements remain in force.
+
+The deployment and uniqueness-migration actions use default-off owner approval
+checkboxes. They resolve the dispatched commit from GitHub. The migration
+retains the existing scoped database secret, fixed additive migration file,
+duplicate preflight and postflight; a fresh main check precedes SQL.
+No migration or deployment is authorized by merging this documentation.

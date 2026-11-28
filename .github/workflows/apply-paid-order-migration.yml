@@ -3,10 +3,11 @@ name: Apply Paid Order Uniqueness Migration
 on:
   workflow_dispatch:
     inputs:
-      approval_phrase:
-        description: "NOT A SECRET. Type only: APPLY_UNIQUE_STRIPE_SESSION_INDEX"
+      approve_migration:
+        description: Approve applying the verified additive uniqueness migration
         required: true
-        type: string
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -21,6 +22,7 @@ env:
 
 jobs:
   migrate:
+    if: github.repository == 'jussray/jbh-private' && github.ref == 'refs/heads/main' && github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && inputs.approve_migration == true
     name: Preflight, apply, and verify unique Stripe session index
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -29,7 +31,7 @@ jobs:
         working-directory: admin
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      APPROVAL_PHRASE: ${{ inputs.approval_phrase }}
+      APPROVAL_PHRASE: APPLY_UNIQUE_STRIPE_SESSION_INDEX
     steps:
       - name: Validate repository production database secret
         id: database_secret
@@ -86,6 +88,9 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
+          set -euo pipefail
+          live_main="$(git ls-remote origin refs/heads/main | cut -f1)"
+          test "$live_main" = "$EXPECTED_HEAD_SHA"
           command -v psql >/dev/null
           psql "$DATABASE_URL" --set=ON_ERROR_STOP=1 --file=migrations/002_unique_stripe_session.sql
 

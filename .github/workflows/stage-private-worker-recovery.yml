@@ -1,0 +1,60 @@
+name: Stage Private Worker Recovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      approve_staging:
+        description: Approve staging only (no production promotion)
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-jbh-private-payment-control-production
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    if: github.repository == 'jussray/jbh-private' && github.ref == 'refs/heads/main' && github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && inputs.approve_staging == true
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      EXPECTED_HEAD_SHA: ${{ github.sha }}
+      JBH_RECOVERY_APPROVAL: STAGE_JBH_WORKER_VERSION
+    steps:
+      - name: Resolve and verify exact owner-approved main
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_HEAD_SHA" =~ ^[a-f0-9]{40}$ ]]
+          test "$JBH_RECOVERY_APPROVAL" = STAGE_JBH_WORKER_VERSION
+          test "$GITHUB_SHA" = "$EXPECTED_HEAD_SHA"
+          git init .
+          git remote add origin https://github.com/jussray/jbh-private.git
+          git fetch --depth=1 origin "$EXPECTED_HEAD_SHA"
+          git checkout --detach FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"
+      - name: Select hosted Node 24
+        shell: bash
+        run: |
+          set -euo pipefail
+          node24_root="$(find /opt/hostedtoolcache/node -maxdepth 1 -mindepth 1 -type d -name '24.*' | sort -V | tail -1)"
+          test -x "$node24_root/x64/bin/node"
+          printf '%s\n' "$node24_root/x64/bin" >> "$GITHUB_PATH"
+          "$node24_root/x64/bin/node" --version | grep -E '^v24\.'
+      - name: Install locked dependencies without production credentials
+        run: npx --yes npm@10.9.2 ci --ignore-scripts --no-audit --no-fund
+      - name: Run recovery regression tests before staging
+        run: node --test admin/tests/private-order-worker-version-recovery.test.mjs
+      - name: Preflight and stage only; never promote
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The staging command performs preflight and pins the active version in one process.
+          node scripts/private-worker-version-recovery.mjs --stage
